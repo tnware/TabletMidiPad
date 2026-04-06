@@ -482,7 +482,6 @@ public partial class MainWindow : Window
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
         ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | {switchMode}";
         ValueText.Text = "X: -, Y: -, Pressure: -";
-        DebugInputText.Text = "Raw input: -";
     }
 
     private void ShutdownMidi()
@@ -578,7 +577,6 @@ public partial class MainWindow : Window
             }
         }
 
-        DebugInputText.Text = $"Raw stylus: px=({point.X:0.0},{point.Y:0.0}) norm=({xNorm:0.000},{yNorm:0.000}) pressure={pressure}";
         HandlePoint(point.X, point.Y, xNorm, yNorm, pressure);
     }
 
@@ -591,7 +589,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        DebugInputText.Text = $"Raw mouse: px=({point.X:0.0},{point.Y:0.0}) norm=({xNorm:0.000},{yNorm:0.000}) pressure={_config.MousePressureValue}";
         HandlePoint(point.X, point.Y, xNorm, yNorm, _config.MousePressureValue);
     }
 
@@ -1288,10 +1285,6 @@ public partial class MainWindow : Window
         int pressure = context.PressureMax > 0
             ? (int)Math.Round(packet.NormalPressure * 127.0 / context.PressureMax)
             : 127;
-
-        DebugInputText.Text =
-            $"Raw Wintab D{context.DeviceIndex + 1}: x={packet.X} y={packet.Y} p={packet.NormalPressure}/{context.PressureMax} " +
-            $"buttons=0x{packet.Buttons:X} norm=({xNorm:0.000},{yNorm:0.000})";
 
         if (pressure <= 0)
         {

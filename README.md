@@ -1,110 +1,137 @@
 # TabletMidiPad
 
-`TabletMidiPad` is a small WPF utility that turns tablet or mouse movement into MIDI CC data for use in a DAW.
+`TabletMidiPad` is a Windows WPF utility that turns tablet, pen, stylus, or mouse movement into MIDI CC data for a DAW.
 
 ![TabletMidiPad demo](demo.gif)
 
-The app presents a 2D pad with configurable rectangular zones. Each zone can send its own MIDI CC assignments for:
+The app creates a configurable control surface with rectangular zones. Each zone can send its own MIDI channel and CC assignments for:
 
 - X position
 - Y position
 - pressure
 
-It is currently built for Windows and uses **Windows MIDI Services** loopback endpoints rather than `loopMIDI` or `teVirtualMIDI`.
+It uses:
 
-## Runtime configuration
+- **Windows MIDI Services** for loopback MIDI endpoints
+- **Wintab** for direct Wacom pen input when available
+- WPF stylus/mouse fallback when Wintab is unavailable
 
-The app includes a built-in settings panel, so you can change behavior without editing code.
+## Features
 
-Available runtime settings:
-
-- DAW-facing and app-facing port names
-- loopback association id
-- mouse pressure fallback value
+- runtime settings UI inside the app
 - multiple rectangular zones
 - per-zone MIDI channel
 - per-zone CC numbers for X, Y, and pressure
-- per-zone X/Y inversion
-- per-zone pressure enable/disable
-- per-zone pressure reset to `0` on release
-- per-zone bounds as normalized pad coordinates
+- per-zone inversion and pressure behavior
+- auto-tiling for newly added zones
+- optional zone locking until release
+- optional target-application gating
+- optional always-on-top window mode
+- Windows MIDI Services loopback creation at startup
+- direct Wacom/Wintab pen input support
 
-Settings are saved to `config.json` next to the executable and reloaded on startup.
+## Requirements
 
-## Why this project uses Windows MIDI Services
+- Windows 11
+- **Windows MIDI Services Runtime and Tools**
+- `.NET 10 Desktop Runtime` to run a framework-dependent build
+- a DAW or MIDI-capable app that can receive CC data
 
-On the target machine, third-party virtual MIDI ports were being created successfully but were not consistently visible or usable inside Ableton/Waveform on Windows 11 24H2. This project now creates a temporary loopback pair through Microsoft's built-in MIDI stack and sends MIDI into that path through WinMM.
+For direct Wacom pen input:
 
-At startup the app creates:
+- a supported Wacom driver installation
+- **Wacom Professional Service** (`WTabletServicePro`) running
+- `Wintab32.dll` available through the installed driver
+
+The app expects the Windows MIDI Services console here:
+
+`C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe`
+
+If your install is elsewhere, update `MidiConsolePath` in [MainWindow.xaml.cs](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\MainWindow.xaml.cs).
+
+## Runtime configuration
+
+Settings are edited in the built-in sidebar and saved to `config.json` next to the executable.
+
+Available settings include:
+
+- DAW input port name
+- internal app port name
+- loopback association id
+- mouse pressure fallback value
+- keep window always on top
+- allow switching zones without releasing
+- only send MIDI while a selected target app is active
+- per-zone enable/disable
+- per-zone MIDI channel
+- per-zone CC X / CC Y / CC Pressure
+- per-zone bounds
+- per-zone invert X / invert Y
+- per-zone pressure enable
+- per-zone pressure reset-on-release
+
+## MIDI routing
+
+At startup the app creates a temporary Windows MIDI Services loopback pair:
 
 - `Tablet XY (App)`
 - `Tablet XY (DAW)`
 
-The app writes MIDI to `Tablet XY (App)`. Your DAW should listen to `Tablet XY (DAW)`.
+The app writes MIDI to `Tablet XY (App)`.
+Your DAW should listen to `Tablet XY (DAW)`.
 
-These loopback endpoints are temporary and are removed when the app closes.
+These endpoints are temporary and are removed when the app closes.
 
-## Requirements
+## Input backends
 
-- Windows 11 with **Windows MIDI Services**
-- Windows MIDI Services **Runtime and Tools** installed
-- `.NET 10 SDK`
-- A DAW or MIDI-capable application that can receive CC data
+The app prefers direct **Wintab** pen input when available. If Wintab is unavailable, it falls back to WPF stylus/mouse input.
 
-The app expects the Windows MIDI Services console at:
+The HUD shows the current input backend so you can verify whether the app is using:
 
-`C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe`
+- `Wintab`
+- `Stylus`
+- `Mouse`
 
-If your installation lives somewhere else, update `MidiConsolePath` in `MainWindow.xaml.cs`.
+### Wacom / Wintab notes
 
-## Build
+For Wintab to work:
 
-From the project directory:
+- the Wacom driver must be installed correctly
+- `WTabletServicePro` must be running
+- `WTInfoA(0, 0, NULL)` must respond through `Wintab32.dll`
 
-```powershell
-dotnet build
-```
+The app also applies Wintab context locking and overlap recovery so pen input can continue working even when `TabletMidiPad` is not the foreground window on compatible setups.
 
-If the executable is already running, a normal build may fail because `TabletMidiPad.exe` is locked. In that case, close the app or build to another output folder:
+This behavior depends on the driver and environment. It is more reliable when:
 
-```powershell
-dotnet build -p:OutDir=bin\Verify\
-```
-
-## Run
-
-```powershell
-dotnet run
-```
-
-On startup, the app:
-
-1. Removes any stale loopback pair using the app's association id.
-2. Creates a fresh Windows MIDI Services loopback pair.
-3. Opens `Tablet XY (App)` as a MIDI output.
-4. Sends CC messages for the currently active zone whenever X, Y, or pressure changes.
-
-If you change routing settings in the sidebar and click `Apply Settings`, the app rebuilds the loopback pair using the new values.
+- the Wacom service is running normally
+- no broken tablet preference state is interfering
+- the driver is not being restarted mid-session
 
 ## Zone behavior
 
-Each zone is a rectangle defined by:
+Each zone is defined by normalized bounds:
 
 - `Left`
 - `Top`
 - `Width`
 - `Height`
 
-All bounds are normalized from `0.0` to `1.0` relative to the full pad.
+All values are relative to the full pad from `0.0` to `1.0`.
 
-Example:
+X and Y are normalized **within the active zone**, not across the whole pad. Each zone gets its own local `0-127` range.
 
-- a top-left quadrant would be `Left=0.0`, `Top=0.0`, `Width=0.5`, `Height=0.5`
-- a bottom-right quadrant would be `Left=0.5`, `Top=0.5`, `Width=0.5`, `Height=0.5`
+If the pointer or pen is outside all enabled zones, the app sends nothing.
 
-X and Y are normalized inside the active zone, not across the whole canvas. That means each zone gets its own local `0-127` range.
+When zone switching is disabled, the currently pressed zone stays active until release even if the pointer crosses into another zone.
 
-If the pointer is outside all configured zones, the app sends nothing.
+## Target application gating
+
+If `Only send MIDI while selected app is active` is enabled, the app checks the current foreground window and only emits MIDI while the chosen target app is active.
+
+This is useful when you want the controller behavior tied to a DAW window without manually disabling the app.
+
+Important: target-app gating controls whether MIDI is sent. It does **not** replace Wintab itself or create cross-process tablet ownership.
 
 ## DAW setup
 
@@ -123,47 +150,65 @@ If the pointer is outside all configured zones, the app sends nothing.
 1. Start `TabletMidiPad`.
 2. Launch Waveform after the app is already open.
 3. Select `Tablet XY (DAW)` as the MIDI input.
-4. Make sure the track or mapping target is listening for controller data on channel 1.
+4. Make sure the target is listening for controller data on the channel used by the active zone.
 
-## MIDI details
+## Build
 
-- MIDI channel is configured per zone
-- CC assignments are configured per zone
-- Pressure falls back to the global mouse pressure value when using the mouse
-- Values are normalized to `0-127` inside the active zone
+From the project directory:
 
-The app only sends a CC message when a specific channel/CC value changes, which keeps the event stream smaller during use.
+```powershell
+dotnet build
+```
 
-## Input behavior
+If the executable is already running, build to another output folder:
 
-- Stylus input is preferred
-- Mouse input is supported as a fallback
-- Y is inverted so the top of the pad produces a higher value
-- The cursor indicator shows the current pointer position
+```powershell
+dotnet build -p:OutDir=bin\Verify\
+```
 
-## Project structure
+## Publish
 
-- `MainWindow.xaml`: main pad UI
-- `MainWindow.xaml.cs`: MIDI loopback creation, WinMM output, and pad handling
-- `AppConfig.cs`: runtime configuration model and JSON persistence
-- `TabletMidiPad.csproj`: WPF project file
+Framework-dependent publish:
+
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained false
+```
+
+This keeps the package much smaller than a self-contained publish, but the target machine still needs:
+
+- `.NET 10 Desktop Runtime`
+- Windows MIDI Services Runtime and Tools
 
 ## Troubleshooting
 
-### The app opens but the DAW does not see the MIDI device
+### The DAW does not see the MIDI device
 
-- Confirm Windows MIDI Services Runtime and Tools are installed
-- Confirm `midi.exe` exists at the configured path
-- Start the app before starting the DAW
-- Fully restart the DAW after launching the app
+- confirm Windows MIDI Services Runtime and Tools are installed
+- confirm `midi.exe` exists at the configured path
+- start the app before starting the DAW
+- fully restart the DAW after launching the app
+
+### Wintab does not activate
+
+- confirm the Wacom driver is installed
+- confirm `WTabletServicePro` is running
+- confirm `Wintab32.dll` is present
+- if needed, reboot after installing or updating the driver
+
+If Wintab is unavailable, the app will fall back to stylus/mouse input.
+
+### Pen input only works while the app is active
+
+Make sure the Wacom service is running and use the current build, which includes Wintab overlap recovery and context locking.
+
+Behavior can still vary by driver and device configuration, but this build is designed to keep the Wintab context alive more aggressively than a default setup.
 
 ### The MIDI device appears but mapping does nothing
 
-- In Ableton, enable `Remote` for `Tablet XY (DAW)`
-- Ensure the DAW is listening to `Tablet XY (DAW)`, not `Tablet XY (App)`
-- Verify the target is learning CC input, not note input
-- Remember the app sends only CC data, not note messages
-- Make sure your pointer is inside an enabled zone
+- in Ableton, enable `Remote` for `Tablet XY (DAW)`
+- make sure the DAW is listening to `Tablet XY (DAW)`, not `Tablet XY (App)`
+- verify the mapping target is learning CC input, not note input
+- make sure you are inside an enabled zone
 
 ### Build fails because the executable is locked
 
@@ -173,22 +218,14 @@ Close the running app and build again, or build to another output folder:
 dotnet build -p:OutDir=bin\Verify\
 ```
 
-### Windows MIDI Services is installed but the app still fails on startup
+## Project structure
 
-Check that this command works:
-
-```powershell
-& 'C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe' --help
-```
-
-If it does not, the app will not be able to create the loopback pair.
-
-## Notes
-
-- The loopback pair created by the app is temporary.
-- The endpoints are removed when the app closes.
-- If the app crashes, it will attempt to clean up the same association id on next launch.
+- [MainWindow.xaml](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\MainWindow.xaml): main UI
+- [MainWindow.xaml.cs](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\MainWindow.xaml.cs): MIDI, Wintab, input handling, and runtime config logic
+- [AppConfig.cs](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\AppConfig.cs): saved configuration model
+- [WintabInterop.cs](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\WintabInterop.cs): Wintab interop definitions
+- [TabletMidiPad.csproj](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\TabletMidiPad.csproj): project file
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\LICENSE).
