@@ -90,14 +90,16 @@ public partial class MainWindow : Window
     {
         CommitCurrentZoneEdits();
 
+        int nextCcStart = GetNextAvailableCcStart();
+
         var zone = new ZoneConfig
         {
             Name = $"Zone {_config.Zones.Count + 1}",
             Enabled = true,
             MidiChannel = 1,
-            CcX = 16,
-            CcY = 17,
-            CcPressure = 18,
+            CcX = nextCcStart,
+            CcY = nextCcStart + 1,
+            CcPressure = nextCcStart + 2,
             InvertY = true,
             SendPressure = true,
             ResetPressureOnRelease = true,
@@ -115,6 +117,35 @@ public partial class MainWindow : Window
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
+    }
+
+    private int GetNextAvailableCcStart()
+    {
+        var used = new HashSet<int>(
+            _config.Zones.SelectMany(zone => new[] { zone.CcX, zone.CcY, zone.CcPressure })
+        );
+
+        int preferredStart = _config.Zones.Count == 0
+            ? 16
+            : _config.Zones.Max(zone => Math.Max(zone.CcX, Math.Max(zone.CcY, zone.CcPressure))) + 1;
+
+        for (int start = preferredStart; start <= 125; start++)
+        {
+            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
+            {
+                return start;
+            }
+        }
+
+        for (int start = 16; start <= 125; start++)
+        {
+            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
+            {
+                return start;
+            }
+        }
+
+        throw new InvalidOperationException("No free 3-CC block is available for a new zone.");
     }
 
     private void RemoveZoneButton_Click(object sender, RoutedEventArgs e)
