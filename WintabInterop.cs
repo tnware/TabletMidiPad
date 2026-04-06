@@ -7,6 +7,10 @@ internal static class WintabInterop
 {
     public const int WT_DEFBASE = 0x7FF0;
     public const int WT_PACKET = 0;
+    public const int WT_CTXOPEN = 1;
+    public const int WT_CTXCLOSE = 2;
+    public const int WT_CTXUPDATE = 3;
+    public const int WT_CTXOVERLAP = 4;
     public const int WT_PROXIMITY = 5;
     public const int WT_INFOCHANGE = 6;
     private const uint WTI_INTERFACE = 1;
@@ -23,6 +27,12 @@ internal static class WintabInterop
 
     public const uint CXO_SYSTEM = 0x0001;
     public const uint CXO_MESSAGES = 0x0004;
+
+    public const uint CXL_INSIZE = 0x0001;
+    public const uint CXL_INASPECT = 0x0002;
+    public const uint CXL_SENSITIVITY = 0x0004;
+    public const uint CXL_MARGIN = 0x0008;
+    public const uint CXL_SYSOUT = 0x0010;
 
     public const uint PK_CONTEXT = 0x0001;
     public const uint PK_STATUS = 0x0002;

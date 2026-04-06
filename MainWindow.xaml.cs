@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private HwndSource? _wintabMessageSource;
     private readonly Dictionary<uint, WintabContextInfo> _wintabContexts = new();
     private int _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+    private int _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
     private int _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
     private int _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
 
@@ -1028,6 +1029,7 @@ public partial class MainWindow : Window
         _lastInputBackend = "Stylus/Mouse Fallback";
         _wintabDiagnostics = "Wintab shut down";
         _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+        _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
         _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
         _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
     }
@@ -1042,6 +1044,18 @@ public partial class MainWindow : Window
             if (_wintabContexts.ContainsKey(context) && WintabInterop.WTPacket(context, packetId, out var packet))
             {
                 HandleWintabPacket(context, packet);
+                handled = true;
+            }
+        }
+        else if (msg == _wintabContextOverlapMessage)
+        {
+            uint context = unchecked((uint)wParam.ToInt32());
+            if (_wintabContexts.ContainsKey(context))
+            {
+                _ = WintabInterop.WTOverlap(context, true);
+                _ = WintabInterop.WTEnable(context, true);
+                _wintabDiagnostics = $"WT_CTXOVERLAP recovered for context 0x{context:X}";
+                UpdateInputBackendStatus();
                 handled = true;
             }
         }
@@ -1092,6 +1106,12 @@ public partial class MainWindow : Window
             defaultContext.Name = "TabletMidiPad Default Digitizer";
             defaultContext.Options |= WintabInterop.CXO_MESSAGES;
             defaultContext.Options &= ~WintabInterop.CXO_SYSTEM;
+            defaultContext.Locks =
+                WintabInterop.CXL_INSIZE |
+                WintabInterop.CXL_INASPECT |
+                WintabInterop.CXL_SENSITIVITY |
+                WintabInterop.CXL_MARGIN |
+                WintabInterop.CXL_SYSOUT;
             defaultContext.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
             defaultContext.PktMode = 0;
             defaultContext.MoveMask = defaultContext.PktData;
@@ -1111,6 +1131,7 @@ public partial class MainWindow : Window
                 defaultContext.SysMode = false;
 
                 _wintabPacketMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKET);
+                _wintabContextOverlapMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_CTXOVERLAP);
                 _wintabProximityMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PROXIMITY);
                 _wintabInfoChangeMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_INFOCHANGE);
                 messageBaseInitialized = true;
@@ -1173,6 +1194,12 @@ public partial class MainWindow : Window
             context.Name = $"TabletMidiPad Digitizer {deviceIndex}";
             context.Options |= WintabInterop.CXO_MESSAGES;
             context.Options &= ~WintabInterop.CXO_SYSTEM;
+            context.Locks =
+                WintabInterop.CXL_INSIZE |
+                WintabInterop.CXL_INASPECT |
+                WintabInterop.CXL_SENSITIVITY |
+                WintabInterop.CXL_MARGIN |
+                WintabInterop.CXL_SYSOUT;
             context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
             context.PktMode = 0;
             context.MoveMask = context.PktData;
@@ -1186,6 +1213,7 @@ public partial class MainWindow : Window
             if (!messageBaseInitialized)
             {
                 _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
+                _wintabContextOverlapMessage = unchecked((int)context.MsgBase + WintabInterop.WT_CTXOVERLAP);
                 _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
                 _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
                 messageBaseInitialized = true;
