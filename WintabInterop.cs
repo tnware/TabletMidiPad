@@ -96,29 +96,12 @@ internal static class WintabInterop
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct Orientation
-    {
-        public int Azimuth;
-        public int Altitude;
-        public int Twist;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
     public struct Packet
     {
-        public uint Context;
-        public uint Status;
-        public uint Time;
-        public uint Changed;
-        public uint SerialNumber;
-        public uint Cursor;
         public uint Buttons;
         public int X;
         public int Y;
-        public int Z;
         public uint NormalPressure;
-        public uint TangentPressure;
-        public Orientation Orientation;
     }
 
     public static bool IsAvailable()
@@ -142,6 +125,11 @@ internal static class WintabInterop
         return GetLogContext(WTI_DEFCONTEXT);
     }
 
+    public static LogContext GetDefaultDigitizingContext()
+    {
+        return GetLogContext(WTI_DEFCONTEXT);
+    }
+
     public static LogContext GetDefaultSystemContext()
     {
         return GetLogContext(WTI_DEFSYSCTX);
@@ -159,7 +147,7 @@ internal static class WintabInterop
 
     public static bool IsIntegratedTablet(int deviceIndex)
     {
-        uint hardware = unchecked((uint)GetUint(unchecked(WTI_DEVICES + (uint)deviceIndex), DVC_HARDWARE));
+        uint hardware = unchecked((uint)GetUint(GetDeviceCategory(deviceIndex), DVC_HARDWARE));
         return (hardware & HWC_INTEGRATED) != 0;
     }
 
@@ -219,7 +207,7 @@ internal static class WintabInterop
         IntPtr buffer = Marshal.AllocHGlobal(size);
         try
         {
-            int returned = (int)WTInfoA(unchecked(WTI_DEVICES + (uint)deviceIndex), index, buffer);
+            int returned = (int)WTInfoA(GetDeviceCategory(deviceIndex), index, buffer);
             if (returned <= 0)
             {
                 return default;
@@ -231,6 +219,12 @@ internal static class WintabInterop
         {
             Marshal.FreeHGlobal(buffer);
         }
+    }
+
+    private static uint GetDeviceCategory(int deviceIndex)
+    {
+        int category = unchecked((int)WTI_DEVICES + deviceIndex);
+        return unchecked((uint)category);
     }
 
     private static int GetUint(uint category, uint index)

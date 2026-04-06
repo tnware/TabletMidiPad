@@ -34,6 +34,8 @@ public partial class MainWindow : Window
 
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
+    private string _lastInputBackend = "Idle";
+    private string _wintabDiagnostics = "Wintab not initialized yet";
 
     public MainWindow()
     {
@@ -430,6 +432,7 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Windows MIDI Services init failed";
             RoutingText.Text = string.Empty;
+            InputBackendText.Text = string.Empty;
             ActiveZoneText.Text = string.Empty;
             ConfigSummaryText.Text = string.Empty;
             ValueText.Text = ex.Message;
@@ -461,6 +464,7 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Windows MIDI Services init failed";
             RoutingText.Text = string.Empty;
+            InputBackendText.Text = string.Empty;
             ActiveZoneText.Text = string.Empty;
             ConfigSummaryText.Text = string.Empty;
             ValueText.Text = ex.Message;
@@ -472,10 +476,12 @@ public partial class MainWindow : Window
     {
         StatusText.Text = $"Send to '{_config.DawPortName}' in Ableton/Waveform";
         RoutingText.Text = $"App '{_config.AppPortName}' -> DAW '{_config.DawPortName}'";
+        UpdateInputBackendStatus();
         ActiveZoneText.Text = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
         ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | {switchMode}";
         ValueText.Text = "X: -, Y: -, Pressure: -";
+        DebugInputText.Text = "Raw input: -";
     }
 
     private void ShutdownMidi()
@@ -493,6 +499,7 @@ public partial class MainWindow : Window
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
         if (_useWintab) return;
+        e.Handled = true;
         _isActive = true;
         Pad.CaptureStylus();
         HandleStylus(e);
@@ -502,6 +509,7 @@ public partial class MainWindow : Window
     {
         if (_useWintab) return;
         if (!_isActive) return;
+        e.Handled = true;
         HandleStylus(e);
     }
 
@@ -509,6 +517,7 @@ public partial class MainWindow : Window
     {
         if (_useWintab) return;
         if (!_isActive) return;
+        e.Handled = true;
         HandleStylus(e);
         _isActive = false;
         Pad.ReleaseStylusCapture();
@@ -519,6 +528,7 @@ public partial class MainWindow : Window
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (_useWintab) return;
+        if (IsPromotedStylusMouseEvent(e)) return;
         if (e.LeftButton != MouseButtonState.Pressed) return;
         _isActive = true;
         Pad.CaptureMouse();
@@ -528,6 +538,7 @@ public partial class MainWindow : Window
     private void Pad_MouseMove(object sender, MouseEventArgs e)
     {
         if (_useWintab) return;
+        if (IsPromotedStylusMouseEvent(e)) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
     }
@@ -535,6 +546,7 @@ public partial class MainWindow : Window
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
     {
         if (_useWintab) return;
+        if (IsPromotedStylusMouseEvent(e)) return;
         if (!_isActive) return;
         HandleMouse(e);
         _isActive = false;
@@ -545,6 +557,7 @@ public partial class MainWindow : Window
 
     private void HandleStylus(StylusEventArgs e)
     {
+        MarkInputBackend("Stylus");
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -564,17 +577,20 @@ public partial class MainWindow : Window
             }
         }
 
+        DebugInputText.Text = $"Raw stylus: px=({point.X:0.0},{point.Y:0.0}) norm=({xNorm:0.000},{yNorm:0.000}) pressure={pressure}";
         HandlePoint(point.X, point.Y, xNorm, yNorm, pressure);
     }
 
     private void HandleMouse(MouseEventArgs e)
     {
+        MarkInputBackend("Mouse");
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
             return;
         }
 
+        DebugInputText.Text = $"Raw mouse: px=({point.X:0.0},{point.Y:0.0}) norm=({xNorm:0.000},{yNorm:0.000}) pressure={_config.MousePressureValue}";
         HandlePoint(point.X, point.Y, xNorm, yNorm, _config.MousePressureValue);
     }
 
@@ -949,6 +965,7 @@ public partial class MainWindow : Window
         if (!WintabInterop.IsAvailable())
         {
             _useWintab = false;
+            _wintabDiagnostics = "Wintab32.dll not available";
             SetLoadingState("Preparing tablet input", "Wintab not found, using stylus and mouse fallback");
             return;
         }
@@ -964,6 +981,11 @@ public partial class MainWindow : Window
             _wintabMessageSource.AddHook(WndProc);
             int openedContexts = OpenWintabContexts();
             _useWintab = openedContexts > 0;
+            _lastInputBackend = _useWintab ? "Wintab" : "Stylus/Mouse Fallback";
+            if (_useWintab)
+            {
+                _wintabDiagnostics = $"Opened {openedContexts} Wintab context(s)";
+            }
 
             SetLoadingState(
                 "Preparing tablet input",
@@ -972,9 +994,11 @@ public partial class MainWindow : Window
                     : "Wintab detected, but no digitizer contexts could open"
             );
         }
-        catch
+        catch (Exception ex)
         {
             _useWintab = false;
+            _lastInputBackend = "Stylus/Mouse Fallback";
+            _wintabDiagnostics = ex.Message;
             SetLoadingState("Preparing tablet input", "Wintab failed, using stylus and mouse fallback");
         }
     }
@@ -1001,6 +1025,8 @@ public partial class MainWindow : Window
 
         _wintabContexts.Clear();
         _useWintab = false;
+        _lastInputBackend = "Stylus/Mouse Fallback";
+        _wintabDiagnostics = "Wintab shut down";
         _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
         _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
         _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
@@ -1058,9 +1084,68 @@ public partial class MainWindow : Window
     private int OpenWintabContexts()
     {
         _wintabContexts.Clear();
+        bool messageBaseInitialized = false;
+
+        try
+        {
+            var defaultContext = WintabInterop.GetDefaultDigitizingContext();
+            defaultContext.Name = "TabletMidiPad Default Digitizer";
+            defaultContext.Options |= WintabInterop.CXO_MESSAGES;
+            defaultContext.Options &= ~WintabInterop.CXO_SYSTEM;
+            defaultContext.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            defaultContext.PktMode = 0;
+            defaultContext.MoveMask = defaultContext.PktData;
+            defaultContext.BtnUpMask = defaultContext.BtnDnMask;
+
+            int defaultDeviceIndex = (int)defaultContext.Device;
+            var xAxis = WintabInterop.GetXAxis(defaultDeviceIndex);
+            var yAxis = WintabInterop.GetYAxis(defaultDeviceIndex);
+            var pressureAxis = WintabInterop.GetPressureAxis(defaultDeviceIndex);
+
+            if (xAxis.Max > xAxis.Min && yAxis.Max > yAxis.Min)
+            {
+                defaultContext.OutOrgX = 0;
+                defaultContext.OutOrgY = 0;
+                defaultContext.OutExtX = xAxis.Max - xAxis.Min + 1;
+                defaultContext.OutExtY = -(yAxis.Max - yAxis.Min + 1);
+                defaultContext.SysMode = false;
+
+                _wintabPacketMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKET);
+                _wintabProximityMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PROXIMITY);
+                _wintabInfoChangeMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_INFOCHANGE);
+                messageBaseInitialized = true;
+
+                uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref defaultContext, true);
+                if (handle != 0)
+                {
+                    _wintabDiagnostics = $"Default digitizing context opened on device {defaultDeviceIndex}";
+                    _wintabContexts[handle] = new WintabContextInfo(
+                        DeviceIndex: defaultDeviceIndex,
+                        OutputMinX: 0,
+                        OutputMaxX: Math.Max(1, defaultContext.OutExtX - 1),
+                        OutputMinY: 0,
+                        OutputMaxY: Math.Max(1, Math.Abs(defaultContext.OutExtY) - 1),
+                        PressureMax: Math.Max(1, pressureAxis.Max),
+                        IsIntegrated: defaultDeviceIndex >= 0 && WintabInterop.IsIntegratedTablet(defaultDeviceIndex)
+                    );
+
+                    return _wintabContexts.Count;
+                }
+
+                _wintabDiagnostics = $"WTOpenA failed for default digitizing context on device {defaultDeviceIndex}";
+            }
+            else
+            {
+                _wintabDiagnostics = $"Default digitizing context axes invalid for device {defaultDeviceIndex}: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _wintabDiagnostics = $"Default digitizing context failed: {ex.Message}";
+        }
 
         int deviceCount = Math.Max(1, WintabInterop.GetAttachedDeviceCount());
-        bool messageBaseInitialized = false;
+        _wintabDiagnostics = $"Trying {deviceCount} enumerated digitizer context(s)";
 
         for (int deviceIndex = 0; deviceIndex < deviceCount; deviceIndex++)
         {
@@ -1069,8 +1154,9 @@ public partial class MainWindow : Window
             {
                 context = WintabInterop.GetDigitizerContext(deviceIndex);
             }
-            catch
+            catch (Exception ex)
             {
+                _wintabDiagnostics = $"WTI_DDCTXS {deviceIndex} failed: {ex.Message}";
                 continue;
             }
 
@@ -1080,6 +1166,7 @@ public partial class MainWindow : Window
 
             if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
             {
+                _wintabDiagnostics = $"Device {deviceIndex} axes invalid: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
                 continue;
             }
 
@@ -1107,9 +1194,11 @@ public partial class MainWindow : Window
             uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref context, true);
             if (handle == 0)
             {
+                _wintabDiagnostics = $"WTOpenA failed for digitizer context {deviceIndex}";
                 continue;
             }
 
+            _wintabDiagnostics = $"Digitizer context {deviceIndex} opened";
             _wintabContexts[handle] = new WintabContextInfo(
                 DeviceIndex: deviceIndex,
                 OutputMinX: 0,
@@ -1144,6 +1233,8 @@ public partial class MainWindow : Window
 
         int openedContexts = OpenWintabContexts();
         _useWintab = openedContexts > 0;
+        _lastInputBackend = _useWintab ? "Wintab" : "Stylus/Mouse Fallback";
+        UpdateInputBackendStatus();
     }
 
     private void HandleWintabPacket(uint contextHandle, WintabInterop.Packet packet)
@@ -1160,6 +1251,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
+
         double xNorm = NormalizeWintabCoordinate(packet.X, context.OutputMinX, context.OutputMaxX);
         double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
         double xPx = xNorm * width;
@@ -1167,6 +1260,10 @@ public partial class MainWindow : Window
         int pressure = context.PressureMax > 0
             ? (int)Math.Round(packet.NormalPressure * 127.0 / context.PressureMax)
             : 127;
+
+        DebugInputText.Text =
+            $"Raw Wintab D{context.DeviceIndex + 1}: x={packet.X} y={packet.Y} p={packet.NormalPressure}/{context.PressureMax} " +
+            $"buttons=0x{packet.Buttons:X} norm=({xNorm:0.000},{yNorm:0.000})";
 
         if (pressure <= 0)
         {
@@ -1193,6 +1290,26 @@ public partial class MainWindow : Window
 
         double normalized = (value - min) / (double)(max - min);
         return Math.Clamp(normalized, 0.0, 1.0);
+    }
+
+    private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
+    {
+        return e.StylusDevice is not null;
+    }
+
+    private void MarkInputBackend(string backend)
+    {
+        _lastInputBackend = backend;
+        UpdateInputBackendStatus();
+    }
+
+    private void UpdateInputBackendStatus()
+    {
+        string configured = _useWintab
+            ? $"Wintab enabled, {_wintabContexts.Count} context(s)"
+            : $"Stylus/mouse fallback | {_wintabDiagnostics}";
+
+        InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
     }
 
     private void SetLoadingState(string title, string detail)
