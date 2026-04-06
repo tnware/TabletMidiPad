@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -35,7 +36,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => InitializeApp();
+        ContentRendered += OnContentRendered;
         Closed += (_, _) =>
         {
             ShutdownMidi();
@@ -43,13 +44,36 @@ public partial class MainWindow : Window
         };
     }
 
-    private void InitializeApp()
+    private async void OnContentRendered(object? sender, EventArgs e)
     {
+        ContentRendered -= OnContentRendered;
+        await InitializeAppAsync();
+    }
+
+    private async Task InitializeAppAsync()
+    {
+        SetLoadingProgress(8);
+        SetLoadingState("Booting application", "Creating the interface");
+        await Task.Yield();
+
+        SetLoadingProgress(18);
+        SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
+        await Task.Yield();
+
+        SetLoadingProgress(34);
+        SetLoadingState("Preparing tablet input", "Checking for direct tablet capture");
         InitializeWintab();
-        InitMidi();
+        await Task.Yield();
+
+        await InitializeMidiAsync();
+
+        SetLoadingProgress(100);
+        SetLoadingState("Ready", "Controller surface is live");
+        await Task.Delay(220);
+        LoadingOverlay.Visibility = Visibility.Collapsed;
     }
 
     private static void PopulateChannelList(ComboBox comboBox)
@@ -396,6 +420,37 @@ public partial class MainWindow : Window
             RemoveLoopbackPair();
             CreateLoopbackPair();
             OpenMidiOutWithRetry(_config.AppPortName);
+            _lastSentValues.Clear();
+            _activeZone = null;
+            UpdateUiForCurrentConfig();
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Windows MIDI Services init failed";
+            RoutingText.Text = string.Empty;
+            ActiveZoneText.Text = string.Empty;
+            ConfigSummaryText.Text = string.Empty;
+            ValueText.Text = ex.Message;
+            throw;
+        }
+    }
+
+    private async Task InitializeMidiAsync()
+    {
+        try
+        {
+            SetLoadingProgress(52);
+            SetLoadingState("Creating MIDI endpoints", "Removing any stale loopback pair");
+            await Task.Run(RemoveLoopbackPair);
+
+            SetLoadingProgress(68);
+            SetLoadingState("Creating MIDI endpoints", "Creating a fresh loopback pair");
+            await Task.Run(CreateLoopbackPair);
+
+            SetLoadingProgress(86);
+            SetLoadingState("Opening MIDI output", $"Opening '{_config.AppPortName}'");
+            await Task.Run(() => OpenMidiOutWithRetry(_config.AppPortName));
+
             _lastSentValues.Clear();
             _activeZone = null;
             UpdateUiForCurrentConfig();
@@ -892,6 +947,7 @@ public partial class MainWindow : Window
         if (!WintabInterop.IsAvailable())
         {
             _useWintab = false;
+            SetLoadingState("Preparing tablet input", "Wintab not found, using stylus and mouse fallback");
             return;
         }
 
@@ -920,6 +976,7 @@ public partial class MainWindow : Window
             if (_wintabContext == 0)
             {
                 _useWintab = false;
+                SetLoadingState("Preparing tablet input", "Wintab detected, but direct tablet context could not open");
                 return;
             }
 
@@ -931,10 +988,12 @@ public partial class MainWindow : Window
 
             _hwndSource.AddHook(WndProc);
             _useWintab = true;
+            SetLoadingState("Preparing tablet input", "Wintab direct tablet input is active");
         }
         catch
         {
             _useWintab = false;
+            SetLoadingState("Preparing tablet input", "Wintab failed, using stylus and mouse fallback");
         }
     }
 
@@ -1010,6 +1069,29 @@ public partial class MainWindow : Window
 
         _isActive = true;
         HandlePoint(xPx, yPx, xNorm, yNorm, pressure);
+    }
+
+    private void SetLoadingState(string title, string detail)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => SetLoadingState(title, detail));
+            return;
+        }
+
+        LoadingTitleText.Text = title;
+        LoadingDetailText.Text = detail;
+    }
+
+    private void SetLoadingProgress(double value)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => SetLoadingProgress(value));
+            return;
+        }
+
+        LoadingProgressBar.Value = Math.Clamp(value, LoadingProgressBar.Minimum, LoadingProgressBar.Maximum);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
