@@ -5,10 +5,21 @@ namespace TabletMidiPad;
 
 internal static class WintabInterop
 {
-    public const int WT_PACKET = 0x7FF0;
+    public const int WT_DEFBASE = 0x7FF0;
+    public const int WT_PACKET = 0;
+    public const int WT_PROXIMITY = 5;
+    public const int WT_INFOCHANGE = 6;
+    private const uint WTI_INTERFACE = 1;
     private const uint WTI_DEFCONTEXT = 3;
+    private const uint WTI_DEFSYSCTX = 4;
+    private const uint WTI_DDCTXS = 400;
     private const uint WTI_DEVICES = 100;
+    private const uint IFC_NDEVICES = 4;
+    private const uint DVC_HARDWARE = 2;
+    private const uint DVC_X = 12;
+    private const uint DVC_Y = 13;
     private const uint DVC_NPRESSURE = 15;
+    public const uint HWC_INTEGRATED = 0x0001;
 
     public const uint CXO_SYSTEM = 0x0001;
     public const uint CXO_MESSAGES = 0x0004;
@@ -128,14 +139,70 @@ internal static class WintabInterop
 
     public static LogContext GetDefaultContext()
     {
+        return GetLogContext(WTI_DEFCONTEXT);
+    }
+
+    public static LogContext GetDefaultSystemContext()
+    {
+        return GetLogContext(WTI_DEFSYSCTX);
+    }
+
+    public static LogContext GetDigitizerContext(int deviceIndex)
+    {
+        return GetLogContext(unchecked(WTI_DDCTXS + (uint)deviceIndex));
+    }
+
+    public static int GetAttachedDeviceCount()
+    {
+        return GetUint(WTI_INTERFACE, IFC_NDEVICES);
+    }
+
+    public static bool IsIntegratedTablet(int deviceIndex)
+    {
+        uint hardware = unchecked((uint)GetUint(unchecked(WTI_DEVICES + (uint)deviceIndex), DVC_HARDWARE));
+        return (hardware & HWC_INTEGRATED) != 0;
+    }
+
+    public static Axis GetPressureAxis()
+    {
+        return GetAxis(0, DVC_NPRESSURE);
+    }
+
+    public static Axis GetXAxis()
+    {
+        return GetAxis(0, DVC_X);
+    }
+
+    public static Axis GetYAxis()
+    {
+        return GetAxis(0, DVC_Y);
+    }
+
+    public static Axis GetXAxis(int deviceIndex)
+    {
+        return GetAxis(deviceIndex, DVC_X);
+    }
+
+    public static Axis GetYAxis(int deviceIndex)
+    {
+        return GetAxis(deviceIndex, DVC_Y);
+    }
+
+    public static Axis GetPressureAxis(int deviceIndex)
+    {
+        return GetAxis(deviceIndex, DVC_NPRESSURE);
+    }
+
+    private static LogContext GetLogContext(uint category)
+    {
         int size = Marshal.SizeOf<LogContext>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
         try
         {
-            int returned = (int)WTInfoA(WTI_DEFCONTEXT, 0, buffer);
+            int returned = (int)WTInfoA(category, 0, buffer);
             if (returned <= 0)
             {
-                throw new InvalidOperationException("Wintab default context is unavailable.");
+                throw new InvalidOperationException($"Wintab context category {category} is unavailable.");
             }
 
             return Marshal.PtrToStructure<LogContext>(buffer);
@@ -146,19 +213,39 @@ internal static class WintabInterop
         }
     }
 
-    public static Axis GetPressureAxis()
+    private static Axis GetAxis(int deviceIndex, uint index)
     {
         int size = Marshal.SizeOf<Axis>();
         IntPtr buffer = Marshal.AllocHGlobal(size);
         try
         {
-            int returned = (int)WTInfoA(WTI_DEVICES, DVC_NPRESSURE, buffer);
+            int returned = (int)WTInfoA(unchecked(WTI_DEVICES + (uint)deviceIndex), index, buffer);
             if (returned <= 0)
             {
                 return default;
             }
 
             return Marshal.PtrToStructure<Axis>(buffer);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    private static int GetUint(uint category, uint index)
+    {
+        int size = sizeof(uint);
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            int returned = (int)WTInfoA(category, index, buffer);
+            if (returned <= 0)
+            {
+                return 0;
+            }
+
+            return Marshal.ReadInt32(buffer);
         }
         finally
         {

@@ -26,9 +26,11 @@ public partial class MainWindow : Window
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
     private bool _useWintab;
-    private uint _wintabContext;
-    private HwndSource? _hwndSource;
-    private int _wintabMaxPressure = 1023;
+    private HwndSource? _wintabMessageSource;
+    private readonly Dictionary<uint, WintabContextInfo> _wintabContexts = new();
+    private int _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+    private int _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
+    private int _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
 
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -953,42 +955,22 @@ public partial class MainWindow : Window
 
         try
         {
-            _hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
-            if (_hwndSource is null)
+            _wintabMessageSource = CreateWintabMessageWindow();
+            if (_wintabMessageSource is null)
             {
                 return;
             }
 
-            var context = WintabInterop.GetDefaultContext();
-            context.Name = "TabletMidiPad Wintab Context";
-            context.Options |= WintabInterop.CXO_MESSAGES;
-            context.Options &= ~WintabInterop.CXO_SYSTEM;
-            context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE;
-            context.PktMode = 0;
-            context.MoveMask = context.PktData;
-            context.OutOrgX = 0;
-            context.OutOrgY = 0;
-            context.OutExtX = (int)Math.Max(1, Pad.ActualWidth);
-            context.OutExtY = (int)Math.Max(1, Pad.ActualHeight);
-            context.SysMode = false;
+            _wintabMessageSource.AddHook(WndProc);
+            int openedContexts = OpenWintabContexts();
+            _useWintab = openedContexts > 0;
 
-            _wintabContext = WintabInterop.WTOpenA(_hwndSource.Handle, ref context, true);
-            if (_wintabContext == 0)
-            {
-                _useWintab = false;
-                SetLoadingState("Preparing tablet input", "Wintab detected, but direct tablet context could not open");
-                return;
-            }
-
-            var pressureAxis = WintabInterop.GetPressureAxis();
-            if (pressureAxis.Max > 0)
-            {
-                _wintabMaxPressure = pressureAxis.Max;
-            }
-
-            _hwndSource.AddHook(WndProc);
-            _useWintab = true;
-            SetLoadingState("Preparing tablet input", "Wintab direct tablet input is active");
+            SetLoadingState(
+                "Preparing tablet input",
+                _useWintab
+                    ? $"Wintab digitizer input active on {openedContexts} tablet context(s)"
+                    : "Wintab detected, but no digitizer contexts could open"
+            );
         }
         catch
         {
@@ -999,46 +981,172 @@ public partial class MainWindow : Window
 
     private void ShutdownWintab()
     {
-        if (_hwndSource is not null)
+        if (_wintabMessageSource is not null)
         {
-            _hwndSource.RemoveHook(WndProc);
-            _hwndSource = null;
+            _wintabMessageSource.RemoveHook(WndProc);
+            _wintabMessageSource.Dispose();
+            _wintabMessageSource = null;
         }
 
-        if (_wintabContext != 0)
+        foreach (uint contextHandle in _wintabContexts.Keys.ToArray())
         {
             try
             {
-                WintabInterop.WTClose(_wintabContext);
+                WintabInterop.WTClose(contextHandle);
             }
             catch
             {
             }
-
-            _wintabContext = 0;
         }
 
+        _wintabContexts.Clear();
         _useWintab = false;
+        _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+        _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
+        _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WintabInterop.WT_PACKET && _wintabContext != 0)
+        if (msg == _wintabPacketMessage)
         {
             uint packetId = unchecked((uint)wParam.ToInt32());
             uint context = unchecked((uint)lParam.ToInt32());
 
-            if (context == _wintabContext && WintabInterop.WTPacket(context, packetId, out var packet))
+            if (_wintabContexts.ContainsKey(context) && WintabInterop.WTPacket(context, packetId, out var packet))
             {
-                HandleWintabPacket(packet);
+                HandleWintabPacket(context, packet);
                 handled = true;
             }
+        }
+        else if (msg == _wintabProximityMessage)
+        {
+            if (unchecked((uint)wParam.ToInt32()) == 0)
+            {
+                if (_isActive)
+                {
+                    _isActive = false;
+                    CursorDot.Visibility = Visibility.Collapsed;
+                    HandleRelease();
+                }
+            }
+
+            handled = true;
+        }
+        else if (msg == _wintabInfoChangeMessage)
+        {
+            ReinitializeWintabContexts();
+            handled = true;
         }
 
         return IntPtr.Zero;
     }
 
-    private void HandleWintabPacket(WintabInterop.Packet packet)
+    private static HwndSource CreateWintabMessageWindow()
+    {
+        var parameters = new HwndSourceParameters("TabletMidiPadWintabSink")
+        {
+            Width = 1,
+            Height = 1,
+            WindowStyle = unchecked((int)0x80000000), // WS_POPUP
+            ExtendedWindowStyle = 0x08000000 // WS_EX_NOACTIVATE
+        };
+
+        return new HwndSource(parameters);
+    }
+
+    private int OpenWintabContexts()
+    {
+        _wintabContexts.Clear();
+
+        int deviceCount = Math.Max(1, WintabInterop.GetAttachedDeviceCount());
+        bool messageBaseInitialized = false;
+
+        for (int deviceIndex = 0; deviceIndex < deviceCount; deviceIndex++)
+        {
+            WintabInterop.LogContext context;
+            try
+            {
+                context = WintabInterop.GetDigitizerContext(deviceIndex);
+            }
+            catch
+            {
+                continue;
+            }
+
+            var xAxis = WintabInterop.GetXAxis(deviceIndex);
+            var yAxis = WintabInterop.GetYAxis(deviceIndex);
+            var pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
+
+            if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
+            {
+                continue;
+            }
+
+            context.Name = $"TabletMidiPad Digitizer {deviceIndex}";
+            context.Options |= WintabInterop.CXO_MESSAGES;
+            context.Options &= ~WintabInterop.CXO_SYSTEM;
+            context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            context.PktMode = 0;
+            context.MoveMask = context.PktData;
+            context.BtnUpMask = context.BtnDnMask;
+            context.OutOrgX = 0;
+            context.OutOrgY = 0;
+            context.OutExtX = xAxis.Max - xAxis.Min + 1;
+            context.OutExtY = -(yAxis.Max - yAxis.Min + 1);
+            context.SysMode = false;
+
+            if (!messageBaseInitialized)
+            {
+                _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
+                _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
+                _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
+                messageBaseInitialized = true;
+            }
+
+            uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref context, true);
+            if (handle == 0)
+            {
+                continue;
+            }
+
+            _wintabContexts[handle] = new WintabContextInfo(
+                DeviceIndex: deviceIndex,
+                OutputMinX: 0,
+                OutputMaxX: Math.Max(1, context.OutExtX - 1),
+                OutputMinY: 0,
+                OutputMaxY: Math.Max(1, Math.Abs(context.OutExtY) - 1),
+                PressureMax: Math.Max(1, pressureAxis.Max),
+                IsIntegrated: WintabInterop.IsIntegratedTablet(deviceIndex)
+            );
+        }
+
+        return _wintabContexts.Count;
+    }
+
+    private void ReinitializeWintabContexts()
+    {
+        if (_wintabMessageSource is null)
+        {
+            return;
+        }
+
+        foreach (uint contextHandle in _wintabContexts.Keys.ToArray())
+        {
+            try
+            {
+                WintabInterop.WTClose(contextHandle);
+            }
+            catch
+            {
+            }
+        }
+
+        int openedContexts = OpenWintabContexts();
+        _useWintab = openedContexts > 0;
+    }
+
+    private void HandleWintabPacket(uint contextHandle, WintabInterop.Packet packet)
     {
         double width = Pad.ActualWidth;
         double height = Pad.ActualHeight;
@@ -1047,12 +1155,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        double xPx = Math.Clamp(packet.X, 0, width);
-        double yPx = Math.Clamp(packet.Y, 0, height);
-        double xNorm = xPx / width;
-        double yNorm = yPx / height;
-        int pressure = _wintabMaxPressure > 0
-            ? (int)Math.Round(packet.NormalPressure * 127.0 / _wintabMaxPressure)
+        if (!_wintabContexts.TryGetValue(contextHandle, out WintabContextInfo context))
+        {
+            return;
+        }
+
+        double xNorm = NormalizeWintabCoordinate(packet.X, context.OutputMinX, context.OutputMaxX);
+        double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
+        double xPx = xNorm * width;
+        double yPx = yNorm * height;
+        int pressure = context.PressureMax > 0
+            ? (int)Math.Round(packet.NormalPressure * 127.0 / context.PressureMax)
             : 127;
 
         if (pressure <= 0)
@@ -1069,6 +1182,17 @@ public partial class MainWindow : Window
 
         _isActive = true;
         HandlePoint(xPx, yPx, xNorm, yNorm, pressure);
+    }
+
+    private static double NormalizeWintabCoordinate(int value, int min, int max)
+    {
+        if (max <= min)
+        {
+            return 0.0;
+        }
+
+        double normalized = (value - min) / (double)(max - min);
+        return Math.Clamp(normalized, 0.0, 1.0);
     }
 
     private void SetLoadingState(string title, string detail)
@@ -1093,6 +1217,16 @@ public partial class MainWindow : Window
 
         LoadingProgressBar.Value = Math.Clamp(value, LoadingProgressBar.Minimum, LoadingProgressBar.Maximum);
     }
+
+    private readonly record struct WintabContextInfo(
+        int DeviceIndex,
+        int OutputMinX,
+        int OutputMaxX,
+        int OutputMinY,
+        int OutputMaxY,
+        int PressureMax,
+        bool IsIntegrated
+    );
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
     private struct MidiOutCaps
