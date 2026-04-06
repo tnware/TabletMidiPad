@@ -4,13 +4,32 @@
 
 ![TabletMidiPad demo](demo.gif)
 
-The app presents a 2D pad and sends three continuous controller values:
+The app presents a 2D pad with configurable rectangular zones. Each zone can send its own MIDI CC assignments for:
 
-- `CC16` = X position
-- `CC17` = Y position
-- `CC18` = pressure
+- X position
+- Y position
+- pressure
 
 It is currently built for Windows and uses **Windows MIDI Services** loopback endpoints rather than `loopMIDI` or `teVirtualMIDI`.
+
+## Runtime configuration
+
+The app includes a built-in settings panel, so you can change behavior without editing code.
+
+Available runtime settings:
+
+- DAW-facing and app-facing port names
+- loopback association id
+- mouse pressure fallback value
+- multiple rectangular zones
+- per-zone MIDI channel
+- per-zone CC numbers for X, Y, and pressure
+- per-zone X/Y inversion
+- per-zone pressure enable/disable
+- per-zone pressure reset to `0` on release
+- per-zone bounds as normalized pad coordinates
+
+Settings are saved to `config.json` next to the executable and reloaded on startup.
 
 ## Why this project uses Windows MIDI Services
 
@@ -63,7 +82,29 @@ On startup, the app:
 1. Removes any stale loopback pair using the app's association id.
 2. Creates a fresh Windows MIDI Services loopback pair.
 3. Opens `Tablet XY (App)` as a MIDI output.
-4. Sends CC messages whenever X, Y, or pressure changes.
+4. Sends CC messages for the currently active zone whenever X, Y, or pressure changes.
+
+If you change routing settings in the sidebar and click `Apply Settings`, the app rebuilds the loopback pair using the new values.
+
+## Zone behavior
+
+Each zone is a rectangle defined by:
+
+- `Left`
+- `Top`
+- `Width`
+- `Height`
+
+All bounds are normalized from `0.0` to `1.0` relative to the full pad.
+
+Example:
+
+- a top-left quadrant would be `Left=0.0`, `Top=0.0`, `Width=0.5`, `Height=0.5`
+- a bottom-right quadrant would be `Left=0.5`, `Top=0.5`, `Width=0.5`, `Height=0.5`
+
+X and Y are normalized inside the active zone, not across the whole canvas. That means each zone gets its own local `0-127` range.
+
+If the pointer is outside all configured zones, the app sends nothing.
 
 ## DAW setup
 
@@ -86,14 +127,12 @@ On startup, the app:
 
 ## MIDI details
 
-- MIDI channel: `1`
-- `CC16`: X axis
-- `CC17`: Y axis
-- `CC18`: pressure
-- Pressure falls back to `127` when using the mouse
-- Values are normalized to `0-127`
+- MIDI channel is configured per zone
+- CC assignments are configured per zone
+- Pressure falls back to the global mouse pressure value when using the mouse
+- Values are normalized to `0-127` inside the active zone
 
-The app only sends a CC message when the value changes, which keeps the event stream smaller during use.
+The app only sends a CC message when a specific channel/CC value changes, which keeps the event stream smaller during use.
 
 ## Input behavior
 
@@ -106,6 +145,7 @@ The app only sends a CC message when the value changes, which keeps the event st
 
 - `MainWindow.xaml`: main pad UI
 - `MainWindow.xaml.cs`: MIDI loopback creation, WinMM output, and pad handling
+- `AppConfig.cs`: runtime configuration model and JSON persistence
 - `TabletMidiPad.csproj`: WPF project file
 
 ## Troubleshooting
@@ -123,6 +163,7 @@ The app only sends a CC message when the value changes, which keeps the event st
 - Ensure the DAW is listening to `Tablet XY (DAW)`, not `Tablet XY (App)`
 - Verify the target is learning CC input, not note input
 - Remember the app sends only CC data, not note messages
+- Make sure your pointer is inside an enabled zone
 
 ### Build fails because the executable is locked
 

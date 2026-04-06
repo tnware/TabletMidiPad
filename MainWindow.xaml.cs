@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -7,33 +8,343 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace TabletMidiPad;
 
 public partial class MainWindow : Window
 {
-    private const string LoopbackAppPortName = "Tablet XY (App)";
-    private const string LoopbackDawPortName = "Tablet XY (DAW)";
-    private const string LoopbackAssociationId = "{7d6e1f6b-6b0d-4d6c-a1f3-44ddefb7df4d}";
     private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
 
-    private const int Channel = 0; // 0 = MIDI channel 1
-    private const int CcX = 16;
-    private const int CcY = 17;
-    private const int CcPressure = 18;
+    private readonly Dictionary<string, int> _lastSentValues = new();
 
     private IntPtr _midiOutHandle;
     private bool _isActive;
+    private bool _isLoadingUi;
+    private int _selectedZoneIndex = -1;
 
-    private int _lastX = -1;
-    private int _lastY = -1;
-    private int _lastPressure = -1;
+    private AppConfig _config = AppConfig.Default;
+    private ZoneConfig? _activeZone;
 
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => InitMidi();
+        Loaded += (_, _) => InitializeApp();
         Closed += (_, _) => ShutdownMidi();
+    }
+
+    private void InitializeApp()
+    {
+        PopulateChannelList(ZoneChannelComboBox);
+        _config = AppConfig.Load();
+        LoadConfigIntoUi(_config);
+        InitMidi();
+    }
+
+    private static void PopulateChannelList(ComboBox comboBox)
+    {
+        comboBox.Items.Clear();
+        for (int channel = 1; channel <= 16; channel++)
+        {
+            comboBox.Items.Add(channel);
+        }
+    }
+
+    private void ApplyButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplySettings();
+    }
+
+    private void ResetDefaultsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _config = AppConfig.Default;
+        AutoTileZones(_config.Zones);
+        LoadConfigIntoUi(_config);
+        ApplySettings();
+    }
+
+    private void AutoLayoutButton_Click(object sender, RoutedEventArgs e)
+    {
+        CommitCurrentZoneEdits();
+        AutoTileZones(_config.Zones);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zones re-tiled across the pad. Click Apply Settings to save.";
+    }
+
+    private void AddZoneButton_Click(object sender, RoutedEventArgs e)
+    {
+        CommitCurrentZoneEdits();
+
+        var zone = new ZoneConfig
+        {
+            Name = $"Zone {_config.Zones.Count + 1}",
+            Enabled = true,
+            MidiChannel = 1,
+            CcX = 16,
+            CcY = 17,
+            CcPressure = 18,
+            InvertY = true,
+            SendPressure = true,
+            ResetPressureOnRelease = true,
+            Left = 0.0,
+            Top = 0.0,
+            Width = 0.5,
+            Height = 0.5
+        };
+
+        _config.Zones.Add(zone);
+        AutoTileZones(_config.Zones);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
+    }
+
+    private void RemoveZoneButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        {
+            return;
+        }
+
+        _config.Zones.RemoveAt(_selectedZoneIndex);
+        if (_config.Zones.Count == 0)
+        {
+            _config.Zones.Add(ZoneConfig.CreateDefault());
+        }
+
+        AutoTileZones(_config.Zones);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zone removed. Click Apply Settings to save.";
+    }
+
+    private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoadingUi)
+        {
+            return;
+        }
+
+        _selectedZoneIndex = ZoneListBox.SelectedIndex;
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+    }
+
+    private void Pad_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        DrawZoneOverlay();
+    }
+
+    private void ApplySettings()
+    {
+        try
+        {
+            string previousAppPortName = _config.AppPortName;
+            string previousDawPortName = _config.DawPortName;
+            string previousAssociationId = _config.LoopbackAssociationId;
+
+            CommitCurrentZoneEdits();
+            ValidateConfig(_config);
+            _config.Save();
+
+            bool routingChanged =
+                !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
+                !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
+                !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
+
+            if (routingChanged || _midiOutHandle == IntPtr.Zero)
+            {
+                RestartMidi();
+            }
+            else
+            {
+                _lastSentValues.Clear();
+                _activeZone = null;
+                UpdateUiForCurrentConfig();
+                DrawZoneOverlay();
+            }
+
+            SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+            SettingsResultText.Text = "Settings applied and saved.";
+        }
+        catch (Exception ex)
+        {
+            SettingsResultText.Foreground = Brushes.IndianRed;
+            SettingsResultText.Text = ex.Message;
+        }
+    }
+
+    private void RestartMidi()
+    {
+        ShutdownMidi();
+        InitMidi();
+        DrawZoneOverlay();
+    }
+
+    private void LoadConfigIntoUi(AppConfig config)
+    {
+        _isLoadingUi = true;
+
+        AppPortNameTextBox.Text = config.AppPortName;
+        DawPortNameTextBox.Text = config.DawPortName;
+        AssociationIdTextBox.Text = config.LoopbackAssociationId;
+        MousePressureTextBox.Text = config.MousePressureValue.ToString();
+        AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
+
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = config.Zones.Count > 0 ? 0 : -1;
+        _selectedZoneIndex = ZoneListBox.SelectedIndex;
+        LoadSelectedZoneIntoEditor();
+
+        _isLoadingUi = false;
+        DrawZoneOverlay();
+    }
+
+    private void RefreshZoneList()
+    {
+        ZoneListBox.Items.Clear();
+
+        for (int i = 0; i < _config.Zones.Count; i++)
+        {
+            var zone = _config.Zones[i];
+            string enabled = zone.Enabled ? "on" : "off";
+            ZoneListBox.Items.Add($"{i + 1}. {zone.Name} [{enabled}]");
+        }
+    }
+
+    private void LoadSelectedZoneIntoEditor()
+    {
+        _isLoadingUi = true;
+
+        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        {
+            ZoneNameTextBox.Text = string.Empty;
+            ZoneEnabledCheckBox.IsChecked = false;
+            ZoneChannelComboBox.SelectedIndex = -1;
+            ZoneCcXTextBox.Text = string.Empty;
+            ZoneCcYTextBox.Text = string.Empty;
+            ZoneCcPressureTextBox.Text = string.Empty;
+            ZoneLeftTextBox.Text = string.Empty;
+            ZoneTopTextBox.Text = string.Empty;
+            ZoneWidthTextBox.Text = string.Empty;
+            ZoneHeightTextBox.Text = string.Empty;
+            ZoneInvertXCheckBox.IsChecked = false;
+            ZoneInvertYCheckBox.IsChecked = false;
+            ZoneSendPressureCheckBox.IsChecked = false;
+            ZoneResetPressureCheckBox.IsChecked = false;
+            _isLoadingUi = false;
+            return;
+        }
+
+        var zone = _config.Zones[_selectedZoneIndex];
+        ZoneNameTextBox.Text = zone.Name;
+        ZoneEnabledCheckBox.IsChecked = zone.Enabled;
+        ZoneChannelComboBox.SelectedItem = zone.MidiChannel;
+        ZoneChannelComboBox.Text = zone.MidiChannel.ToString();
+        ZoneCcXTextBox.Text = zone.CcX.ToString();
+        ZoneCcYTextBox.Text = zone.CcY.ToString();
+        ZoneCcPressureTextBox.Text = zone.CcPressure.ToString();
+        ZoneLeftTextBox.Text = zone.Left.ToString("0.###");
+        ZoneTopTextBox.Text = zone.Top.ToString("0.###");
+        ZoneWidthTextBox.Text = zone.Width.ToString("0.###");
+        ZoneHeightTextBox.Text = zone.Height.ToString("0.###");
+        ZoneInvertXCheckBox.IsChecked = zone.InvertX;
+        ZoneInvertYCheckBox.IsChecked = zone.InvertY;
+        ZoneSendPressureCheckBox.IsChecked = zone.SendPressure;
+        ZoneResetPressureCheckBox.IsChecked = zone.ResetPressureOnRelease;
+
+        _isLoadingUi = false;
+    }
+
+    private void CommitCurrentZoneEdits()
+    {
+        _config.AppPortName = RequireText(AppPortNameTextBox.Text, "Internal App Port");
+        _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
+        _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
+        _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
+        _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
+
+        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        {
+            return;
+        }
+
+        var zone = _config.Zones[_selectedZoneIndex];
+        zone.Name = RequireText(ZoneNameTextBox.Text, "Zone Name");
+        zone.Enabled = ZoneEnabledCheckBox.IsChecked == true;
+        zone.MidiChannel = ReadInt(ZoneChannelComboBox.Text, 1, 16, "Zone MIDI Channel");
+        zone.CcX = ReadInt(ZoneCcXTextBox.Text, 0, 127, "Zone CC X");
+        zone.CcY = ReadInt(ZoneCcYTextBox.Text, 0, 127, "Zone CC Y");
+        zone.CcPressure = ReadInt(ZoneCcPressureTextBox.Text, 0, 127, "Zone Pressure CC");
+        zone.Left = ReadDouble(ZoneLeftTextBox.Text, 0.0, 1.0, "Zone Left");
+        zone.Top = ReadDouble(ZoneTopTextBox.Text, 0.0, 1.0, "Zone Top");
+        zone.Width = ReadDouble(ZoneWidthTextBox.Text, 0.0, 1.0, "Zone Width");
+        zone.Height = ReadDouble(ZoneHeightTextBox.Text, 0.0, 1.0, "Zone Height");
+        zone.InvertX = ZoneInvertXCheckBox.IsChecked == true;
+        zone.InvertY = ZoneInvertYCheckBox.IsChecked == true;
+        zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
+        zone.ResetPressureOnRelease = ZoneResetPressureCheckBox.IsChecked == true;
+
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = _selectedZoneIndex;
+    }
+
+    private static void ValidateConfig(AppConfig config)
+    {
+        if (config.Zones.Count == 0)
+        {
+            throw new InvalidOperationException("At least one zone is required.");
+        }
+
+        foreach (var zone in config.Zones)
+        {
+            if (zone.Width <= 0 || zone.Height <= 0)
+            {
+                throw new InvalidOperationException($"Zone '{zone.Name}' must have width and height greater than 0.");
+            }
+
+            if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
+            {
+                throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
+            }
+        }
+    }
+
+    private static void AutoTileZones(IList<ZoneConfig> zones)
+    {
+        if (zones.Count == 0)
+        {
+            return;
+        }
+
+        int count = zones.Count;
+        int columns = (int)Math.Ceiling(Math.Sqrt(count));
+        int rows = (int)Math.Ceiling((double)count / columns);
+
+        double cellWidth = 1.0 / columns;
+        double cellHeight = 1.0 / rows;
+
+        for (int index = 0; index < count; index++)
+        {
+            int row = index / columns;
+            int column = index % columns;
+
+            zones[index].Left = column * cellWidth;
+            zones[index].Top = row * cellHeight;
+            zones[index].Width = cellWidth;
+            zones[index].Height = cellHeight;
+        }
     }
 
     private void InitMidi()
@@ -42,22 +353,30 @@ public partial class MainWindow : Window
         {
             RemoveLoopbackPair();
             CreateLoopbackPair();
-            OpenMidiOutWithRetry(LoopbackAppPortName);
-
-            StatusText.Text = $"Send to '{LoopbackDawPortName}' in Ableton/Waveform";
-            ValueText.Text = "X: -, Y: -, Pressure: -";
+            OpenMidiOutWithRetry(_config.AppPortName);
+            _lastSentValues.Clear();
+            _activeZone = null;
+            UpdateUiForCurrentConfig();
         }
         catch (Exception ex)
         {
             StatusText.Text = "Windows MIDI Services init failed";
+            RoutingText.Text = string.Empty;
+            ActiveZoneText.Text = string.Empty;
+            ConfigSummaryText.Text = string.Empty;
             ValueText.Text = ex.Message;
-            MessageBox.Show(
-                ex.ToString(),
-                "Windows MIDI Services init failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
+            throw;
         }
+    }
+
+    private void UpdateUiForCurrentConfig()
+    {
+        StatusText.Text = $"Send to '{_config.DawPortName}' in Ableton/Waveform";
+        RoutingText.Text = $"App '{_config.AppPortName}' -> DAW '{_config.DawPortName}'";
+        ActiveZoneText.Text = "Active zone: none";
+        string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
+        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | {switchMode}";
+        ValueText.Text = "X: -, Y: -, Pressure: -";
     }
 
     private void ShutdownMidi()
@@ -92,6 +411,7 @@ public partial class MainWindow : Window
         _isActive = false;
         Pad.ReleaseStylusCapture();
         CursorDot.Visibility = Visibility.Collapsed;
+        HandleRelease();
     }
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
@@ -115,20 +435,18 @@ public partial class MainWindow : Window
         _isActive = false;
         Pad.ReleaseMouseCapture();
         CursorDot.Visibility = Visibility.Collapsed;
+        HandleRelease();
     }
 
     private void HandleStylus(StylusEventArgs e)
     {
         var point = e.GetPosition(Pad);
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
+        if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
+        {
+            return;
+        }
 
-        if (width <= 0 || height <= 0) return;
-
-        int x = ToCc(point.X / width);
-        int y = ToCc(1.0 - (point.Y / height));
-
-        int pressure = 127;
+        int pressure = _config.MousePressureValue;
         var stylusPoints = e.GetStylusPoints(Pad);
         if (stylusPoints.Count > 0)
         {
@@ -137,50 +455,200 @@ public partial class MainWindow : Window
             {
                 int raw = sp.GetPropertyValue(StylusPointProperties.NormalPressure);
                 int max = sp.Description.GetPropertyInfo(StylusPointProperties.NormalPressure).Maximum;
-                pressure = max > 0 ? (int)Math.Round(raw * 127.0 / max) : 127;
+                pressure = max > 0 ? (int)Math.Round(raw * 127.0 / max) : _config.MousePressureValue;
             }
         }
 
-        UpdateVisual(point.X, point.Y, x, y, pressure);
-        SendCcIfChanged(CcX, x, ref _lastX);
-        SendCcIfChanged(CcY, y, ref _lastY);
-        SendCcIfChanged(CcPressure, pressure, ref _lastPressure);
+        HandlePoint(point.X, point.Y, xNorm, yNorm, pressure);
     }
 
     private void HandleMouse(MouseEventArgs e)
     {
         var point = e.GetPosition(Pad);
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
+        if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
+        {
+            return;
+        }
 
-        if (width <= 0 || height <= 0) return;
-
-        int x = ToCc(point.X / width);
-        int y = ToCc(1.0 - (point.Y / height));
-        int pressure = 127;
-
-        UpdateVisual(point.X, point.Y, x, y, pressure);
-        SendCcIfChanged(CcX, x, ref _lastX);
-        SendCcIfChanged(CcY, y, ref _lastY);
-        SendCcIfChanged(CcPressure, pressure, ref _lastPressure);
+        HandlePoint(point.X, point.Y, xNorm, yNorm, _config.MousePressureValue);
     }
 
-    private void UpdateVisual(double xPx, double yPx, int x, int y, int pressure)
+    private void HandlePoint(double xPx, double yPx, double xNorm, double yNorm, int pressure)
     {
+        var zone = ResolveZoneForCurrentInteraction(xNorm, yNorm);
+        if (!ReferenceEquals(zone, _activeZone))
+        {
+            SendZoneRelease(_activeZone);
+            _activeZone = zone;
+        }
+
         CursorDot.Visibility = Visibility.Visible;
         Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
         Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
-        ValueText.Text = $"X: {x}, Y: {y}, Pressure: {pressure}";
+
+        if (zone is null)
+        {
+            ActiveZoneText.Text = "Active zone: none";
+            ValueText.Text = "Outside configured zones";
+            return;
+        }
+
+        var local = NormalizeWithinZone(zone, xNorm, yNorm);
+        int x = ToCc(local.x, zone.InvertX);
+        int y = ToCc(local.y, zone.InvertY);
+
+        ActiveZoneText.Text = $"Active zone: {zone.Name}";
+        ValueText.Text = zone.SendPressure
+            ? $"{zone.Name} -> X: {x}, Y: {y}, Pressure: {pressure}"
+            : $"{zone.Name} -> X: {x}, Y: {y}, Pressure: off";
+
+        SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
+        SendCcIfChanged(zone.MidiChannel, zone.CcY, y);
+
+        if (zone.SendPressure)
+        {
+            SendCcIfChanged(zone.MidiChannel, zone.CcPressure, pressure);
+        }
     }
 
-    private void SendCcIfChanged(int cc, int value, ref int lastValue)
+    private void HandleRelease()
+    {
+        SendZoneRelease(_activeZone);
+        _activeZone = null;
+        ActiveZoneText.Text = "Active zone: none";
+    }
+
+    private void SendZoneRelease(ZoneConfig? zone)
+    {
+        if (zone is null || !zone.Enabled)
+        {
+            return;
+        }
+
+        if (zone.SendPressure && zone.ResetPressureOnRelease)
+        {
+            SendCcIfChanged(zone.MidiChannel, zone.CcPressure, 0, force: true);
+        }
+    }
+
+    private ZoneConfig? FindMatchingZone(double xNorm, double yNorm)
+    {
+        return _config.Zones.FirstOrDefault(zone =>
+            zone.Enabled &&
+            xNorm >= zone.Left &&
+            xNorm <= zone.Left + zone.Width &&
+            yNorm >= zone.Top &&
+            yNorm <= zone.Top + zone.Height
+        );
+    }
+
+    private ZoneConfig? ResolveZoneForCurrentInteraction(double xNorm, double yNorm)
+    {
+        if (!_config.AllowZoneSwitchWhilePressed && _activeZone is not null)
+        {
+            return _activeZone;
+        }
+
+        return FindMatchingZone(xNorm, yNorm);
+    }
+
+    private static (double x, double y) NormalizeWithinZone(ZoneConfig zone, double xNorm, double yNorm)
+    {
+        double x = (xNorm - zone.Left) / zone.Width;
+        double y = (yNorm - zone.Top) / zone.Height;
+        return (Math.Clamp(x, 0.0, 1.0), Math.Clamp(y, 0.0, 1.0));
+    }
+
+    private bool TryGetPadCoordinates(Point point, out double xNorm, out double yNorm)
+    {
+        xNorm = 0;
+        yNorm = 0;
+
+        if (Pad.ActualWidth <= 0 || Pad.ActualHeight <= 0)
+        {
+            return false;
+        }
+
+        xNorm = point.X / Pad.ActualWidth;
+        yNorm = point.Y / Pad.ActualHeight;
+        return true;
+    }
+
+    private void DrawZoneOverlay()
+    {
+        ZoneOverlayCanvas.Children.Clear();
+
+        double width = Pad.ActualWidth;
+        double height = Pad.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        ZoneOverlayCanvas.Width = width;
+        ZoneOverlayCanvas.Height = height;
+
+        for (int i = 0; i < _config.Zones.Count; i++)
+        {
+            var zone = _config.Zones[i];
+            double rectLeft = zone.Left * width;
+            double rectTop = zone.Top * height;
+            double rectWidth = zone.Width * width;
+            double rectHeight = zone.Height * height;
+
+            byte alpha = zone.Enabled ? (byte)70 : (byte)30;
+            byte outlineAlpha = zone.Enabled ? (byte)180 : (byte)90;
+            Color fillColor = Color.FromArgb(alpha, 90, 150, 220);
+            Color strokeColor = Color.FromArgb(outlineAlpha, 180, 220, 255);
+
+            if (i == _selectedZoneIndex)
+            {
+                fillColor = Color.FromArgb(100, 200, 120, 60);
+                strokeColor = Color.FromArgb(220, 255, 180, 110);
+            }
+
+            var rect = new Rectangle
+            {
+                Width = rectWidth,
+                Height = rectHeight,
+                Fill = new SolidColorBrush(fillColor),
+                Stroke = new SolidColorBrush(strokeColor),
+                StrokeThickness = 2,
+                RadiusX = 8,
+                RadiusY = 8
+            };
+
+            var label = new TextBlock
+            {
+                Text = zone.Name,
+                Foreground = Brushes.White,
+                Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+                Padding = new Thickness(6, 2, 6, 2)
+            };
+
+            Canvas.SetLeft(rect, rectLeft);
+            Canvas.SetTop(rect, rectTop);
+            Canvas.SetLeft(label, rectLeft + 8);
+            Canvas.SetTop(label, rectTop + 8);
+
+            ZoneOverlayCanvas.Children.Add(rect);
+            ZoneOverlayCanvas.Children.Add(label);
+        }
+    }
+
+    private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
     {
         if (_midiOutHandle == IntPtr.Zero) return;
-        if (value == lastValue) return;
 
+        string key = $"{channel}:{cc}";
         value = Math.Clamp(value, 0, 127);
 
-        byte status = (byte)(0xB0 | (Channel & 0x0F));
+        if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
+        {
+            return;
+        }
+
+        byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
         byte controller = (byte)(cc & 0x7F);
         byte data = (byte)(value & 0x7F);
 
@@ -191,27 +659,28 @@ public partial class MainWindow : Window
             throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
         }
 
-        lastValue = value;
+        _lastSentValues[key] = value;
     }
 
-    private static void CreateLoopbackPair()
+    private void CreateLoopbackPair()
     {
         RunMidiConsole(
-            $"loopback create --name-a \"{LoopbackAppPortName}\" --name-b \"{LoopbackDawPortName}\" --association-id \"{LoopbackAssociationId}\""
+            $"loopback create --name-a \"{_config.AppPortName}\" --name-b \"{_config.DawPortName}\" --association-id \"{_config.LoopbackAssociationId}\""
         );
+        Thread.Sleep(300);
     }
 
-    private static void RemoveLoopbackPair()
+    private void RemoveLoopbackPair()
     {
         RunMidiConsole(
-            $"loopback remove --association-id \"{LoopbackAssociationId}\"",
+            $"loopback remove --association-id \"{_config.LoopbackAssociationId}\"",
             allowFailure: true
         );
     }
 
     private void OpenMidiOutWithRetry(string portName)
     {
-        for (int attempt = 0; attempt < 20; attempt++)
+        for (int attempt = 0; attempt < 60; attempt++)
         {
             if (TryOpenMidiOut(portName, out _midiOutHandle))
             {
@@ -307,10 +776,67 @@ public partial class MainWindow : Window
         );
     }
 
-    private static int ToCc(double normalized)
+    private static int ToCc(double normalized, bool invert)
     {
         normalized = Math.Clamp(normalized, 0.0, 1.0);
+        if (invert)
+        {
+            normalized = 1.0 - normalized;
+        }
+
         return (int)Math.Round(normalized * 127.0);
+    }
+
+    private static int ReadInt(string? text, int min, int max, string fieldName)
+    {
+        if (!int.TryParse(text, out int value))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a whole number.");
+        }
+
+        if (value < min || value > max)
+        {
+            throw new InvalidOperationException($"{fieldName} must be between {min} and {max}.");
+        }
+
+        return value;
+    }
+
+    private static double ReadDouble(string? text, double min, double max, string fieldName)
+    {
+        if (!double.TryParse(text, out double value))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a number.");
+        }
+
+        if (value < min || value > max)
+        {
+            throw new InvalidOperationException($"{fieldName} must be between {min:0.###} and {max:0.###}.");
+        }
+
+        return value;
+    }
+
+    private static string RequireText(string? text, string fieldName)
+    {
+        string value = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"{fieldName} is required.");
+        }
+
+        return value;
+    }
+
+    private static string RequireGuidText(string? text, string fieldName)
+    {
+        string value = RequireText(text, fieldName);
+        if (!Guid.TryParse(value, out Guid parsed))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a valid GUID.");
+        }
+
+        return parsed.ToString("B");
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
