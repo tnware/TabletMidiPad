@@ -8,6 +8,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -23,6 +24,10 @@ public partial class MainWindow : Window
     private bool _isActive;
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
+    private bool _useWintab;
+    private uint _wintabContext;
+    private HwndSource? _hwndSource;
+    private int _wintabMaxPressure = 1023;
 
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -31,7 +36,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += (_, _) => InitializeApp();
-        Closed += (_, _) => ShutdownMidi();
+        Closed += (_, _) =>
+        {
+            ShutdownMidi();
+            ShutdownWintab();
+        };
     }
 
     private void InitializeApp()
@@ -39,6 +48,7 @@ public partial class MainWindow : Window
         PopulateChannelList(ZoneChannelComboBox);
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
+        InitializeWintab();
         InitMidi();
     }
 
@@ -187,7 +197,8 @@ public partial class MainWindow : Window
 
     private void RestartMidi()
     {
-        ShutdownMidi();
+        CloseMidiOut();
+        RemoveLoopbackPair();
         InitMidi();
         DrawZoneOverlay();
     }
@@ -393,6 +404,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
+        if (_useWintab) return;
         _isActive = true;
         Pad.CaptureStylus();
         HandleStylus(e);
@@ -400,12 +412,14 @@ public partial class MainWindow : Window
 
     private void Pad_StylusMove(object sender, StylusEventArgs e)
     {
+        if (_useWintab) return;
         if (!_isActive) return;
         HandleStylus(e);
     }
 
     private void Pad_StylusUp(object sender, StylusEventArgs e)
     {
+        if (_useWintab) return;
         if (!_isActive) return;
         HandleStylus(e);
         _isActive = false;
@@ -416,6 +430,7 @@ public partial class MainWindow : Window
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (_useWintab) return;
         if (e.LeftButton != MouseButtonState.Pressed) return;
         _isActive = true;
         Pad.CaptureMouse();
@@ -424,12 +439,14 @@ public partial class MainWindow : Window
 
     private void Pad_MouseMove(object sender, MouseEventArgs e)
     {
+        if (_useWintab) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
     }
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_useWintab) return;
         if (!_isActive) return;
         HandleMouse(e);
         _isActive = false;
@@ -837,6 +854,131 @@ public partial class MainWindow : Window
         }
 
         return parsed.ToString("B");
+    }
+
+    private void InitializeWintab()
+    {
+        if (!WintabInterop.IsAvailable())
+        {
+            _useWintab = false;
+            return;
+        }
+
+        try
+        {
+            _hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+            if (_hwndSource is null)
+            {
+                return;
+            }
+
+            var context = WintabInterop.GetDefaultContext();
+            context.Name = "TabletMidiPad Wintab Context";
+            context.Options |= WintabInterop.CXO_MESSAGES;
+            context.Options &= ~WintabInterop.CXO_SYSTEM;
+            context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE;
+            context.PktMode = 0;
+            context.MoveMask = context.PktData;
+            context.OutOrgX = 0;
+            context.OutOrgY = 0;
+            context.OutExtX = (int)Math.Max(1, Pad.ActualWidth);
+            context.OutExtY = (int)Math.Max(1, Pad.ActualHeight);
+            context.SysMode = false;
+
+            _wintabContext = WintabInterop.WTOpenA(_hwndSource.Handle, ref context, true);
+            if (_wintabContext == 0)
+            {
+                _useWintab = false;
+                return;
+            }
+
+            var pressureAxis = WintabInterop.GetPressureAxis();
+            if (pressureAxis.Max > 0)
+            {
+                _wintabMaxPressure = pressureAxis.Max;
+            }
+
+            _hwndSource.AddHook(WndProc);
+            _useWintab = true;
+        }
+        catch
+        {
+            _useWintab = false;
+        }
+    }
+
+    private void ShutdownWintab()
+    {
+        if (_hwndSource is not null)
+        {
+            _hwndSource.RemoveHook(WndProc);
+            _hwndSource = null;
+        }
+
+        if (_wintabContext != 0)
+        {
+            try
+            {
+                WintabInterop.WTClose(_wintabContext);
+            }
+            catch
+            {
+            }
+
+            _wintabContext = 0;
+        }
+
+        _useWintab = false;
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WintabInterop.WT_PACKET && _wintabContext != 0)
+        {
+            uint packetId = unchecked((uint)wParam.ToInt32());
+            uint context = unchecked((uint)lParam.ToInt32());
+
+            if (context == _wintabContext && WintabInterop.WTPacket(context, packetId, out var packet))
+            {
+                HandleWintabPacket(packet);
+                handled = true;
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void HandleWintabPacket(WintabInterop.Packet packet)
+    {
+        double width = Pad.ActualWidth;
+        double height = Pad.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        double xPx = Math.Clamp(packet.X, 0, width);
+        double yPx = Math.Clamp(packet.Y, 0, height);
+        double xNorm = xPx / width;
+        double yNorm = yPx / height;
+        int pressure = _wintabMaxPressure > 0
+            ? (int)Math.Round(packet.NormalPressure * 127.0 / _wintabMaxPressure)
+            : 127;
+
+        if (pressure <= 0)
+        {
+            if (_isActive)
+            {
+                _isActive = false;
+                CursorDot.Visibility = Visibility.Collapsed;
+                HandleRelease();
+            }
+
+            return;
+        }
+
+        _isActive = true;
+        HandlePoint(xPx, yPx, xNorm, yNorm, pressure);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
