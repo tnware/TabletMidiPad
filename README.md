@@ -2,6 +2,8 @@
 
 `TabletMidiPad` is a small WPF utility that turns tablet or mouse movement into MIDI CC data for use in a DAW.
 
+![TabletMidiPad demo](demo.gif)
+
 The app presents a 2D pad and sends three continuous controller values:
 
 - `CC16` = X position
@@ -148,4 +150,4 @@ If it does not, the app will not be able to create the loopback pair.
 
 ## License
 
-No license has been added yet. If you intend to share or reuse this outside a private repo, add one explicitly.
+MIT. See `LICENSE`.
