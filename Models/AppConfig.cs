@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Models;
 
 public sealed partial class AppConfig
 {
