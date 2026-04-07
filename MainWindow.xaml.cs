@@ -714,6 +714,8 @@ public partial class MainWindow : Window
             ZoneNameTextBox.Text = string.Empty;
             ZoneEnabledCheckBox.IsChecked = false;
             ZoneChannelComboBox.SelectedIndex = -1;
+            SetZoneSelectionSummary(null);
+            ZoneDetailsExpander.IsEnabled = false;
             ZoneCcXTextBox.Text = string.Empty;
             ZoneCcYTextBox.Text = string.Empty;
             ZoneCcPressureTextBox.Text = string.Empty;
@@ -733,10 +735,12 @@ public partial class MainWindow : Window
         }
 
         var zone = _config.Zones[_selectedZoneIndex];
+        ZoneDetailsExpander.IsEnabled = true;
         ZoneNameTextBox.Text = zone.Name;
         ZoneEnabledCheckBox.IsChecked = zone.Enabled;
         ZoneChannelComboBox.SelectedItem = zone.MidiChannel;
         ZoneChannelComboBox.Text = zone.MidiChannel.ToString();
+        SetZoneSelectionSummary(zone);
         ZoneCcXTextBox.Text = zone.CcX.ToString();
         ZoneCcYTextBox.Text = zone.CcY.ToString();
         ZoneCcPressureTextBox.Text = zone.CcPressure.ToString();
@@ -782,9 +786,27 @@ public partial class MainWindow : Window
         zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
         zone.ReleaseBehavior = NormalizeReleaseBehavior(ZoneReleaseBehaviorComboBox.Text);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
+        SetZoneSelectionSummary(zone);
 
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
+    }
+
+    private void SetZoneSelectionSummary(ZoneConfig? zone)
+    {
+        if (zone is null)
+        {
+            ZoneSelectionSummaryPrimaryText.Text = "No zone selected";
+            ZoneSelectionSummarySecondaryText.Text = "Select a zone to edit its routing and bounds.";
+            return;
+        }
+
+        string enabled = zone.Enabled ? "Enabled" : "Disabled";
+        ZoneSelectionSummaryPrimaryText.Text =
+            $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
+        ZoneSelectionSummarySecondaryText.Text =
+            $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
+            $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
 
     private static void ValidateConfig(AppConfig config)
