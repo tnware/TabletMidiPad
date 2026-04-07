@@ -239,7 +239,7 @@ public partial class MainWindow : Window, IMainWindowActions
         }
         catch (Exception ex)
         {
-            SettingsResultText.Foreground = Brushes.IndianRed;
+            _viewModel.SettingsResultBrush = Brushes.IndianRed;
             _viewModel.SettingsResultText = ex.Message;
             return;
         }
@@ -268,7 +268,7 @@ public partial class MainWindow : Window, IMainWindowActions
         }
 
         SyncToolbar();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Preferences applied and saved.";
     }
 
@@ -286,7 +286,7 @@ public partial class MainWindow : Window, IMainWindowActions
     {
         CommitCurrentZoneEdits();
         RebindInputBackend();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Input backend reconnected.";
     }
 
@@ -495,7 +495,7 @@ public partial class MainWindow : Window, IMainWindowActions
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Zones re-tiled across the pad. Click Apply Settings to save.";
     }
 
@@ -531,7 +531,7 @@ public partial class MainWindow : Window, IMainWindowActions
         ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Zone added. Click Apply Settings to save.";
     }
 
@@ -582,7 +582,7 @@ public partial class MainWindow : Window, IMainWindowActions
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Zone removed. Click Apply Settings to save.";
     }
 

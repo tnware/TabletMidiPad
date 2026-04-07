@@ -291,7 +291,7 @@ public partial class MainWindow
         _resizeZoneIndex = -1;
         _resizeEdge = ResizeEdge.None;
         Pad.Cursor = null!;
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
         _viewModel.SettingsResultText = "Zone resized. Click Apply Settings to save.";
     }
 

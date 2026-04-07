@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using System.Windows.Media;
 using TabletMidiPad.Services;
 
 namespace TabletMidiPad.ViewModels;
@@ -20,6 +21,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _modifiersText = "Modifiers: none";
     private string _configSummaryText = string.Empty;
     private string _settingsResultText = string.Empty;
+    private Brush _settingsResultBrush = Brushes.DarkSeaGreen;
 
     public AppConfig Config
     {
@@ -85,6 +87,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _settingsResultText, value);
     }
 
+    public Brush SettingsResultBrush
+    {
+        get => _settingsResultBrush;
+        set => SetField(ref _settingsResultBrush, value);
+    }
+
     public MainViewModel(ISettingsService settingsService)
     {
         _settingsService = settingsService;
@@ -128,6 +136,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
     {
         if (string.Equals(field, value, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        field = value;
+        OnPropertyChanged(propertyName);
+    }
+
+    private void SetField(ref Brush field, Brush value, [CallerMemberName] string? propertyName = null)
+    {
+        if (ReferenceEquals(field, value))
         {
             return;
         }

@@ -19,12 +19,12 @@ public partial class MainWindow
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
 
-            SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+            _viewModel.SettingsResultBrush = Brushes.DarkSeaGreen;
             _viewModel.SettingsResultText = "Settings applied and saved.";
         }
         catch (Exception ex)
         {
-            SettingsResultText.Foreground = Brushes.IndianRed;
+            _viewModel.SettingsResultBrush = Brushes.IndianRed;
             _viewModel.SettingsResultText = ex.Message;
         }
     }

@@ -868,7 +868,7 @@
                                 Content="Apply Settings"/>
 
                         <TextBlock Name="SettingsResultText"
-                                   Foreground="{StaticResource SuccessBrush}"
+                                   Foreground="{Binding SettingsResultBrush}"
                                    Margin="0,8,0,0"
                                    FontSize="11"
                                    Text="{Binding SettingsResultText}"
