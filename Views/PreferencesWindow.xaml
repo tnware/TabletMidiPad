@@ -1,8 +1,7 @@
 <Window x:Class="TabletMidiPad.Views.PreferencesWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:TabletMidiPad.ViewModels"
-        xmlns:local="clr-namespace:TabletMidiPad.Behaviors"
+        xmlns:behaviors="clr-namespace:TabletMidiPad.Infrastructure"
         Title="Preferences"
         Width="920"
         Height="760"
@@ -167,15 +166,18 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="DAW Input Port" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Margin="0,6,0,0" Text="{Binding DawPortName}"/>
+                                        <TextBox Name="DawPortNameTextBox" Margin="0,6,0,0"
+                                                 Text="{Binding DawPortName, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Internal App Port" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Margin="0,6,0,0" Text="{Binding AppPortName}"/>
+                                        <TextBox Name="AppPortNameTextBox" Margin="0,6,0,0"
+                                                 Text="{Binding AppPortName, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock Text="Association Id" Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,0"/>
-                                <TextBox Margin="0,6,0,0" Text="{Binding AssociationId}"/>
+                                <TextBox Name="AssociationIdTextBox" Margin="0,6,0,0"
+                                         Text="{Binding AssociationId, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                         </Border>
 
@@ -183,8 +185,10 @@
                             <StackPanel>
                                 <TextBlock Text="Application Behavior" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="Global rules that affect how zones behave." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <CheckBox Margin="0,16,0,0" Content="Send pressure globally" IsChecked="{Binding SendPressureGlobally}"/>
-                                <CheckBox Margin="0,10,0,0" Content="Latch onto zones when entering while pressed" IsChecked="{Binding AllowZoneSwitchWhilePressed}"/>
+                                <CheckBox Name="SendPressureGloballyCheckBox" Margin="0,16,0,0" Content="Send pressure globally"
+                                          IsChecked="{Binding SendPressureGlobally}"/>
+                                <CheckBox Name="AllowZoneSwitchCheckBox" Margin="0,10,0,0" Content="Latch onto zones when entering while pressed"
+                                          IsChecked="{Binding AllowZoneSwitchWhilePressed}"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -206,15 +210,15 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Input Backend" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <ComboBox Margin="0,6,0,0"
+                                    <ComboBox Name="InputBackendModeComboBox" Margin="0,6,0,0"
                                               ItemsSource="{Binding InputBackendModes}"
-                                              SelectedValue="{Binding InputBackendMode}"/>
+                                              SelectedItem="{Binding InputBackendMode}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Pressure Curve" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <ComboBox Margin="0,6,0,0"
+                                    <ComboBox Name="PressureCurveComboBox" Margin="0,6,0,0"
                                               ItemsSource="{Binding PressureCurves}"
-                                              SelectedValue="{Binding PressureCurve}"/>
+                                              SelectedItem="{Binding PressureCurve}"/>
                                 </StackPanel>
                             </Grid>
                             <Grid Margin="0,14,0,0">
@@ -227,21 +231,19 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Mouse Pressure Fallback" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Margin="0,6,0,0"
-                                             local:NumericTextBoxBehavior.Mode="Integer"
-                                             Text="{Binding MousePressureValue}"/>
+                                    <TextBox Name="MousePressureTextBox" Margin="0,6,0,0"
+                                             Text="{Binding MousePressureValue, UpdateSourceTrigger=PropertyChanged}"
+                                             behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Position Dead Zone" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Margin="0,6,0,0"
-                                             local:NumericTextBoxBehavior.Mode="Decimal"
-                                             Text="{Binding PositionDeadZone, StringFormat=\{0:0.###\}}"/>
+                                    <TextBox Name="DeadZoneTextBox" Margin="0,6,0,0"
+                                             Text="{Binding PositionDeadZone, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">
                                     <TextBlock Text="XY Smoothing" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Margin="0,6,0,0"
-                                             local:NumericTextBoxBehavior.Mode="Decimal"
-                                             Text="{Binding PositionSmoothing, StringFormat=\{0:0.##\}}"/>
+                                    <TextBox Name="SmoothingTextBox" Margin="0,6,0,0"
+                                             Text="{Binding PositionSmoothing, UpdateSourceTrigger=PropertyChanged}"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
@@ -263,9 +265,9 @@
                                 <TextBlock Text="Lower Pen Button" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="Usually the lower side switch." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Action" Foreground="{StaticResource TextMutedBrush}" Margin="0,16,0,0"/>
-                                <ComboBox Margin="0,6,0,0"
+                                <ComboBox Name="LowerPenButtonActionComboBox" Margin="0,6,0,0"
                                           ItemsSource="{Binding PenButtonActionsList}"
-                                          SelectedValue="{Binding LowerPenButtonAction}"/>
+                                          SelectedItem="{Binding LowerPenButtonAction}"/>
                                 <Grid Margin="0,14,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -276,7 +278,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <ComboBox Margin="0,6,0,0"
+                                        <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"
                                                   ItemsSource="{Binding MidiChannels}"
                                                   SelectedItem="{Binding LowerPenButtonMidiChannel}"/>
                                     </StackPanel>
@@ -294,9 +296,9 @@
                                                           Content="−"
                                                           Click="MidiCcNoteStepper_Decrease_Click"
                                                           Tag="{x:Reference LowerPenButtonCcTextBox}"/>
-                                            <TextBox x:Name="LowerPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     local:NumericTextBoxBehavior.Mode="Integer"
-                                                     Text="{Binding LowerPenButtonCc}"/>
+                                            <TextBox Name="LowerPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
+                                                     Text="{Binding LowerPenButtonCc, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                             <RepeatButton Grid.Column="2"
                                                           Style="{StaticResource NumericStepperRepeatStyle}"
                                                           Content="+"
@@ -318,9 +320,9 @@
                                                           Content="−"
                                                           Click="MidiCcNoteStepper_Decrease_Click"
                                                           Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
-                                            <TextBox x:Name="LowerPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     local:NumericTextBoxBehavior.Mode="Integer"
-                                                     Text="{Binding LowerPenButtonNote}"/>
+                                            <TextBox Name="LowerPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
+                                                     Text="{Binding LowerPenButtonNote, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                             <RepeatButton Grid.Column="2"
                                                           Style="{StaticResource NumericStepperRepeatStyle}"
                                                           Content="+"
@@ -336,9 +338,9 @@
                                 <TextBlock Text="Upper Pen Button" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="Usually the upper side switch." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
                                 <TextBlock Text="Action" Foreground="{StaticResource TextMutedBrush}" Margin="0,16,0,0"/>
-                                <ComboBox Margin="0,6,0,0"
+                                <ComboBox Name="UpperPenButtonActionComboBox" Margin="0,6,0,0"
                                           ItemsSource="{Binding PenButtonActionsList}"
-                                          SelectedValue="{Binding UpperPenButtonAction}"/>
+                                          SelectedItem="{Binding UpperPenButtonAction}"/>
                                 <Grid Margin="0,14,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -349,7 +351,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <ComboBox Margin="0,6,0,0"
+                                        <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"
                                                   ItemsSource="{Binding MidiChannels}"
                                                   SelectedItem="{Binding UpperPenButtonMidiChannel}"/>
                                     </StackPanel>
@@ -367,9 +369,9 @@
                                                           Content="−"
                                                           Click="MidiCcNoteStepper_Decrease_Click"
                                                           Tag="{x:Reference UpperPenButtonCcTextBox}"/>
-                                            <TextBox x:Name="UpperPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     local:NumericTextBoxBehavior.Mode="Integer"
-                                                     Text="{Binding UpperPenButtonCc}"/>
+                                            <TextBox Name="UpperPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
+                                                     Text="{Binding UpperPenButtonCc, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                             <RepeatButton Grid.Column="2"
                                                           Style="{StaticResource NumericStepperRepeatStyle}"
                                                           Content="+"
@@ -391,9 +393,9 @@
                                                           Content="−"
                                                           Click="MidiCcNoteStepper_Decrease_Click"
                                                           Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
-                                            <TextBox x:Name="UpperPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     local:NumericTextBoxBehavior.Mode="Integer"
-                                                     Text="{Binding UpperPenButtonNote}"/>
+                                            <TextBox Name="UpperPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
+                                                     Text="{Binding UpperPenButtonNote, UpdateSourceTrigger=PropertyChanged}"
+                                                     behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                             <RepeatButton Grid.Column="2"
                                                           Style="{StaticResource NumericStepperRepeatStyle}"
                                                           Content="+"
@@ -418,34 +420,38 @@
                             <ItemsControl ItemsSource="{Binding ExpressKeys}" Margin="0,18,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,14">
+                                        <Border Background="{StaticResource SurfaceMutedBrush}" CornerRadius="12" Padding="12" Margin="0,0,0,12">
                                             <StackPanel>
-                                                <TextBlock Text="{Binding Index, StringFormat=ExpressKey \{0\}}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="14" FontWeight="SemiBold"/>
-                                                <ComboBox Margin="0,6,0,0"
-                                                          ItemsSource="{Binding DataContext.PenButtonActionsList, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                          SelectedValue="{Binding Action}"/>
-                                                <Grid Margin="0,6,0,0">
+                                                <TextBlock Text="{Binding Index, StringFormat='Key {0}'}" FontWeight="Bold" Margin="0,0,0,8"/>
+                                                <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="12"/>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="12"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="12"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                                        <ComboBox ItemsSource="{Binding DataContext.MidiChannels, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                                  SelectedItem="{Binding MidiChannel}"/>
+                                                        <TextBlock Text="Action" FontSize="11" Foreground="{StaticResource TextSoftBrush}"/>
+                                                        <ComboBox ItemsSource="{Binding DataContext.PenButtonActionsList, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  SelectedItem="{Binding Action}"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
-                                                        <TextBox local:NumericTextBoxBehavior.Mode="Integer"
-                                                                 Text="{Binding Cc}"/>
+                                                        <TextBlock Text="Ch" FontSize="11" Foreground="{StaticResource TextSoftBrush}"/>
+                                                        <ComboBox ItemsSource="{Binding DataContext.MidiChannels, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  SelectedItem="{Binding MidiChannel}"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="4">
-                                                        <TextBlock Text="Note" Foreground="{StaticResource TextMutedBrush}"/>
-                                                        <TextBox local:NumericTextBoxBehavior.Mode="Integer"
-                                                                 Text="{Binding Note}"/>
+                                                        <TextBlock Text="CC" FontSize="11" Foreground="{StaticResource TextSoftBrush}"/>
+                                                        <TextBox Text="{Binding Cc, UpdateSourceTrigger=PropertyChanged}"
+                                                                 behaviors:NumericTextBoxBehavior.Enabled="True"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="6">
+                                                        <TextBlock Text="Note" FontSize="11" Foreground="{StaticResource TextSoftBrush}"/>
+                                                        <TextBox Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                                                 behaviors:NumericTextBoxBehavior.Enabled="True"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </StackPanel>
@@ -473,7 +479,8 @@
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding ErrorText}"/>
+            <TextBlock Name="ErrorText" Grid.Column="0" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Text="{Binding ErrorText}"/>
             <Button Grid.Column="1" MinWidth="150" Margin="0" Content="OK" Command="{Binding OkCommand}"/>
             <Button Grid.Column="3" MinWidth="150" Margin="0" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
             </Grid>

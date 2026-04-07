@@ -53,7 +53,7 @@ public partial class MainWindow : Window
         DrawZoneOverlay();
     }
 
-    private void MenuRefreshWacom_Click(object sender, RoutedEventArgs e) { /* Re-check service status if needed, or bind to VM */ }
+    private void MenuRefreshWacom_Click(object sender, RoutedEventArgs e) { /* Refresh logic if needed */ }
 
     private void MenuPreferences_Click(object sender, RoutedEventArgs e)
     {

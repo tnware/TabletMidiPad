@@ -31,7 +31,7 @@ public sealed class TabletService : ITabletService
 
     public event Action<string, string>? LoadingStateChanged;
     public event Action<double>? LoadingProgressChanged;
-    public event Action<int, int, int, int, int, uint, string>? WintabPacketReceived;
+    public event Action<int, double, double, int, int, uint, string>? WintabPacketReceived;
     public event Action<int, bool>? ExpressKeyPacketReceived;
     public event Action? ProximityLost;
 
@@ -244,7 +244,9 @@ public sealed class TabletService : ITabletService
             uint contextHandle = unchecked((uint)lParam.ToInt32());
             if (_wintabContexts.TryGetValue(contextHandle, out var context) && WintabInterop.WTPacket(contextHandle, packetId, out var packet))
             {
-                WintabPacketReceived?.Invoke(context.DeviceIndex, packet.X, packet.Y, (int)packet.NormalPressure, context.PressureMax, packet.Buttons, $"Wintab D{context.DeviceIndex + 1}");
+                double xNorm = context.OutputMaxX > context.OutputMinX ? (packet.X - context.OutputMinX) / (double)(context.OutputMaxX - context.OutputMinX) : 0;
+                double yNorm = context.OutputMaxY > context.OutputMinY ? (packet.Y - context.OutputMinY) / (double)(context.OutputMaxY - context.OutputMinY) : 0;
+                WintabPacketReceived?.Invoke(context.DeviceIndex, xNorm, Math.Clamp(yNorm, 0, 1), (int)packet.NormalPressure, context.PressureMax, packet.Buttons, $"Wintab D{context.DeviceIndex + 1}");
                 handled = true;
             }
         }

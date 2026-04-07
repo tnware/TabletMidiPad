@@ -15,7 +15,7 @@ public interface ITabletService : IDisposable
 
     event Action<string, string>? LoadingStateChanged;
     event Action<double>? LoadingProgressChanged;
-    event Action<int, int, int, int, int, uint, string>? WintabPacketReceived;
+    event Action<int, double, double, int, int, uint, string>? WintabPacketReceived;
     event Action<int, bool>? ExpressKeyPacketReceived;
     event Action? ProximityLost;
 

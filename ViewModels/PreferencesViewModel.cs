@@ -63,11 +63,27 @@ public sealed class PreferencesViewModel : ObservableObject
     {
         _settings = settings;
         _tablet = tablet;
+
+        MidiChannels = Enumerable.Range(1, 16).ToList();
+        PressureCurves = new List<string> { "Linear", "Logarithmic", "Exponential" };
+        InputBackendModes = new List<string> { "Auto", "Wintab Only", "Stylus/Mouse Only" };
+        PenButtonActionsList = new List<string> {
+            PenButtonActions.None, PenButtonActions.LockXY, PenButtonActions.LockX, PenButtonActions.LockY,
+            PenButtonActions.DisablePressure, PenButtonActions.EnablePressure,
+            PenButtonActions.CcMomentary, PenButtonActions.CcToggle,
+            PenButtonActions.NoteMomentary, PenButtonActions.NoteToggle
+        };
+
         LoadFromConfig();
 
         OkCommand = new RelayCommand(_ => Accept());
         CancelCommand = new RelayCommand(_ => Cancel());
     }
+
+    public List<int> MidiChannels { get; }
+    public List<string> PressureCurves { get; }
+    public List<string> InputBackendModes { get; }
+    public List<string> PenButtonActionsList { get; }
 
     public string DawPortName { get => _dawPortName; set => SetProperty(ref _dawPortName, value); }
     public string AppPortName { get => _appPortName; set => SetProperty(ref _appPortName, value); }

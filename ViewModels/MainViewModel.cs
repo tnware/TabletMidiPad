@@ -16,6 +16,8 @@ public sealed class MainViewModel : ObservableObject
     private readonly ISettingsService _settings;
     private readonly IMidiService _midi;
     private readonly ITabletService _tablet;
+    private readonly ObservableCollection<ZoneConfig> _zones = new();
+    private IntPtr _hwnd;
 
     private string _statusText = "Waiting for MIDI port...";
     private string _routingText = "";
@@ -61,6 +63,7 @@ public sealed class MainViewModel : ObservableObject
         _tablet.WintabPacketReceived += HandleWintabPacket;
         _tablet.ExpressKeyPacketReceived += HandleExpressKeyPacket;
         _tablet.ProximityLost += HandleProximityLost;
+        _settings.SettingsUpdated += OnSettingsUpdated;
 
         SaveCommand = new RelayCommand(_ => ApplySettings());
         ResetDefaultsCommand = new RelayCommand(_ => ResetDefaults());
@@ -72,7 +75,13 @@ public sealed class MainViewModel : ObservableObject
         CycleInputBackendCommand = new RelayCommand(_ => CycleInputBackend());
         SetPressureCurveCommand = new RelayCommand<string>(curve => SetPressureCurve(curve!));
         SetInputBackendModeCommand = new RelayCommand<string>(mode => SetInputBackendMode(mode!));
+
+        MidiChannels = Enumerable.Range(1, 16).ToList();
+        ReleaseBehaviors = new List<string> { ZoneReleaseBehaviors.NoSendOnRelease, ZoneReleaseBehaviors.Hold, ZoneReleaseBehaviors.ResetPressureOnly, ZoneReleaseBehaviors.ResetAll };
     }
+
+    public List<int> MidiChannels { get; }
+    public List<string> ReleaseBehaviors { get; }
 
     public string StatusText { get => _statusText; set => SetProperty(ref _statusText, value); }
     public string RoutingText { get => _routingText; set => SetProperty(ref _routingText, value); }
@@ -116,7 +125,7 @@ public sealed class MainViewModel : ObservableObject
     public string InputBackendLabel => NormalizeInputBackendMode(_inputBackendMode) switch { "Wintab Only" => "Input (Wintab)", "Stylus/Mouse Only" => "Input (Mouse)", _ => "Input (Auto)" };
     public string WacomServiceStatus => _tablet.WacomServiceStatus;
 
-    public ObservableCollection<ZoneConfig> Zones => new(_settings.Config.Zones);
+    public ObservableCollection<ZoneConfig> Zones => _zones;
 
     public int SelectedZoneIndex
     {
@@ -141,6 +150,7 @@ public sealed class MainViewModel : ObservableObject
 
     public async Task InitializeAsync(IntPtr hwnd)
     {
+        _hwnd = hwnd;
         IsLoading = true;
         LoadingProgress = 8;
         LoadingTitle = "Booting application";
@@ -162,6 +172,7 @@ public sealed class MainViewModel : ObservableObject
         {
             LoadingProgress = 52;
             _midi.Initialize(_settings.Config.AppPortName, _settings.Config.DawPortName, _settings.Config.LoopbackAssociationId);
+            RefreshZonesCollection();
             UpdateUiForCurrentConfig();
         }
         catch (Exception ex)
@@ -289,16 +300,18 @@ public sealed class MainViewModel : ObservableObject
 
     private static int ToCc(double normalized, bool invert) => (int)Math.Round((invert ? 1.0 - normalized : normalized) * 127.0);
 
-    private void HandleWintabPacket(int deviceIndex, int x, int y, int pressure, int pressureMax, uint buttons, string backend)
+    private void HandleWintabPacket(int deviceIndex, double xNorm, double yNorm, int pressure, int pressureMax, uint buttons, string backend)
     {
-        // Simplification: TabletService currently does not normalize coordinates.
-        // In a real app we'd need the context bounds here.
-        // Assuming TabletService is updated to provide normalized coordinates in a future step or just now.
-        // Let's assume OnPoint is called with normalized coordinates.
+        int p = pressureMax > 0 ? (int)Math.Round(pressure * 127.0 / pressureMax) : 127;
+        if (p <= 0) { if (_isActive) HandleProximityLost(); return; }
+        UpdatePenButtonsDebug(buttons);
+        UpdatePenButtonActionState(buttons);
+        OnPoint(xNorm, yNorm, p, backend);
     }
 
     private void HandleExpressKeyPacket(int control, bool isPressed)
     {
+        _expressKeyHeld[control] = isPressed;
         _expressKeyHeld.TryGetValue(control, out bool wasHeld);
         _expressKeyToggleState.TryGetValue(control, out bool toggleState);
         bool justPressed = isPressed && !wasHeld;
@@ -309,18 +322,50 @@ public sealed class MainViewModel : ObservableObject
         string action = NormalizePenButtonAction(ek.Action);
 
         if (action == PenButtonActions.CcMomentary) { if (justPressed) _midi.SendCc(ek.MidiChannel, ek.Cc, 127, true); else if (justReleased) _midi.SendCc(ek.MidiChannel, ek.Cc, 0, true); }
-        else if (action == PenButtonActions.CcToggle && justPressed) { toggleState = !toggleState; _midi.SendCc(ek.MidiChannel, ek.Cc, toggleState ? 127 : 0, true); }
+        else if (action == PenButtonActions.CcToggle && justPressed) { toggleState = !toggleState; _midi.SendCc(ek.MidiChannel, ek.Cc, toggleState ? 127 : 0, true); _expressKeyToggleState[control] = toggleState; }
         else if (action == PenButtonActions.NoteMomentary) { if (justPressed) _midi.SendNote(ek.MidiChannel, ek.Note, true, 127, true); else if (justReleased) _midi.SendNote(ek.MidiChannel, ek.Note, false, 0, true); }
-        else if (action == PenButtonActions.NoteToggle && justPressed) { toggleState = !toggleState; _midi.SendNote(ek.MidiChannel, ek.Note, toggleState, toggleState ? 127 : 0, true); }
+        else if (action == PenButtonActions.NoteToggle && justPressed) { toggleState = !toggleState; _midi.SendNote(ek.MidiChannel, ek.Note, toggleState, toggleState ? 127 : 0, true); _expressKeyToggleState[control] = toggleState; }
 
-        _expressKeyHeld[control] = isPressed;
-        _expressKeyToggleState[control] = toggleState;
         MarkInputBackend($"Wintab EK{control}");
     }
 
     private void HandleProximityLost() { if (_isActive) { HandleRelease(); } }
 
-    private void MarkInputBackend(string backend) { _tablet.GetType(); /* dummy */ UpdateInputBackendStatus(); }
+    private void MarkInputBackend(string backend) { _tablet.GetType(); /* Trigger backend text refresh */ UpdateInputBackendStatus(); }
+
+    private void OnSettingsUpdated()
+    {
+        _sendPressureGlobally = _settings.Config.SendPressureGlobally;
+        _allowZoneSwitchWhilePressed = _settings.Config.AllowZoneSwitchWhilePressed;
+        _pressureCurve = _settings.Config.PressureCurve;
+        _inputBackendMode = _settings.Config.InputBackendMode;
+
+        OnPropertyChanged(nameof(SendPressureGlobally));
+        OnPropertyChanged(nameof(AllowZoneSwitchWhilePressed));
+        OnPropertyChanged(nameof(PressureCurve));
+        OnPropertyChanged(nameof(InputBackendMode));
+        OnPropertyChanged(nameof(PressureLabel));
+        OnPropertyChanged(nameof(InputBackendLabel));
+
+        try
+        {
+            _midi.Initialize(_settings.Config.AppPortName, _settings.Config.DawPortName, _settings.Config.LoopbackAssociationId);
+            _tablet.Initialize(_settings.Config.InputBackendMode, _hwnd);
+            RefreshZonesCollection();
+            UpdateUiForCurrentConfig();
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Update Failed";
+            ValueText = ex.Message;
+        }
+    }
+
+    private void RefreshZonesCollection()
+    {
+        _zones.Clear();
+        foreach (var zone in _settings.Config.Zones) _zones.Add(zone);
+    }
 
     private void UpdateUiForCurrentConfig()
     {
@@ -365,7 +410,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.ResetToDefault();
         AutoTile();
         ApplySettings();
-        OnPropertyChanged(nameof(Zones));
+        RefreshZonesCollection();
         SelectedZoneIndex = 0;
     }
 
@@ -375,7 +420,7 @@ public sealed class MainViewModel : ObservableObject
         var zone = new ZoneConfig { Name = $"Zone {Config.Zones.Count + 1}", CcX = nextCc, CcY = nextCc + 1, CcPressure = nextCc + 2 };
         Config.Zones.Add(zone);
         AutoTile();
-        OnPropertyChanged(nameof(Zones));
+        RefreshZonesCollection();
         SelectedZoneIndex = Config.Zones.Count - 1;
     }
 
@@ -385,14 +430,14 @@ public sealed class MainViewModel : ObservableObject
         Config.Zones.RemoveAt(SelectedZoneIndex);
         if (Config.Zones.Count == 0) Config.Zones.Add(ZoneConfig.CreateDefault());
         AutoTile();
-        OnPropertyChanged(nameof(Zones));
+        RefreshZonesCollection();
         SelectedZoneIndex = Math.Clamp(SelectedZoneIndex, 0, Config.Zones.Count - 1);
     }
 
     private void AutoTile()
     {
         AutoTileZones(_settings.Config);
-        OnPropertyChanged(nameof(Zones));
+        RefreshZonesCollection();
     }
 
     private void RebindInputBackend()
@@ -403,7 +448,16 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task StartWacomServiceAsync()
     {
-        try { await _tablet.StartWacomServiceAsync(); RebindInputBackend(); } catch { }
+        try
+        {
+            await _tablet.StartWacomServiceAsync();
+            RebindInputBackend();
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Service Start Failed";
+            ValueText = ex.Message;
+        }
     }
 
     private void CycleInputBackend()

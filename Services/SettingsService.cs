@@ -7,6 +7,8 @@ public sealed class SettingsService : ISettingsService
 {
     private AppConfig? _config;
 
+    public event Action? SettingsUpdated;
+
     public AppConfig Config => _config ?? throw new InvalidOperationException("Configuration not loaded.");
 
     public void Load()
@@ -17,10 +19,16 @@ public sealed class SettingsService : ISettingsService
     public void Save()
     {
         Config.Save();
+        NotifyUpdated();
     }
 
     public void ResetToDefault()
     {
         _config = AppConfig.Default;
+    }
+
+    public void NotifyUpdated()
+    {
+        SettingsUpdated?.Invoke();
     }
 }
