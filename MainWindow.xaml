@@ -8,6 +8,12 @@
         MinHeight="720"
         WindowStartupLocation="CenterScreen"
         Background="#111111">
+    <Window.InputBindings>
+        <KeyBinding Key="S" Modifiers="Control" Command="ApplicationCommands.Save"/>
+    </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Save" Executed="SaveCommand_Executed"/>
+    </Window.CommandBindings>
     <Window.Resources>
         <SolidColorBrush x:Key="PanelBrush" Color="#171717"/>
         <SolidColorBrush x:Key="PanelBorderBrush" Color="#343434"/>
@@ -27,8 +33,8 @@
             <Setter Property="Foreground" Value="{StaticResource FieldForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="7,6"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
 
@@ -37,8 +43,8 @@
             <Setter Property="Foreground" Value="{StaticResource FieldForegroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="7,5"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -58,19 +64,19 @@
                                         Background="{TemplateBinding Background}"
                                         BorderBrush="{TemplateBinding BorderBrush}"
                                         BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="8">
+                                        CornerRadius="4">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="34"/>
+                                            <ColumnDefinition Width="28"/>
                                         </Grid.ColumnDefinitions>
-                                        <ContentPresenter Margin="10,6,8,6"
+                                        <ContentPresenter Margin="8,5,6,5"
                                                           VerticalAlignment="Center"
                                                           HorizontalAlignment="Left"
                                                           Content="{TemplateBinding SelectionBoxItem}"
                                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
                                         <Border Grid.Column="1"
-                                                CornerRadius="0,8,8,0"
+                                                CornerRadius="0,4,4,0"
                                                 Background="#2A2A2A">
                                             <Path Width="10"
                                                   Height="6"
@@ -93,7 +99,7 @@
                                         Background="#1D1D1D"
                                         BorderBrush="{TemplateBinding BorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="8">
+                                        CornerRadius="4">
                                     <ScrollViewer MaxHeight="260"
                                                   CanContentScroll="True">
                                         <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
@@ -150,7 +156,7 @@
             <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -158,7 +164,7 @@
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Root"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="8">
+                                CornerRadius="4">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Border>
@@ -179,8 +185,8 @@
         </Style>
 
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#D9D9D9"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#C0C0C0"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
@@ -191,9 +197,9 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Border x:Name="Box"
-                                    Width="18"
-                                    Height="18"
-                                    CornerRadius="4"
+                                    Width="16"
+                                    Height="16"
+                                    CornerRadius="3"
                                     Background="#202020"
                                     BorderBrush="#4D4D4D"
                                     BorderThickness="1"
@@ -238,25 +244,26 @@
         </Style>
 
         <Style TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-            <Setter Property="Background" Value="#242424"/>
-            <Setter Property="Foreground" Value="#EAEAEA"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Foreground" Value="#D0D0D0"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
                         <Border x:Name="ItemBorder"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="6">
+                                CornerRadius="3">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#303030"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#282828"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#5F3317"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#3D2A1A"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -328,424 +335,506 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
-    <Grid Margin="16">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="420"/>
-            <ColumnDefinition Width="16"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <DockPanel>
+        <Menu DockPanel.Dock="Top"
+              Background="#1A1A1A"
+              Foreground="#E0E0E0"
+              Padding="4,2">
+            <Menu.Resources>
+                <!-- Top-level menu items (File, Device, Help) -->
+                <Style x:Key="TopLevelMenuItem" TargetType="MenuItem">
+                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="MenuItem">
+                                <Border x:Name="Border"
+                                        Background="Transparent"
+                                        Padding="8,4">
+                                    <ContentPresenter ContentSource="Header"
+                                                      RecognizesAccessKey="True"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#2E2E2E"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
 
-        <Border Grid.Column="0"
-                CornerRadius="14"
-                BorderBrush="#3b3b3b"
-                BorderThickness="1"
-                Background="#171717"
-                Padding="18">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <TextBlock Text="Controller Settings"
-                               Foreground="#f2f2f2"
-                               FontSize="22"
-                               FontWeight="SemiBold"/>
-                    <TextBlock Text="Zones are rectangular regions on the pad. Only the active zone sends MIDI."
-                               Foreground="#9d9d9d"
-                               Margin="0,8,0,0"
-                               TextWrapping="Wrap"/>
+                <!-- Top-level menu items with submenus -->
+                <Style x:Key="TopLevelMenuItemWithSub" TargetType="MenuItem">
+                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="MenuItem">
+                                <Border x:Name="Border"
+                                        Background="Transparent"
+                                        Padding="8,4">
+                                    <Grid>
+                                        <ContentPresenter ContentSource="Header"
+                                                          RecognizesAccessKey="True"/>
+                                        <Popup x:Name="PART_Popup"
+                                               IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                               Placement="Bottom"
+                                               AllowsTransparency="True"
+                                               Focusable="False"
+                                               PopupAnimation="Fade">
+                                            <Border Background="#1D1D1D"
+                                                    BorderBrush="#454545"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="0,4">
+                                                <StackPanel IsItemsHost="True"
+                                                            KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#2E2E2E"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSubmenuOpen" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#2E2E2E"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
 
-                    <TextBlock Text="Routing"
-                               Foreground="#e9e9e9"
-                               FontSize="16"
-                               Margin="0,22,0,8"/>
+                <!-- Submenu items (the actual clickable items in dropdowns) -->
+                <Style TargetType="MenuItem">
+                    <Setter Property="Foreground" Value="#E0E0E0"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="MenuItem">
+                                <Border x:Name="Border"
+                                        Background="Transparent"
+                                        Padding="24,7,32,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter Grid.Column="0"
+                                                          ContentSource="Header"
+                                                          RecognizesAccessKey="True"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{TemplateBinding InputGestureText}"
+                                                   Foreground="#808080"
+                                                   Margin="24,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#363636"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Foreground" Value="#707070"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
 
-                    <TextBlock Text="DAW Input Port"
-                               Foreground="#bcbcbc"/>
-                    <TextBox Name="DawPortNameTextBox"
-                             Margin="0,6,0,0"/>
+                <Style TargetType="Separator">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Separator">
+                                <Border Margin="8,4"
+                                        BorderBrush="#3A3A3A"
+                                        BorderThickness="0,1,0,0"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Menu.Resources>
+            <MenuItem Header="_File"
+                      Style="{StaticResource TopLevelMenuItemWithSub}">
+                <MenuItem Header="_Save Settings"
+                          Click="MenuSaveSettings_Click"
+                          InputGestureText="Ctrl+S"/>
+                <MenuItem Header="_Reset to Defaults"
+                          Click="MenuResetDefaults_Click"/>
+                <Separator/>
+                <MenuItem Header="_Preferences..."
+                          Click="MenuPreferences_Click"/>
+                <Separator/>
+                <MenuItem Header="E_xit"
+                          Click="MenuExit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Device"
+                      Style="{StaticResource TopLevelMenuItemWithSub}">
+                <MenuItem Header="_Refresh Wacom Status"
+                          Name="MenuRefreshWacom"
+                          Click="MenuRefreshWacom_Click"/>
+                <MenuItem Header="Reconnect _Pen Input"
+                          Click="MenuReconnectPen_Click"/>
+                <MenuItem Header="_Start Wacom Service"
+                          Name="MenuStartWacomService"
+                          Click="MenuStartWacomService_Click"/>
+                <Separator/>
+                <MenuItem Name="MenuWacomServiceStatus"
+                          Header="Service: checking..."
+                          IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="_Help"
+                      Style="{StaticResource TopLevelMenuItemWithSub}">
+                <MenuItem Header="_About"
+                          Click="MenuAbout_Click"/>
+            </MenuItem>
+        </Menu>
 
-                    <TextBlock Text="Internal App Port"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <TextBox Name="AppPortNameTextBox"
-                             Margin="0,6,0,0"/>
-
-                    <TextBlock Text="Association Id"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <TextBox Name="AssociationIdTextBox"
-                             Margin="0,6,0,0"/>
-
-                    <TextBlock Text="Mouse Pressure Fallback"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <TextBox Name="MousePressureTextBox"
-                             Margin="0,6,0,0"/>
-
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Position Dead Zone"
-                                       Foreground="#bcbcbc"/>
-                            <TextBox Name="DeadZoneTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="XY Smoothing"
-                                       Foreground="#bcbcbc"/>
-                            <TextBox Name="SmoothingTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <TextBlock Text="Pressure Curve"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <ComboBox Name="PressureCurveComboBox"
-                              Margin="0,6,0,0"/>
-
-                    <TextBlock Text="Input Backend"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <ComboBox Name="InputBackendModeComboBox"
-                              Margin="0,6,0,0"/>
-
-                    <CheckBox Name="SendPressureGloballyCheckBox"
-                              Margin="0,12,0,0"
-                              Content="Send pressure globally"/>
-                    <CheckBox Name="AllowZoneSwitchCheckBox"
-                              Margin="0,8,0,0"
-                              Content="Allow switching zones without releasing"/>
-
-                    <TextBlock Text="Wacom Service"
-                               Foreground="#e9e9e9"
-                               FontSize="16"
-                               Margin="0,22,0,8"/>
-                    <WrapPanel Margin="0,0,0,0">
-                        <Button Name="RefreshWacomServiceButton"
-                                Margin="0,0,8,8"
-                                Padding="12,8"
-                                Click="RefreshWacomServiceButton_Click"
-                                Content="Refresh"/>
-                        <Button Name="ReconnectTabletInputButton"
-                                Margin="0,0,8,8"
-                                Padding="12,8"
-                                Click="ReconnectTabletInputButton_Click"
-                                Content="Reconnect Pen Input"/>
-                        <Button Name="StartWacomServiceButton"
-                                Margin="0,0,0,8"
-                                Padding="12,8"
-                                Click="StartWacomServiceButton_Click"
-                                Content="Start Service"/>
-                    </WrapPanel>
-                    <TextBlock Name="WacomServiceStatusText"
-                               Foreground="#8FA7B3"
-                               Margin="0,0,0,0"
-                               TextWrapping="Wrap"/>
-
-                    <TextBlock Text="Zones"
-                               Foreground="#e9e9e9"
-                               FontSize="16"
-                               Margin="0,22,0,8"/>
-                    <WrapPanel Margin="0,0,0,8">
-                        <Button Name="AutoLayoutButton"
-                                Margin="0,0,8,8"
-                                Padding="12,8"
-                                Click="AutoLayoutButton_Click"
-                                Content="Auto Tile"/>
-                        <Button Name="AddZoneButton"
-                                Margin="0,0,8,8"
-                                Padding="12,8"
-                                Click="AddZoneButton_Click"
-                                Content="Add Zone"/>
-                        <Button Name="RemoveZoneButton"
-                                Margin="0,0,0,8"
-                                Padding="12,8"
-                                Click="RemoveZoneButton_Click"
-                                Content="Remove Zone"/>
-                    </WrapPanel>
-
-                    <ListBox Name="ZoneListBox"
-                             Height="150"
-                             SelectionChanged="ZoneListBox_SelectionChanged"/>
-
-                    <TextBlock Text="Selected Zone"
-                               Foreground="#e9e9e9"
-                               FontSize="16"
-                               Margin="0,20,0,8"/>
-
-                    <TextBlock Text="Zone Name"
-                               Foreground="#bcbcbc"/>
-                    <TextBox Name="ZoneNameTextBox"
-                             Margin="0,6,0,0"/>
-
-                    <CheckBox Name="ZoneEnabledCheckBox"
-                              Foreground="#d9d9d9"
-                              Margin="0,10,0,0"
-                              Content="Zone enabled"/>
-
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="MIDI Channel"
-                                       Foreground="#bcbcbc"/>
-                            <ComboBox Name="ZoneChannelComboBox"
-                                      Margin="0,6,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Pressure CC"
-                                       Foreground="#bcbcbc"/>
-                            <TextBox Name="ZoneCcPressureTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="CC X"
-                                       Foreground="#bcbcbc"/>
-                            <TextBox Name="ZoneCcXTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="CC Y"
-                                       Foreground="#bcbcbc"/>
-                            <TextBox Name="ZoneCcYTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <TextBlock Text="Zone Bounds (0.0 - 1.0)"
-                               Foreground="#bcbcbc"
-                               Margin="0,14,0,0"/>
-
-                    <Grid Margin="0,6,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Left"
-                                       Foreground="#9f9f9f"/>
-                            <TextBox Name="ZoneLeftTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Top"
-                                       Foreground="#9f9f9f"/>
-                            <TextBox Name="ZoneTopTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Width"
-                                       Foreground="#9f9f9f"/>
-                            <TextBox Name="ZoneWidthTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Height"
-                                       Foreground="#9f9f9f"/>
-                            <TextBox Name="ZoneHeightTextBox"
-                                     Margin="0,6,0,0"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <CheckBox Name="ZoneInvertXCheckBox"
-                              Foreground="#d9d9d9"
-                              Margin="0,12,0,0"
-                              Content="Invert X in this zone"/>
-                    <CheckBox Name="ZoneInvertYCheckBox"
-                              Foreground="#d9d9d9"
-                              Margin="0,8,0,0"
-                              Content="Invert Y in this zone"/>
-                    <CheckBox Name="ZoneSendPressureCheckBox"
-                              Foreground="#d9d9d9"
-                              Margin="0,8,0,0"
-                              Content="Send pressure in this zone"/>
-                    <CheckBox Name="ZoneResetPressureCheckBox"
-                              Foreground="#d9d9d9"
-                              Margin="0,8,0,0"
-                              Content="Reset pressure to 0 on release"/>
-
-                    <Grid Margin="0,22,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button Name="ApplyButton"
-                                Grid.Column="0"
-                                Padding="12,10"
-                                Click="ApplyButton_Click"
-                                Content="Apply Settings"/>
-                        <Button Name="ResetDefaultsButton"
-                                Grid.Column="2"
-                                Padding="12,10"
-                                Click="ResetDefaultsButton_Click"
-                                Content="Reset Defaults"/>
-                    </Grid>
-
-                    <TextBlock Name="SettingsResultText"
-                               Foreground="#8bbf8b"
-                               Margin="0,12,0,0"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
-            </ScrollViewer>
-        </Border>
-
-        <Border Grid.Column="2"
-                CornerRadius="14"
-                BorderBrush="#444"
-                BorderThickness="1"
-                Background="#1b1b1b">
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom"
+                Background="#161616"
+                BorderBrush="#2A2A2A"
+                BorderThickness="0,1,0,0"
+                Padding="12,5">
             <Grid>
-                <Canvas Name="Pad"
-                        Background="Transparent"
-                        SizeChanged="Pad_SizeChanged"
-                        StylusDown="Pad_StylusDown"
-                        StylusMove="Pad_StylusMove"
-                        StylusUp="Pad_StylusUp"
-                        MouseDown="Pad_MouseDown"
-                        MouseMove="Pad_MouseMove"
-                        MouseUp="Pad_MouseUp"/>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <Canvas Name="ZoneOverlayCanvas"
-                        IsHitTestVisible="False"/>
+                <TextBlock Name="StatusText"
+                           Grid.Column="0"
+                           Foreground="#C0C0C0"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Text="Waiting for MIDI port..."/>
 
-                <Ellipse Name="CursorDot"
-                         Width="18"
-                         Height="18"
-                         Fill="#d0d0d0"
-                         Opacity="0.9"
-                         Visibility="Collapsed"/>
+                <Border Grid.Column="1"
+                        Width="1"
+                        Background="#2E2E2E"
+                        Margin="12,0"/>
 
-                <Border VerticalAlignment="Top"
-                        HorizontalAlignment="Left"
-                        Margin="16"
-                        Padding="14"
-                        CornerRadius="10"
-                        Background="#990f0f0f">
-                    <StackPanel>
-                        <TextBlock Name="StatusText"
-                                   Foreground="#f1f1f1"
-                                   FontSize="18"
-                                   Text="Waiting for MIDI port..."/>
-                        <TextBlock Name="RoutingText"
-                                   Foreground="#bcbcbc"
-                                   Margin="0,6,0,0"
-                                   FontSize="13"/>
-                        <TextBlock Name="InputBackendText"
-                                   Foreground="#8FC7FF"
-                                   Margin="0,6,0,0"
-                                   FontSize="13"/>
-                        <TextBlock Name="ActiveZoneText"
-                                   Foreground="#d4b86f"
-                                   Margin="0,6,0,0"
-                                   FontSize="13"/>
-                        <TextBlock Name="ValueText"
-                                   Foreground="#a8a8a8"
-                                   Margin="0,8,0,0"
-                                   FontSize="14"
-                                   Text="X: -, Y: -, Pressure: -"/>
-                        <TextBlock Name="PenButtonsText"
-                                   Foreground="#93B7A0"
-                                   Margin="0,6,0,0"
-                                   FontSize="12"
-                                   Text="Pen buttons: -"/>
-                        <TextBlock Name="ModifiersText"
-                                   Foreground="#9DA6D4"
-                                   Margin="0,6,0,0"
-                                   FontSize="12"
-                                   Text="Modifiers: none"/>
-                        <TextBlock Name="ConfigSummaryText"
-                                   Foreground="#7f7f7f"
-                                   Margin="0,12,0,0"
-                                   FontSize="12"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Name="ActiveZoneText"
+                               Foreground="#C9A44A"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                    <Border Width="1"
+                            Background="#2E2E2E"
+                            Margin="12,0"
+                            VerticalAlignment="Stretch"/>
+                    <TextBlock Name="ValueText"
+                               Foreground="#909090"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Text="X: -  Y: -  P: -"/>
+                    <Border Width="1"
+                            Background="#2E2E2E"
+                            Margin="12,0"
+                            VerticalAlignment="Stretch"/>
+                    <TextBlock Name="PenButtonsText"
+                               Foreground="#7DA88A"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Text="Pen: -"/>
+                    <Border Width="1"
+                            Background="#2E2E2E"
+                            Margin="12,0"
+                            VerticalAlignment="Stretch"/>
+                    <TextBlock Name="ModifiersText"
+                               Foreground="#8890B0"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Text="Mod: none"/>
+                </StackPanel>
+
+                <TextBlock Name="InputBackendText"
+                           Grid.Column="3"
+                           Foreground="#6A8FAA"
+                           FontSize="12"
+                           VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
-        <Grid Name="LoadingOverlay"
-              Grid.ColumnSpan="3"
-              Background="#EE0D0D0D">
-            <Grid>
-                <Ellipse Width="620"
-                         Height="620"
-                         HorizontalAlignment="Left"
-                         VerticalAlignment="Top"
-                         Margin="-140,-180,0,0"
-                         Fill="#22C96E2D"/>
-                <Ellipse Width="540"
-                         Height="540"
-                         HorizontalAlignment="Right"
-                         VerticalAlignment="Bottom"
-                         Margin="0,0,-120,-160"
-                         Fill="#183C89D0"/>
+        <!-- Main content -->
+        <Grid Margin="8,8,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <Border Width="460"
+            <!-- Zone editor panel -->
+            <Border Grid.Column="0"
+                    Background="#171717"
+                    BorderBrush="#2A2A2A"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Zones"
+                                   Foreground="#E0E0E0"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Name="RoutingText"
+                                   Foreground="#707070"
+                                   FontSize="11"
+                                   Margin="0,4,0,10"
+                                   TextWrapping="Wrap"/>
+
+                        <WrapPanel Margin="0,0,0,8">
+                            <Button Name="AutoLayoutButton"
+                                    Margin="0,0,6,0"
+                                    Padding="10,6"
+                                    Click="AutoLayoutButton_Click"
+                                    Content="Auto Tile"/>
+                            <Button Name="AddZoneButton"
+                                    Margin="0,0,6,0"
+                                    Padding="10,6"
+                                    Click="AddZoneButton_Click"
+                                    Content="Add"/>
+                            <Button Name="RemoveZoneButton"
+                                    Padding="10,6"
+                                    Click="RemoveZoneButton_Click"
+                                    Content="Remove"/>
+                        </WrapPanel>
+
+                        <ListBox Name="ZoneListBox"
+                                 Height="120"
+                                 SelectionChanged="ZoneListBox_SelectionChanged"/>
+
+                        <!-- Selected zone properties -->
+                        <Border Margin="0,12,0,0"
+                                BorderBrush="#2A2A2A"
+                                BorderThickness="0,1,0,0"
+                                Padding="0,12,0,0">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Name="ZoneNameTextBox"
+                                             Grid.Column="0"/>
+                                    <CheckBox Name="ZoneEnabledCheckBox"
+                                              Grid.Column="1"
+                                              Margin="10,0,0,0"
+                                              VerticalAlignment="Center"
+                                              Content="On"/>
+                                </Grid>
+
+                                <TextBlock Text="MIDI"
+                                           Foreground="#808080"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Margin="0,14,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Ch"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <ComboBox Name="ZoneChannelComboBox"
+                                                  Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="CC X"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneCcXTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="CC Y"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneCcYTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6">
+                                        <TextBlock Text="CC P"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneCcPressureTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Bounds"
+                                           Foreground="#808080"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Margin="0,14,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Left"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneLeftTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Top"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneTopTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="W"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneWidthTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6">
+                                        <TextBlock Text="H"
+                                                   Foreground="#808080"
+                                                   FontSize="11"/>
+                                        <TextBox Name="ZoneHeightTextBox"
+                                                 Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Options"
+                                           Foreground="#808080"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Margin="0,14,0,6"/>
+                                <CheckBox Name="ZoneInvertXCheckBox"
+                                          Content="Invert X"/>
+                                <CheckBox Name="ZoneInvertYCheckBox"
+                                          Margin="0,6,0,0"
+                                          Content="Invert Y"/>
+                                <CheckBox Name="ZoneSendPressureCheckBox"
+                                          Margin="0,6,0,0"
+                                          Content="Send pressure"/>
+                                <CheckBox Name="ZoneResetPressureCheckBox"
+                                          Margin="0,6,0,0"
+                                          Content="Reset pressure on release"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Margin="0,14,0,0"
+                                Padding="10,7"
+                                Click="MenuSaveSettings_Click"
+                                Content="Apply Settings"/>
+
+                        <TextBlock Name="SettingsResultText"
+                                   Foreground="#6B9B6B"
+                                   Margin="0,8,0,0"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock Name="ConfigSummaryText"
+                                   Foreground="#585858"
+                                   Margin="0,4,0,0"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Pad area -->
+            <Border Grid.Column="2"
+                    Background="#141414"
+                    BorderBrush="#2A2A2A"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <Grid>
+                    <Canvas Name="Pad"
+                            Background="Transparent"
+                            SizeChanged="Pad_SizeChanged"
+                            StylusDown="Pad_StylusDown"
+                            StylusMove="Pad_StylusMove"
+                            StylusUp="Pad_StylusUp"
+                            MouseDown="Pad_MouseDown"
+                            MouseMove="Pad_MouseMove"
+                            MouseUp="Pad_MouseUp"/>
+
+                    <Canvas Name="ZoneOverlayCanvas"
+                            IsHitTestVisible="False"/>
+
+                    <Ellipse Name="CursorDot"
+                             Width="14"
+                             Height="14"
+                             Fill="#E0E0E0"
+                             Opacity="0.85"
+                             Visibility="Collapsed"/>
+                </Grid>
+            </Border>
+
+            <!-- Loading overlay -->
+            <Grid Name="LoadingOverlay"
+                  Grid.ColumnSpan="3"
+                  Background="#EE101010">
+                <Border Width="400"
                         Padding="28"
-                        CornerRadius="18"
-                        Background="#D9161616"
-                        BorderBrush="#2D2D2D"
+                        CornerRadius="10"
+                        Background="#1A1A1A"
+                        BorderBrush="#2A2A2A"
                         BorderThickness="1"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
                     <StackPanel>
-                        <TextBlock Text="TabletMidiPad"
-                                   Foreground="#F5F2ED"
-                                   FontSize="30"
+                        <TextBlock Text="Tablet MIDI Pad"
+                                   Foreground="#E8E8E8"
+                                   FontSize="24"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="Preparing controller surfaces and MIDI routing"
-                                   Foreground="#B6AEA5"
-                                   Margin="0,10,0,0"
-                                   FontSize="14"
+                                   Foreground="#808080"
+                                   Margin="0,8,0,0"
+                                   FontSize="13"
                                    HorizontalAlignment="Center"/>
                         <ProgressBar Name="LoadingProgressBar"
                                      Minimum="0"
                                      Maximum="100"
                                      Value="6"
-                                     Height="8"
-                                     Margin="0,24,0,0"
+                                     Height="4"
+                                     Margin="0,22,0,0"
                                      Foreground="#C96E2D"
-                                     Background="#2B2B2B"/>
+                                     Background="#252525"/>
                         <TextBlock Name="LoadingTitleText"
                                    Text="Booting application"
-                                   Foreground="#F1F1F1"
-                                   Margin="0,22,0,0"
-                                   FontSize="18"
+                                   Foreground="#D0D0D0"
+                                   Margin="0,18,0,0"
+                                   FontSize="14"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Name="LoadingDetailText"
                                    Text="Creating the UI shell"
-                                   Foreground="#A8A8A8"
-                                   Margin="0,8,0,0"
-                                   FontSize="13"
+                                   Foreground="#707070"
+                                   Margin="0,4,0,0"
+                                   FontSize="12"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </Grid>
-    </Grid>
+    </DockPanel>
 </Window>

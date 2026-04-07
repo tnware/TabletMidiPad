@@ -72,8 +72,6 @@ public partial class MainWindow : Window
         SetLoadingProgress(18);
         SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
-        PopulatePressureCurveList();
-        PopulateInputBackendModeList();
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
@@ -101,33 +99,105 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PopulatePressureCurveList()
-    {
-        PressureCurveComboBox.Items.Clear();
-        PressureCurveComboBox.Items.Add("Linear");
-        PressureCurveComboBox.Items.Add("Logarithmic");
-        PressureCurveComboBox.Items.Add("Exponential");
-    }
-
-    private void PopulateInputBackendModeList()
-    {
-        InputBackendModeComboBox.Items.Clear();
-        InputBackendModeComboBox.Items.Add("Auto");
-        InputBackendModeComboBox.Items.Add("Wintab Only");
-        InputBackendModeComboBox.Items.Add("Stylus/Mouse Only");
-    }
-
-    private void ApplyButton_Click(object sender, RoutedEventArgs e)
+    private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
     {
         ApplySettings();
     }
 
-    private void RefreshWacomServiceButton_Click(object sender, RoutedEventArgs e)
+    private void MenuSaveSettings_Click(object sender, RoutedEventArgs e)
+    {
+        ApplySettings();
+    }
+
+    private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        _config = AppConfig.Default;
+        AutoTileZones(_config.Zones);
+        LoadConfigIntoUi(_config);
+        ApplySettings();
+    }
+
+    private void MenuPreferences_Click(object sender, RoutedEventArgs e)
+    {
+        var prefs = new PreferencesWindow { Owner = this };
+        prefs.LoadFrom(_config);
+
+        prefs.ShowDialog();
+
+        if (!prefs.Accepted)
+        {
+            return;
+        }
+
+        string previousAppPortName = _config.AppPortName;
+        string previousDawPortName = _config.DawPortName;
+        string previousAssociationId = _config.LoopbackAssociationId;
+        string previousInputBackendMode = _config.InputBackendMode;
+
+        _config.DawPortName = prefs.DawPortName;
+        _config.AppPortName = prefs.AppPortName;
+        _config.LoopbackAssociationId = prefs.AssociationId;
+        _config.MousePressureValue = prefs.MousePressureValue;
+        _config.PositionDeadZone = prefs.PositionDeadZone;
+        _config.PositionSmoothing = prefs.PositionSmoothing;
+        _config.PressureCurve = prefs.PressureCurve;
+        _config.InputBackendMode = prefs.InputBackendMode;
+        _config.SendPressureGlobally = prefs.SendPressureGlobally;
+        _config.AllowZoneSwitchWhilePressed = prefs.AllowZoneSwitchWhilePressed;
+
+        CommitCurrentZoneEdits();
+
+        try
+        {
+            ValidateConfig(_config);
+            _config.Save();
+        }
+        catch (Exception ex)
+        {
+            SettingsResultText.Foreground = Brushes.IndianRed;
+            SettingsResultText.Text = ex.Message;
+            return;
+        }
+
+        bool routingChanged =
+            !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
+            !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
+            !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
+        bool inputBackendChanged =
+            !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
+
+        if (routingChanged || _midiOutHandle == IntPtr.Zero)
+        {
+            RestartMidi();
+        }
+        else
+        {
+            _lastSentValues.Clear();
+            _activeZone = null;
+            UpdateUiForCurrentConfig();
+            DrawZoneOverlay();
+        }
+
+        if (inputBackendChanged)
+        {
+            RebindInputBackend();
+        }
+
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Preferences applied and saved.";
+    }
+
+    private void MenuExit_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void MenuRefreshWacom_Click(object sender, RoutedEventArgs e)
     {
         RefreshWacomServiceStatus();
     }
 
-    private void ReconnectTabletInputButton_Click(object sender, RoutedEventArgs e)
+    private void MenuReconnectPen_Click(object sender, RoutedEventArgs e)
     {
         CommitCurrentZoneEdits();
         RebindInputBackend();
@@ -135,10 +205,10 @@ public partial class MainWindow : Window
         SettingsResultText.Text = "Input backend reconnected.";
     }
 
-    private async void StartWacomServiceButton_Click(object sender, RoutedEventArgs e)
+    private async void MenuStartWacomService_Click(object sender, RoutedEventArgs e)
     {
-        StartWacomServiceButton.IsEnabled = false;
-        WacomServiceStatusText.Text = "Starting Wacom Professional Service...";
+        MenuStartWacomService.IsEnabled = false;
+        MenuWacomServiceStatus.Header = "Service: starting...";
         bool started = false;
         string? failureText = null;
 
@@ -168,27 +238,28 @@ public partial class MainWindow : Window
             }
             else
             {
-                WacomServiceStatusText.Text = failureText ?? "Could not start Wacom Professional Service.";
+                MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
 
                 try
                 {
                     using var service = new ServiceController(WacomServiceName);
-                    StartWacomServiceButton.IsEnabled = service.Status != ServiceControllerStatus.Running;
+                    MenuStartWacomService.IsEnabled = service.Status != ServiceControllerStatus.Running;
                 }
                 catch
                 {
-                    StartWacomServiceButton.IsEnabled = false;
+                    MenuStartWacomService.IsEnabled = false;
                 }
             }
         }
     }
 
-    private void ResetDefaultsButton_Click(object sender, RoutedEventArgs e)
+    private void MenuAbout_Click(object sender, RoutedEventArgs e)
     {
-        _config = AppConfig.Default;
-        AutoTileZones(_config.Zones);
-        LoadConfigIntoUi(_config);
-        ApplySettings();
+        MessageBox.Show(
+            "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
+            "About Tablet MIDI Pad",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     private void AutoLayoutButton_Click(object sender, RoutedEventArgs e)
@@ -308,38 +379,14 @@ public partial class MainWindow : Window
     {
         try
         {
-            string previousAppPortName = _config.AppPortName;
-            string previousDawPortName = _config.DawPortName;
-            string previousAssociationId = _config.LoopbackAssociationId;
-            string previousInputBackendMode = _config.InputBackendMode;
-
             CommitCurrentZoneEdits();
             ValidateConfig(_config);
             _config.Save();
 
-            bool routingChanged =
-                !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
-                !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
-                !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
-            bool inputBackendChanged =
-                !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
-
-            if (routingChanged || _midiOutHandle == IntPtr.Zero)
-            {
-                RestartMidi();
-            }
-            else
-            {
-                _lastSentValues.Clear();
-                _activeZone = null;
-                UpdateUiForCurrentConfig();
-                DrawZoneOverlay();
-            }
-
-            if (inputBackendChanged)
-            {
-                RebindInputBackend();
-            }
+            _lastSentValues.Clear();
+            _activeZone = null;
+            UpdateUiForCurrentConfig();
+            DrawZoneOverlay();
 
             SettingsResultText.Foreground = Brushes.DarkSeaGreen;
             SettingsResultText.Text = "Settings applied and saved.";
@@ -362,19 +409,6 @@ public partial class MainWindow : Window
     private void LoadConfigIntoUi(AppConfig config)
     {
         _isLoadingUi = true;
-
-        AppPortNameTextBox.Text = config.AppPortName;
-        DawPortNameTextBox.Text = config.DawPortName;
-        AssociationIdTextBox.Text = config.LoopbackAssociationId;
-        MousePressureTextBox.Text = config.MousePressureValue.ToString();
-        DeadZoneTextBox.Text = config.PositionDeadZone.ToString("0.###");
-        SmoothingTextBox.Text = config.PositionSmoothing.ToString("0.##");
-        PressureCurveComboBox.SelectedItem = config.PressureCurve;
-        PressureCurveComboBox.Text = config.PressureCurve;
-        InputBackendModeComboBox.SelectedItem = NormalizeInputBackendMode(config.InputBackendMode);
-        InputBackendModeComboBox.Text = NormalizeInputBackendMode(config.InputBackendMode);
-        SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
-        AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
         RefreshZoneList();
         ZoneListBox.SelectedIndex = config.Zones.Count > 0 ? 0 : -1;
@@ -443,17 +477,6 @@ public partial class MainWindow : Window
 
     private void CommitCurrentZoneEdits()
     {
-        _config.AppPortName = RequireText(AppPortNameTextBox.Text, "Internal App Port");
-        _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
-        _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
-        _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
-        _config.PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
-        _config.PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
-        _config.PressureCurve = ReadPressureCurve(PressureCurveComboBox.Text);
-        _config.InputBackendMode = ReadInputBackendMode(InputBackendModeComboBox.Text);
-        _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
-        _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
-
         if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
         {
             return;
@@ -583,8 +606,8 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        StatusText.Text = $"Send to '{_config.DawPortName}' in Ableton/Waveform";
-        RoutingText.Text = $"App '{_config.AppPortName}' -> DAW '{_config.DawPortName}'";
+        StatusText.Text = "Connected";
+        RoutingText.Text = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
         UpdateInputBackendStatus();
         ActiveZoneText.Text = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
@@ -1586,30 +1609,6 @@ public partial class MainWindow : Window
         return Math.Clamp((int)Math.Round(curved * 127.0), 0, 127);
     }
 
-    private static string ReadPressureCurve(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Linear" => value,
-            "Logarithmic" => value,
-            "Exponential" => value,
-            _ => throw new InvalidOperationException("Pressure Curve must be Linear, Logarithmic, or Exponential.")
-        };
-    }
-
-    private static string ReadInputBackendMode(string? text)
-    {
-        string value = NormalizeInputBackendMode(text);
-        return value switch
-        {
-            "Auto" => value,
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => throw new InvalidOperationException("Input Backend must be Auto, Wintab Only, or Stylus/Mouse Only.")
-        };
-    }
-
     private static string NormalizeInputBackendMode(string? text)
     {
         string value = (text ?? string.Empty).Trim();
@@ -1643,20 +1642,20 @@ public partial class MainWindow : Window
             using var service = new ServiceController(WacomServiceName);
             string displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? WacomServiceName : service.DisplayName;
             bool running = service.Status == ServiceControllerStatus.Running;
-            WacomServiceStatusText.Text = running
-                ? $"{displayName}: running"
-                : $"{displayName}: {service.Status}";
-            StartWacomServiceButton.IsEnabled = !running;
+            MenuWacomServiceStatus.Header = running
+                ? $"Service: {displayName} running"
+                : $"Service: {displayName} {service.Status}";
+            MenuStartWacomService.IsEnabled = !running;
         }
         catch (InvalidOperationException)
         {
-            WacomServiceStatusText.Text = "Wacom Professional Service not found on this system.";
-            StartWacomServiceButton.IsEnabled = false;
+            MenuWacomServiceStatus.Header = "Service: not found";
+            MenuStartWacomService.IsEnabled = false;
         }
         catch (Exception ex)
         {
-            WacomServiceStatusText.Text = $"Could not query Wacom service: {ex.Message}";
-            StartWacomServiceButton.IsEnabled = false;
+            MenuWacomServiceStatus.Header = $"Service: {ex.Message}";
+            MenuStartWacomService.IsEnabled = false;
         }
     }
 
