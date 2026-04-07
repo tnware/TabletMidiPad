@@ -271,6 +271,7 @@ public partial class MainWindow : Window
         DawPortNameTextBox.Text = config.DawPortName;
         AssociationIdTextBox.Text = config.LoopbackAssociationId;
         MousePressureTextBox.Text = config.MousePressureValue.ToString();
+        SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
         RefreshZoneList();
@@ -344,6 +345,7 @@ public partial class MainWindow : Window
         _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
         _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
         _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
+        _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
         _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
 
         if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
@@ -617,14 +619,15 @@ public partial class MainWindow : Window
         int y = ToCc(local.y, zone.InvertY);
 
         ActiveZoneText.Text = $"Active zone: {zone.Name}";
-        ValueText.Text = zone.SendPressure
+        bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
+        ValueText.Text = sendPressure
             ? $"{zone.Name} -> X: {x}, Y: {y}, Pressure: {pressure}"
             : $"{zone.Name} -> X: {x}, Y: {y}, Pressure: off";
 
         SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
         SendCcIfChanged(zone.MidiChannel, zone.CcY, y);
 
-        if (zone.SendPressure)
+        if (sendPressure)
         {
             SendCcIfChanged(zone.MidiChannel, zone.CcPressure, pressure);
         }
@@ -644,7 +647,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (zone.SendPressure && zone.ResetPressureOnRelease)
+        if (_config.SendPressureGlobally && zone.SendPressure && zone.ResetPressureOnRelease)
         {
             SendCcIfChanged(zone.MidiChannel, zone.CcPressure, 0, force: true);
         }
