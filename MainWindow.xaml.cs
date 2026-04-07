@@ -292,8 +292,8 @@ public partial class MainWindow : Window, IMainWindowActions
 
     private async void MenuStartWacomService_Click(object sender, RoutedEventArgs e)
     {
-        MenuStartWacomService.IsEnabled = false;
-        MenuWacomServiceStatus.Header = "Service: starting...";
+        _viewModel.CanStartWacomService = false;
+        _viewModel.WacomServiceStatusText = "Service: starting...";
         bool started = false;
         string? failureText = null;
 
@@ -323,16 +323,16 @@ public partial class MainWindow : Window, IMainWindowActions
             }
             else
             {
-                MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
+                _viewModel.WacomServiceStatusText = $"Service: {(failureText ?? "failed to start")}";
 
                 try
                 {
                     (_, bool canStart) = _wacomService.GetStatus();
-                    MenuStartWacomService.IsEnabled = canStart;
+                    _viewModel.CanStartWacomService = canStart;
                 }
                 catch
                 {
-                    MenuStartWacomService.IsEnabled = false;
+                    _viewModel.CanStartWacomService = false;
                 }
             }
         }

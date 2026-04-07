@@ -24,8 +24,8 @@ public partial class MainWindow
     private void RefreshWacomServiceStatus()
     {
         (string header, bool canStart) = _wacomService.GetStatus();
-        MenuWacomServiceStatus.Header = header;
-        MenuStartWacomService.IsEnabled = canStart;
+        _viewModel.WacomServiceStatusText = header;
+        _viewModel.CanStartWacomService = canStart;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)

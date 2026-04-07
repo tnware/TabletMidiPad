@@ -22,6 +22,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _configSummaryText = string.Empty;
     private string _settingsResultText = string.Empty;
     private Brush _settingsResultBrush = Brushes.DarkSeaGreen;
+    private string _wacomServiceStatusText = "Service: checking...";
+    private bool _canStartWacomService;
 
     public AppConfig Config
     {
@@ -123,6 +125,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _settingsResultBrush;
         set => SetField(ref _settingsResultBrush, value);
+    }
+
+    public string WacomServiceStatusText
+    {
+        get => _wacomServiceStatusText;
+        set => SetField(ref _wacomServiceStatusText, value);
+    }
+
+    public bool CanStartWacomService
+    {
+        get => _canStartWacomService;
+        set
+        {
+            if (_canStartWacomService == value)
+            {
+                return;
+            }
+
+            _canStartWacomService = value;
+            OnPropertyChanged();
+        }
     }
 
     public MainViewModel(ISettingsService settingsService)

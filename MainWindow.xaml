@@ -152,10 +152,11 @@
                           Command="{Binding ReconnectInputCommand}"/>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
+                          IsEnabled="{Binding CanStartWacomService}"
                           Command="{Binding StartWacomServiceCommand}"/>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
-                          Header="Service: checking..."
+                          Header="{Binding WacomServiceStatusText}"
                           IsEnabled="False"/>
             </MenuItem>
             <MenuItem Header="_Help"
