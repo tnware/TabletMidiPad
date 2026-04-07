@@ -2,6 +2,9 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
+using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad;
 
@@ -10,11 +13,33 @@ namespace TabletMidiPad;
 /// </summary>
 public partial class App : Application
 {
+    private ServiceProvider? _serviceProvider;
+
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
+        _serviceProvider = ConfigureServices();
         RegisterApplicationWindowIcon();
         base.OnStartup(e);
+
+        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _serviceProvider?.Dispose();
+        base.OnExit(e);
+    }
+
+    private static ServiceProvider ConfigureServices()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IMidiService, MidiService>();
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainWindow>();
+        return services.BuildServiceProvider();
     }
 
     /// <summary>

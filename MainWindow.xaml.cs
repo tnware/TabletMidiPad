@@ -13,17 +13,16 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad;
 
 public partial class MainWindow : Window
 {
-    private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
     private const string WacomServiceName = "WTabletServicePro";
-
-    private readonly Dictionary<string, int> _lastSentValues = new();
-
-    private IntPtr _midiOutHandle;
+    private readonly IMidiService _midiService;
+    private readonly MainViewModel _viewModel;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private readonly Dictionary<ZoneConfig, Point> _smoothedZonePoints = new();
     private bool _isActive;
@@ -75,9 +74,12 @@ public partial class MainWindow : Window
         Bottom = 8
     }
 
-    public MainWindow()
+    public MainWindow(IMidiService midiService, MainViewModel viewModel)
     {
+        _midiService = midiService;
+        _viewModel = viewModel;
         InitializeComponent();
+        DataContext = _viewModel;
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
@@ -126,7 +128,8 @@ public partial class MainWindow : Window
     {
         PopulateChannelList(ZoneChannelComboBox);
         PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
-        _config = AppConfig.Load();
+        _viewModel.Load();
+        _config = _viewModel.Config;
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
@@ -180,7 +183,7 @@ public partial class MainWindow : Window
     private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
     {
         _config = AppConfig.Default;
-        AutoTileZones(_config);
+        _viewModel.AutoTileZones();
         LoadConfigIntoUi(_config);
         ApplySettings();
     }
@@ -227,8 +230,7 @@ public partial class MainWindow : Window
 
         try
         {
-            ValidateConfig(_config);
-            _config.Save();
+            _viewModel.Save();
         }
         catch (Exception ex)
         {
@@ -244,13 +246,12 @@ public partial class MainWindow : Window
         bool inputBackendChanged =
             !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
 
-        if (routingChanged || _midiOutHandle == IntPtr.Zero)
+        if (routingChanged || !_midiService.IsConnected)
         {
             RestartMidi();
         }
         else
         {
-            _lastSentValues.Clear();
             _activeZone = null;
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
@@ -484,7 +485,7 @@ public partial class MainWindow : Window
     private void AutoLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         CommitCurrentZoneEdits();
-        AutoTileZones(_config);
+        _viewModel.AutoTileZones();
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -520,7 +521,7 @@ public partial class MainWindow : Window
         };
 
         _config.Zones.Add(zone);
-        AutoTileZones(_config);
+        _viewModel.AutoTileZones();
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
         LoadSelectedZoneIntoEditor();
@@ -571,7 +572,7 @@ public partial class MainWindow : Window
             _config.Zones.Add(ZoneConfig.CreateDefault());
         }
 
-        AutoTileZones(_config);
+        _viewModel.AutoTileZones();
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -602,10 +603,8 @@ public partial class MainWindow : Window
         try
         {
             CommitCurrentZoneEdits();
-            ValidateConfig(_config);
-            _config.Save();
+            _viewModel.Save();
 
-            _lastSentValues.Clear();
             _activeZone = null;
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
@@ -622,9 +621,9 @@ public partial class MainWindow : Window
 
     private void RestartMidi()
     {
-        CloseMidiOut();
-        RemoveLoopbackPair();
-        InitMidi();
+        _midiService.Restart(_config);
+        _activeZone = null;
+        UpdateUiForCurrentConfig();
         DrawZoneOverlay();
     }
 
@@ -809,79 +808,11 @@ public partial class MainWindow : Window
             $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
 
-    private static void ValidateConfig(AppConfig config)
-    {
-        if (config.Zones.Count == 0)
-        {
-            throw new InvalidOperationException("At least one zone is required.");
-        }
-
-        if (config.MaxZoneRows < 1)
-        {
-            throw new InvalidOperationException("Max rows must be at least 1.");
-        }
-
-        if (config.MaxZonesPerRow < 1)
-        {
-            throw new InvalidOperationException("Max zones per row must be at least 1.");
-        }
-
-        foreach (var zone in config.Zones)
-        {
-            if (zone.Width <= 0 || zone.Height <= 0)
-            {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must have width and height greater than 0.");
-            }
-
-            if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
-            {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
-            }
-
-            _ = NormalizeReleaseBehavior(zone.ReleaseBehavior);
-        }
-    }
-
-    private static void AutoTileZones(AppConfig config)
-    {
-        IList<ZoneConfig> zones = config.Zones;
-        if (zones.Count == 0)
-        {
-            return;
-        }
-
-        int count = zones.Count;
-        int maxRows = Math.Max(1, config.MaxZoneRows);
-        int maxPerRow = Math.Max(1, config.MaxZonesPerRow);
-        int capacity = maxRows * maxPerRow;
-        int rows = count <= capacity
-            ? Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)))
-            : Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow));
-
-        double cellHeight = 1.0 / rows;
-
-        for (int index = 0; index < count; index++)
-        {
-            int row = index / maxPerRow;
-            int colsInThisRow = Math.Min(maxPerRow, count - row * maxPerRow);
-            int column = index % maxPerRow;
-            double cellWidth = 1.0 / colsInThisRow;
-
-            zones[index].Left = column * cellWidth;
-            zones[index].Top = row * cellHeight;
-            zones[index].Width = cellWidth;
-            zones[index].Height = cellHeight;
-        }
-    }
-
     private void InitMidi()
     {
         try
         {
-            RemoveLoopbackPair();
-            CreateLoopbackPair();
-            OpenMidiOutWithRetry(_config.AppPortName);
-            _lastSentValues.Clear();
+            _midiService.Restart(_config);
             _activeZone = null;
             UpdateUiForCurrentConfig();
         }
@@ -901,16 +832,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            MidiStatusText.Text = "Removing stale MIDI pair...";
-            await Task.Run(RemoveLoopbackPair);
+            MidiStatusText.Text = "Initializing MIDI routing...";
+            await _midiService.InitializeAsync(_config);
 
-            MidiStatusText.Text = "Creating MIDI loopback...";
-            await Task.Run(CreateLoopbackPair);
-
-            MidiStatusText.Text = $"Opening '{_config.AppPortName}'...";
-            await Task.Run(() => OpenMidiOutWithRetry(_config.AppPortName));
-
-            _lastSentValues.Clear();
             _activeZone = null;
             UpdateUiForCurrentConfig();
         }
@@ -939,8 +863,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            CloseMidiOut();
-            RemoveLoopbackPair();
+            _midiService.Shutdown();
         }
         catch
         {
@@ -1674,169 +1597,12 @@ public partial class MainWindow : Window
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
     {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"{channel}:{cc}";
-        value = Math.Clamp(value, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
-        {
-            return;
-        }
-
-        byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
-        byte controller = (byte)(cc & 0x7F);
-        byte data = (byte)(value & 0x7F);
-
-        int packedMessage = status | (controller << 8) | (data << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = value;
+        _midiService.SendCcIfChanged(channel, cc, value, force);
     }
 
     private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
     {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"note:{channel}:{note}";
-        int state = on ? 1 : 0;
-        velocity = Math.Clamp(velocity, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
-        {
-            return;
-        }
-
-        byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
-        byte noteByte = (byte)(note & 0x7F);
-        byte velocityByte = (byte)(velocity & 0x7F);
-
-        int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = state;
-    }
-
-    private void CreateLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback create --name-a \"{_config.AppPortName}\" --name-b \"{_config.DawPortName}\" --association-id \"{_config.LoopbackAssociationId}\""
-        );
-        Thread.Sleep(300);
-    }
-
-    private void RemoveLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback remove --association-id \"{_config.LoopbackAssociationId}\"",
-            allowFailure: true
-        );
-    }
-
-    private void OpenMidiOutWithRetry(string portName)
-    {
-        for (int attempt = 0; attempt < 60; attempt++)
-        {
-            if (TryOpenMidiOut(portName, out _midiOutHandle))
-            {
-                return;
-            }
-
-            Thread.Sleep(100);
-        }
-
-        string available = string.Join(", ", EnumerateMidiOutPortNames());
-        throw new InvalidOperationException(
-            $"Could not open MIDI destination '{portName}'. Available MIDI outputs: {available}."
-        );
-    }
-
-    private static bool TryOpenMidiOut(string targetName, out IntPtr handle)
-    {
-        handle = IntPtr.Zero;
-
-        int count = midiOutGetNumDevs();
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            if (midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) != 0)
-            {
-                continue;
-            }
-
-            if (!string.Equals(caps.Name, targetName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            int result = midiOutOpen(out handle, deviceId, IntPtr.Zero, IntPtr.Zero, 0);
-            return result == 0;
-        }
-
-        return false;
-    }
-
-    private void CloseMidiOut()
-    {
-        if (_midiOutHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        midiOutReset(_midiOutHandle);
-        midiOutClose(_midiOutHandle);
-        _midiOutHandle = IntPtr.Zero;
-    }
-
-    private static string[] EnumerateMidiOutPortNames()
-    {
-        int count = midiOutGetNumDevs();
-        var names = new string[count];
-
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            names[deviceId] = midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) == 0
-                ? caps.Name
-                : $"<error:{deviceId}>";
-        }
-
-        return names.Where(name => !string.IsNullOrWhiteSpace(name)).ToArray();
-    }
-
-    private static void RunMidiConsole(string arguments, bool allowFailure = false)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = MidiConsolePath,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (allowFailure || process.ExitCode == 0)
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim()
-        );
+        _midiService.SendNoteIfChanged(channel, note, on, velocity, force);
     }
 
     private static int ToCc(double normalized, bool invert)
@@ -2798,38 +2564,4 @@ public partial class MainWindow : Window
         bool IsIntegrated
     );
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MidiOutCaps
-    {
-        public ushort ManufacturerId;
-        public ushort ProductId;
-        public uint DriverVersion;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string Name;
-
-        public ushort Technology;
-        public ushort Voices;
-        public ushort Notes;
-        public ushort ChannelMask;
-        public uint Support;
-    }
-
-    [DllImport("winmm.dll", CharSet = CharSet.Auto)]
-    private static extern int midiOutGetDevCaps(UIntPtr uDeviceId, out MidiOutCaps caps, uint cbMidiOutCaps);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutGetNumDevs();
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutOpen(out IntPtr handle, int deviceId, IntPtr callback, IntPtr instance, int flags);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutShortMsg(IntPtr handle, int message);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutReset(IntPtr handle);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutClose(IntPtr handle);
 }
