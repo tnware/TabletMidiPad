@@ -20,12 +20,12 @@ public partial class MainWindow
             DrawZoneOverlay();
 
             SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-            SettingsResultText.Text = "Settings applied and saved.";
+            _viewModel.SettingsResultText = "Settings applied and saved.";
         }
         catch (Exception ex)
         {
             SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = ex.Message;
+            _viewModel.SettingsResultText = ex.Message;
         }
     }
 
@@ -228,12 +228,12 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Windows MIDI Services init failed";
-            RoutingText.Text = string.Empty;
-            InputBackendText.Text = string.Empty;
-            ActiveZoneText.Text = string.Empty;
-            ConfigSummaryText.Text = string.Empty;
-            ValueText.Text = ex.Message;
+            _viewModel.StatusText = "Windows MIDI Services init failed";
+            _viewModel.RoutingText = string.Empty;
+            _viewModel.InputBackendText = string.Empty;
+            _viewModel.ActiveZoneText = string.Empty;
+            _viewModel.ConfigSummaryText = string.Empty;
+            _viewModel.ValueText = ex.Message;
             throw;
         }
     }
@@ -250,23 +250,23 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            StatusText.Text = "MIDI init failed";
-            ValueText.Text = ex.Message;
+            _viewModel.StatusText = "MIDI init failed";
+            _viewModel.ValueText = ex.Message;
             throw;
         }
     }
 
     private void UpdateUiForCurrentConfig()
     {
-        StatusText.Text = "Connected";
-        RoutingText.Text = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
+        _viewModel.StatusText = "Connected";
+        _viewModel.RoutingText = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
         UpdateInputBackendStatus();
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
-        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
-        ModifiersText.Text = "Modifiers: none";
+        _viewModel.ConfigSummaryText = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
+        _viewModel.ModifiersText = "Modifiers: none";
     }
 
     private void ShutdownMidi()

@@ -18,7 +18,7 @@ public partial class MainWindow
             ? $"Wintab enabled, {_wintabContexts.Count} context(s){ekPart}"
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
-        InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
+        _viewModel.InputBackendText = $"Input: {_lastInputBackend} | {configured}";
     }
 
     private void RefreshWacomServiceStatus()
@@ -41,7 +41,7 @@ public partial class MainWindow
             _ => "none"
         };
 
-        PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
+        _viewModel.PenButtonsText = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
     }
 
     private void UpdatePenButtonActionState(uint buttons)
@@ -138,7 +138,7 @@ public partial class MainWindow
         AppendPenButtonModifier(parts, "lower", _inputMappingService.NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
         AppendPenButtonModifier(parts, "upper", _inputMappingService.NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
 
-        ModifiersText.Text = parts.Count > 0
+        _viewModel.ModifiersText = parts.Count > 0
             ? $"Modifiers: {string.Join(" | ", parts)}"
             : "Modifiers: none";
     }

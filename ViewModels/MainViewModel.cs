@@ -11,6 +11,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private IMainWindowActions? _actions;
 
     private AppConfig _config = AppConfig.Default;
+    private string _statusText = "Connected";
+    private string _routingText = string.Empty;
+    private string _inputBackendText = string.Empty;
+    private string _activeZoneText = "Active zone: none";
+    private string _valueText = "X: -, Y: -, Pressure: -";
+    private string _penButtonsText = "Pen buttons: -";
+    private string _modifiersText = "Modifiers: none";
+    private string _configSummaryText = string.Empty;
+    private string _settingsResultText = string.Empty;
+
     public AppConfig Config
     {
         get => _config;
@@ -19,6 +29,60 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _config = value;
             OnPropertyChanged();
         }
+    }
+
+    public string StatusText
+    {
+        get => _statusText;
+        set => SetField(ref _statusText, value);
+    }
+
+    public string RoutingText
+    {
+        get => _routingText;
+        set => SetField(ref _routingText, value);
+    }
+
+    public string InputBackendText
+    {
+        get => _inputBackendText;
+        set => SetField(ref _inputBackendText, value);
+    }
+
+    public string ActiveZoneText
+    {
+        get => _activeZoneText;
+        set => SetField(ref _activeZoneText, value);
+    }
+
+    public string ValueText
+    {
+        get => _valueText;
+        set => SetField(ref _valueText, value);
+    }
+
+    public string PenButtonsText
+    {
+        get => _penButtonsText;
+        set => SetField(ref _penButtonsText, value);
+    }
+
+    public string ModifiersText
+    {
+        get => _modifiersText;
+        set => SetField(ref _modifiersText, value);
+    }
+
+    public string ConfigSummaryText
+    {
+        get => _configSummaryText;
+        set => SetField(ref _configSummaryText, value);
+    }
+
+    public string SettingsResultText
+    {
+        get => _settingsResultText;
+        set => SetField(ref _settingsResultText, value);
     }
 
     public MainViewModel(ISettingsService settingsService)
@@ -60,4 +124,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
+    {
+        if (string.Equals(field, value, System.StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        field = value;
+        OnPropertyChanged(propertyName);
+    }
 }

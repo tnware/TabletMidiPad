@@ -292,7 +292,7 @@ public partial class MainWindow
         _resizeEdge = ResizeEdge.None;
         Pad.Cursor = null!;
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone resized. Click Apply Settings to save.";
+        _viewModel.SettingsResultText = "Zone resized. Click Apply Settings to save.";
     }
 
     private bool CanResizeZoneTo(int zoneIndex, double left, double top, double width, double height)
@@ -348,7 +348,7 @@ public partial class MainWindow
     private void HandleStylus(StylusEventArgs e)
     {
         MarkInputBackend("Stylus");
-        PenButtonsText.Text = "Pen buttons: stylus fallback";
+        _viewModel.PenButtonsText = "Pen buttons: stylus fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -374,7 +374,7 @@ public partial class MainWindow
     private void HandleMouse(MouseEventArgs e)
     {
         MarkInputBackend("Mouse");
-        PenButtonsText.Text = "Pen buttons: mouse fallback";
+        _viewModel.PenButtonsText = "Pen buttons: mouse fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -399,8 +399,8 @@ public partial class MainWindow
 
         if (zone is null)
         {
-            ActiveZoneText.Text = "Active zone: none";
-            ValueText.Text = "Outside configured zones";
+            _viewModel.ActiveZoneText = "Active zone: none";
+            _viewModel.ValueText = "Outside configured zones";
             return;
         }
 
@@ -441,7 +441,7 @@ public partial class MainWindow
         int y = _inputMappingService.ToCc(local.y, zone.InvertY);
         int curvedPressure = _inputMappingService.ApplyPressureCurve(pressure, _config.PressureCurve);
 
-        ActiveZoneText.Text = $"Active zone: {zone.Name}";
+        _viewModel.ActiveZoneText = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
         if ((_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
             (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
@@ -463,7 +463,7 @@ public partial class MainWindow
         string xText = zone.SendX ? x.ToString() : "off";
         string yText = zone.SendY ? y.ToString() : "off";
         string pressureText = sendPressure ? curvedPressure.ToString() : "off";
-        ValueText.Text = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
+        _viewModel.ValueText = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
 
         if (zone.SendX)
         {
@@ -485,7 +485,7 @@ public partial class MainWindow
     {
         SendZoneRelease(_activeZone);
         _activeZone = null;
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         _hasLockedPosition = false;
         _lowerPenButtonHeld = false;
         _upperPenButtonHeld = false;

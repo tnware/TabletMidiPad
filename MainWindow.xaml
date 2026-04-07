@@ -551,7 +551,7 @@
                            Foreground="{StaticResource TextMutedBrush}"
                            FontSize="12"
                            VerticalAlignment="Center"
-                           Text="Waiting for MIDI port..."/>
+                           Text="{Binding StatusText}"/>
 
                 <Border Grid.Column="1"
                         Width="1"
@@ -562,6 +562,7 @@
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
                     <TextBlock Name="ActiveZoneText"
+                               Text="{Binding ActiveZoneText}"
                                Foreground="{StaticResource WarningBrush}"
                                FontSize="12"
                                VerticalAlignment="Center"/>
@@ -573,7 +574,7 @@
                                Foreground="{StaticResource TextSoftBrush}"
                                FontSize="12"
                                VerticalAlignment="Center"
-                               Text="X: -  Y: -  P: -"/>
+                               Text="{Binding ValueText}"/>
                     <Border Width="1"
                             Background="{StaticResource PanelBorderBrush}"
                             Margin="12,0"
@@ -582,7 +583,7 @@
                                Foreground="{StaticResource SuccessBrush}"
                                FontSize="12"
                                VerticalAlignment="Center"
-                               Text="Pen: -"/>
+                               Text="{Binding PenButtonsText}"/>
                     <Border Width="1"
                             Background="{StaticResource PanelBorderBrush}"
                             Margin="12,0"
@@ -591,14 +592,15 @@
                                Foreground="{StaticResource InfoBrush}"
                                FontSize="12"
                                VerticalAlignment="Center"
-                               Text="Mod: none"/>
+                               Text="{Binding ModifiersText}"/>
                 </StackPanel>
 
                 <TextBlock Name="InputBackendText"
                            Grid.Column="3"
                            Foreground="{StaticResource AccentBrushHover}"
                            FontSize="12"
-                           VerticalAlignment="Center"/>
+                           VerticalAlignment="Center"
+                           Text="{Binding InputBackendText}"/>
             </Grid>
         </Border>
 
@@ -627,6 +629,7 @@
                                    Foreground="{StaticResource TextSoftBrush}"
                                    FontSize="11"
                                    Margin="0,4,0,10"
+                                   Text="{Binding RoutingText}"
                                    TextWrapping="Wrap"/>
 
                         <TextBlock Text="Layout"
@@ -868,12 +871,14 @@
                                    Foreground="{StaticResource SuccessBrush}"
                                    Margin="0,8,0,0"
                                    FontSize="11"
+                                   Text="{Binding SettingsResultText}"
                                    TextWrapping="Wrap"/>
 
                         <TextBlock Name="ConfigSummaryText"
                                    Foreground="{StaticResource TextFaintBrush}"
                                    Margin="0,4,0,0"
                                    FontSize="11"
+                                   Text="{Binding ConfigSummaryText}"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>

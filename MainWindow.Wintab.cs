@@ -231,7 +231,7 @@ public partial class MainWindow
 
                 CursorDot.Visibility = Visibility.Collapsed;
                 CursorDot.Opacity = 0.85;
-                ActiveZoneText.Text = "Active zone: none";
+                _viewModel.ActiveZoneText = "Active zone: none";
             }
 
             handled = true;
@@ -400,9 +400,9 @@ public partial class MainWindow
         _upperPenButtonHeld = false;
         _hasLockedPosition = false;
         CursorDot.Visibility = Visibility.Collapsed;
-        ActiveZoneText.Text = "Active zone: none";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
+        _viewModel.ActiveZoneText = "Active zone: none";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
         UpdateModifiersText();
         HandleRelease();
         Pad.ReleaseMouseCapture();
@@ -569,7 +569,7 @@ public partial class MainWindow
             Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
 
             var hoverZone = FindMatchingZone(xNorm, yNorm);
-            ActiveZoneText.Text = hoverZone is not null
+            _viewModel.ActiveZoneText = hoverZone is not null
                 ? $"Hovering: {hoverZone.Name}"
                 : "Hovering: outside zones";
             return;

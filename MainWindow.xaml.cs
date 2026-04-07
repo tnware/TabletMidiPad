@@ -240,7 +240,7 @@ public partial class MainWindow : Window, IMainWindowActions
         catch (Exception ex)
         {
             SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = ex.Message;
+            _viewModel.SettingsResultText = ex.Message;
             return;
         }
 
@@ -269,7 +269,7 @@ public partial class MainWindow : Window, IMainWindowActions
 
         SyncToolbar();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Preferences applied and saved.";
+        _viewModel.SettingsResultText = "Preferences applied and saved.";
     }
 
     private void MenuExit_Click(object sender, RoutedEventArgs e)
@@ -287,7 +287,7 @@ public partial class MainWindow : Window, IMainWindowActions
         CommitCurrentZoneEdits();
         RebindInputBackend();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Input backend reconnected.";
+        _viewModel.SettingsResultText = "Input backend reconnected.";
     }
 
     private async void MenuStartWacomService_Click(object sender, RoutedEventArgs e)
@@ -496,7 +496,7 @@ public partial class MainWindow : Window, IMainWindowActions
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zones re-tiled across the pad. Click Apply Settings to save.";
+        _viewModel.SettingsResultText = "Zones re-tiled across the pad. Click Apply Settings to save.";
     }
 
     private void AddZoneButton_Click(object sender, RoutedEventArgs e)
@@ -532,7 +532,7 @@ public partial class MainWindow : Window, IMainWindowActions
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
+        _viewModel.SettingsResultText = "Zone added. Click Apply Settings to save.";
     }
 
     private int GetNextAvailableCcStart()
@@ -583,7 +583,7 @@ public partial class MainWindow : Window, IMainWindowActions
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone removed. Click Apply Settings to save.";
+        _viewModel.SettingsResultText = "Zone removed. Click Apply Settings to save.";
     }
 
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
