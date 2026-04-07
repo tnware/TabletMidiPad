@@ -132,27 +132,27 @@
             <MenuItem Header="_File"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Save Settings"
-                          Click="MenuSaveSettings_Click"
+                          Command="{Binding SaveSettingsCommand}"
                           InputGestureText="Ctrl+S"/>
                 <MenuItem Header="_Reset to Defaults"
-                          Click="MenuResetDefaults_Click"/>
+                          Command="{Binding ResetDefaultsCommand}"/>
                 <Separator/>
                 <MenuItem Header="_Preferences..."
-                          Click="MenuPreferences_Click"/>
+                          Command="{Binding OpenPreferencesCommand}"/>
                 <Separator/>
                 <MenuItem Header="E_xit"
-                          Click="MenuExit_Click"/>
+                          Command="{Binding ExitCommand}"/>
             </MenuItem>
             <MenuItem Header="_Device"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Refresh Wacom Status"
                           Name="MenuRefreshWacom"
-                          Click="MenuRefreshWacom_Click"/>
+                          Command="{Binding RefreshWacomStatusCommand}"/>
                 <MenuItem Header="Reconnect _Pen Input"
-                          Click="MenuReconnectPen_Click"/>
+                          Command="{Binding ReconnectInputCommand}"/>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
-                          Click="MenuStartWacomService_Click"/>
+                          Command="{Binding StartWacomServiceCommand}"/>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
                           Header="Service: checking..."
@@ -161,7 +161,7 @@
             <MenuItem Header="_Help"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_About"
-                          Click="MenuAbout_Click"/>
+                          Command="{Binding ShowAboutCommand}"/>
             </MenuItem>
         </Menu>
 
@@ -245,14 +245,14 @@
                         DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Save"
-                        Click="MenuSaveSettings_Click"/>
+                        Command="{Binding SaveSettingsCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Add Zone"
-                        Click="AddZoneButton_Click"/>
+                        Command="{Binding AddZoneCommand}"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Auto Tile"
-                        Click="AutoLayoutButton_Click"/>
+                        Command="{Binding AutoLayoutCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <!-- Pressure split button: toggle + curve dropdown -->
                 <Border x:Name="PressureSplitBorder"
@@ -504,7 +504,7 @@
                           SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
-                        Click="MenuReconnectPen_Click"/>
+                        Command="{Binding ReconnectInputCommand}"/>
 
             </StackPanel>
 
@@ -673,21 +673,21 @@
                                     Grid.Column="0"
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Add zone"
-                                    Click="AddZoneButton_Click"
+                                    Command="{Binding AddZoneCommand}"
                                     Content="+"/>
 
                             <Button Name="RemoveZoneButton"
                                     Grid.Column="2"
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Remove selected zone"
-                                    Click="RemoveZoneButton_Click"
+                                    Command="{Binding RemoveZoneCommand}"
                                     Content="−"/>
 
                             <Button Name="AutoLayoutButton"
                                     Grid.Column="4"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     MinWidth="86"
-                                    Click="AutoLayoutButton_Click"
+                                    Command="{Binding AutoLayoutCommand}"
                                     Content="Auto Tile"/>
                         </Grid>
 
@@ -861,7 +861,7 @@
 
                         <Button Margin="0,14,0,0"
                                 Padding="10,7"
-                                Click="MenuSaveSettings_Click"
+                                Command="{Binding SaveSettingsCommand}"
                                 Content="Apply Settings"/>
 
                         <TextBlock Name="SettingsResultText"

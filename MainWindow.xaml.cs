@@ -15,7 +15,7 @@ using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IMainWindowActions
 {
     private readonly IMidiService _midiService;
     private readonly IInputMappingService _inputMappingService;
@@ -84,6 +84,7 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.AttachActions(this);
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
