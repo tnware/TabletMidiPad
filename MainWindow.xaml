@@ -818,7 +818,7 @@
                 </Border>
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
-                              Content="Free Switch"
+                              Content="Latch On Enter"
                               Click="ToolbarZoneSwitchToggle_Click"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"
@@ -1101,9 +1101,12 @@
                                 <CheckBox Name="ZoneSendPressureCheckBox"
                                           Margin="0,6,0,0"
                                           Content="Send pressure"/>
-                                <CheckBox Name="ZoneResetPressureCheckBox"
-                                          Margin="0,6,0,0"
-                                          Content="Reset pressure on release"/>
+                                <TextBlock Text="Release Behavior"
+                                           Foreground="#808080"
+                                           FontSize="11"
+                                           Margin="0,10,0,0"/>
+                                <ComboBox Name="ZoneReleaseBehaviorComboBox"
+                                          Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
 

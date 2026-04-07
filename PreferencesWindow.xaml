@@ -296,7 +296,7 @@
                           Content="Send pressure globally"/>
                 <CheckBox Name="AllowZoneSwitchCheckBox"
                           Margin="0,8,0,0"
-                          Content="Allow switching zones without releasing"/>
+                          Content="Latch onto zones when entering while pressed"/>
 
                 <TextBlock Name="ErrorText"
                            Foreground="#E07070"

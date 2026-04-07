@@ -91,6 +91,7 @@ public partial class MainWindow : Window
         SetLoadingProgress(18);
         SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
+        PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
@@ -116,6 +117,15 @@ public partial class MainWindow : Window
         {
             comboBox.Items.Add(channel);
         }
+    }
+
+    private static void PopulateReleaseBehaviorList(ComboBox comboBox)
+    {
+        comboBox.Items.Clear();
+        comboBox.Items.Add(ZoneReleaseBehaviors.NoSendOnRelease);
+        comboBox.Items.Add(ZoneReleaseBehaviors.Hold);
+        comboBox.Items.Add(ZoneReleaseBehaviors.ResetPressureOnly);
+        comboBox.Items.Add(ZoneReleaseBehaviors.ResetAll);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -424,7 +434,8 @@ public partial class MainWindow : Window
             SendY = true,
             InvertY = true,
             SendPressure = true,
-            ResetPressureOnRelease = true,
+            ReleaseBehavior = ZoneReleaseBehaviors.NoSendOnRelease,
+            ResetPressureOnRelease = false,
             Left = 0.0,
             Top = 0.0,
             Width = 0.5,
@@ -638,7 +649,8 @@ public partial class MainWindow : Window
             ZoneInvertXCheckBox.IsChecked = false;
             ZoneInvertYCheckBox.IsChecked = false;
             ZoneSendPressureCheckBox.IsChecked = false;
-            ZoneResetPressureCheckBox.IsChecked = false;
+            ZoneReleaseBehaviorComboBox.SelectedIndex = -1;
+            ZoneReleaseBehaviorComboBox.Text = string.Empty;
             _isLoadingUi = false;
             return;
         }
@@ -660,7 +672,8 @@ public partial class MainWindow : Window
         ZoneInvertXCheckBox.IsChecked = zone.InvertX;
         ZoneInvertYCheckBox.IsChecked = zone.InvertY;
         ZoneSendPressureCheckBox.IsChecked = zone.SendPressure;
-        ZoneResetPressureCheckBox.IsChecked = zone.ResetPressureOnRelease;
+        ZoneReleaseBehaviorComboBox.SelectedItem = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        ZoneReleaseBehaviorComboBox.Text = NormalizeReleaseBehavior(zone.ReleaseBehavior);
 
         _isLoadingUi = false;
     }
@@ -690,7 +703,8 @@ public partial class MainWindow : Window
         zone.InvertX = ZoneInvertXCheckBox.IsChecked == true;
         zone.InvertY = ZoneInvertYCheckBox.IsChecked == true;
         zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
-        zone.ResetPressureOnRelease = ZoneResetPressureCheckBox.IsChecked == true;
+        zone.ReleaseBehavior = NormalizeReleaseBehavior(ZoneReleaseBehaviorComboBox.Text);
+        zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
 
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
@@ -724,6 +738,8 @@ public partial class MainWindow : Window
             {
                 throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
             }
+
+            _ = NormalizeReleaseBehavior(zone.ReleaseBehavior);
         }
     }
 
@@ -820,7 +836,7 @@ public partial class MainWindow : Window
         RoutingText.Text = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
         UpdateInputBackendStatus();
         ActiveZoneText.Text = "Active zone: none";
-        string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
+        string switchMode = _config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
         ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
         ValueText.Text = "X: -, Y: -, Pressure: -";
         PenButtonsText.Text = "Pen buttons: -";
@@ -1297,7 +1313,28 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_config.SendPressureGlobally && zone.SendPressure && zone.ResetPressureOnRelease)
+        string behavior = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+
+        if (string.Equals(behavior, ZoneReleaseBehaviors.Hold, StringComparison.Ordinal) ||
+            string.Equals(behavior, ZoneReleaseBehaviors.NoSendOnRelease, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (string.Equals(behavior, ZoneReleaseBehaviors.ResetAll, StringComparison.Ordinal))
+        {
+            if (zone.SendX)
+            {
+                SendCcIfChanged(zone.MidiChannel, zone.CcX, 0, force: true);
+            }
+
+            if (zone.SendY)
+            {
+                SendCcIfChanged(zone.MidiChannel, zone.CcY, 0, force: true);
+            }
+        }
+
+        if (_config.SendPressureGlobally && zone.SendPressure)
         {
             SendCcIfChanged(zone.MidiChannel, zone.CcPressure, 0, force: true);
         }
@@ -1444,8 +1481,10 @@ public partial class MainWindow : Window
 
             if (_lastZonePoints.TryGetValue(zone, out Point lastPoint))
             {
-                double markerCenterX = rectLeft + (lastPoint.X * rectWidth);
-                double markerCenterY = rectTop + (lastPoint.Y * rectHeight);
+                double markerX = zone.SendX ? lastPoint.X : 0.5;
+                double markerY = zone.SendY ? lastPoint.Y : 0.5;
+                double markerCenterX = rectLeft + (markerX * rectWidth);
+                double markerCenterY = rectTop + (markerY * rectHeight);
 
                 var markerRing = new Ellipse
                 {
@@ -2192,6 +2231,19 @@ public partial class MainWindow : Window
             "Wintab Only" => value,
             "Stylus/Mouse Only" => value,
             _ => "Auto"
+        };
+    }
+
+    private static string NormalizeReleaseBehavior(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
+            ZoneReleaseBehaviors.Hold => value,
+            ZoneReleaseBehaviors.ResetAll => value,
+            ZoneReleaseBehaviors.NoSendOnRelease => value,
+            _ => ZoneReleaseBehaviors.ResetPressureOnly
         };
     }
 

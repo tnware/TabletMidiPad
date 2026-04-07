@@ -50,6 +50,16 @@ public sealed class AppConfig
                 config.Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() };
             }
 
+            foreach (var zone in config.Zones)
+            {
+                if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
+                {
+                    zone.ReleaseBehavior = zone.ResetPressureOnRelease
+                        ? ZoneReleaseBehaviors.ResetPressureOnly
+                        : ZoneReleaseBehaviors.NoSendOnRelease;
+                }
+            }
+
             return config;
         }
         catch
@@ -70,6 +80,14 @@ public sealed class AppConfig
     }
 }
 
+public static class ZoneReleaseBehaviors
+{
+    public const string Hold = "Hold";
+    public const string ResetPressureOnly = "Reset Pressure Only";
+    public const string ResetAll = "Reset All";
+    public const string NoSendOnRelease = "No Send On Release";
+}
+
 public sealed class ZoneConfig
 {
     public string Name { get; set; } = "Zone 1";
@@ -83,6 +101,7 @@ public sealed class ZoneConfig
     public bool InvertX { get; set; }
     public bool InvertY { get; set; } = true;
     public bool SendPressure { get; set; } = true;
+    public string ReleaseBehavior { get; set; } = ZoneReleaseBehaviors.NoSendOnRelease;
     public bool ResetPressureOnRelease { get; set; } = true;
 
     public double Left { get; set; }
