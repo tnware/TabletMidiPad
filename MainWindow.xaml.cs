@@ -25,6 +25,7 @@ public partial class MainWindow : Window
 
     private IntPtr _midiOutHandle;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
+    private readonly Dictionary<ZoneConfig, Point> _smoothedZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
@@ -71,6 +72,7 @@ public partial class MainWindow : Window
         SetLoadingProgress(18);
         SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
+        PopulatePressureCurveList();
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
@@ -96,6 +98,14 @@ public partial class MainWindow : Window
         {
             comboBox.Items.Add(channel);
         }
+    }
+
+    private void PopulatePressureCurveList()
+    {
+        PressureCurveComboBox.Items.Clear();
+        PressureCurveComboBox.Items.Add("Linear");
+        PressureCurveComboBox.Items.Add("Logarithmic");
+        PressureCurveComboBox.Items.Add("Exponential");
     }
 
     private void ApplyButton_Click(object sender, RoutedEventArgs e)
@@ -304,6 +314,10 @@ public partial class MainWindow : Window
         DawPortNameTextBox.Text = config.DawPortName;
         AssociationIdTextBox.Text = config.LoopbackAssociationId;
         MousePressureTextBox.Text = config.MousePressureValue.ToString();
+        DeadZoneTextBox.Text = config.PositionDeadZone.ToString("0.###");
+        SmoothingTextBox.Text = config.PositionSmoothing.ToString("0.##");
+        PressureCurveComboBox.SelectedItem = config.PressureCurve;
+        PressureCurveComboBox.Text = config.PressureCurve;
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
@@ -378,6 +392,9 @@ public partial class MainWindow : Window
         _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
         _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
         _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
+        _config.PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
+        _config.PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
+        _config.PressureCurve = ReadPressureCurve(PressureCurveComboBox.Text);
         _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
         _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
 
@@ -652,6 +669,7 @@ public partial class MainWindow : Window
         }
 
         var local = NormalizeWithinZone(zone, xNorm, yNorm);
+        local = ApplyPositionConditioning(zone, local.x, local.y);
         if (_positionLockActive)
         {
             if (!_hasLockedPosition)
@@ -670,11 +688,12 @@ public partial class MainWindow : Window
         DrawZoneOverlay();
         int x = ToCc(local.x, zone.InvertX);
         int y = ToCc(local.y, zone.InvertY);
+        int curvedPressure = ApplyPressureCurve(pressure);
 
         ActiveZoneText.Text = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
         ValueText.Text = sendPressure
-            ? $"{zone.Name} -> X: {x}, Y: {y}, Pressure: {pressure}"
+            ? $"{zone.Name} -> X: {x}, Y: {y}, Pressure: {curvedPressure}"
             : $"{zone.Name} -> X: {x}, Y: {y}, Pressure: off";
 
         SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
@@ -682,7 +701,7 @@ public partial class MainWindow : Window
 
         if (sendPressure)
         {
-            SendCcIfChanged(zone.MidiChannel, zone.CcPressure, pressure);
+            SendCcIfChanged(zone.MidiChannel, zone.CcPressure, curvedPressure);
         }
     }
 
@@ -1408,6 +1427,54 @@ public partial class MainWindow : Window
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
     {
         return e.StylusDevice is not null;
+    }
+
+    private (double x, double y) ApplyPositionConditioning(ZoneConfig zone, double x, double y)
+    {
+        if (!_smoothedZonePoints.TryGetValue(zone, out Point lastPoint))
+        {
+            var initial = new Point(x, y);
+            _smoothedZonePoints[zone] = initial;
+            return (initial.X, initial.Y);
+        }
+
+        double deadZone = Math.Clamp(_config.PositionDeadZone, 0.0, 0.1);
+        double smoothing = Math.Clamp(_config.PositionSmoothing, 0.0, 0.95);
+        double alpha = 1.0 - smoothing;
+
+        double targetX = Math.Abs(x - lastPoint.X) < deadZone ? lastPoint.X : x;
+        double targetY = Math.Abs(y - lastPoint.Y) < deadZone ? lastPoint.Y : y;
+
+        double filteredX = lastPoint.X + ((targetX - lastPoint.X) * alpha);
+        double filteredY = lastPoint.Y + ((targetY - lastPoint.Y) * alpha);
+        var filtered = new Point(Math.Clamp(filteredX, 0.0, 1.0), Math.Clamp(filteredY, 0.0, 1.0));
+        _smoothedZonePoints[zone] = filtered;
+        return (filtered.X, filtered.Y);
+    }
+
+    private int ApplyPressureCurve(int pressure)
+    {
+        double normalized = Math.Clamp(pressure / 127.0, 0.0, 1.0);
+        double curved = _config.PressureCurve switch
+        {
+            "Logarithmic" => Math.Sqrt(normalized),
+            "Exponential" => Math.Pow(normalized, 2.0),
+            _ => normalized
+        };
+
+        return Math.Clamp((int)Math.Round(curved * 127.0), 0, 127);
+    }
+
+    private static string ReadPressureCurve(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            "Linear" => value,
+            "Logarithmic" => value,
+            "Exponential" => value,
+            _ => throw new InvalidOperationException("Pressure Curve must be Linear, Logarithmic, or Exponential.")
+        };
     }
 
     private void MarkInputBackend(string backend)

@@ -365,6 +365,32 @@
                     <TextBox Name="MousePressureTextBox"
                              Margin="0,6,0,0"/>
 
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Position Dead Zone"
+                                       Foreground="#bcbcbc"/>
+                            <TextBox Name="DeadZoneTextBox"
+                                     Margin="0,6,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="XY Smoothing"
+                                       Foreground="#bcbcbc"/>
+                            <TextBox Name="SmoothingTextBox"
+                                     Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Pressure Curve"
+                               Foreground="#bcbcbc"
+                               Margin="0,12,0,0"/>
+                    <ComboBox Name="PressureCurveComboBox"
+                              Margin="0,6,0,0"/>
+
                     <CheckBox Name="SendPressureGloballyCheckBox"
                               Margin="0,12,0,0"
                               Content="Send pressure globally"/>

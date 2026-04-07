@@ -11,6 +11,9 @@ public sealed class AppConfig
     public string DawPortName { get; set; } = "Tablet XY (DAW)";
     public string LoopbackAssociationId { get; set; } = "{7d6e1f6b-6b0d-4d6c-a1f3-44ddefb7df4d}";
     public int MousePressureValue { get; set; } = 127;
+    public double PositionDeadZone { get; set; } = 0.003;
+    public double PositionSmoothing { get; set; } = 0.35;
+    public string PressureCurve { get; set; } = "Linear";
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
     public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };
