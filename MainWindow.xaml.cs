@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.ServiceProcess;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,8 +17,9 @@ namespace TabletMidiPad;
 
 public partial class MainWindow : Window
 {
-    private const string WacomServiceName = "WTabletServicePro";
     private readonly IMidiService _midiService;
+    private readonly IInputMappingService _inputMappingService;
+    private readonly IWacomService _wacomService;
     private readonly MainViewModel _viewModel;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private readonly Dictionary<ZoneConfig, Point> _smoothedZonePoints = new();
@@ -74,9 +72,15 @@ public partial class MainWindow : Window
         Bottom = 8
     }
 
-    public MainWindow(IMidiService midiService, MainViewModel viewModel)
+    public MainWindow(
+        IMidiService midiService,
+        IInputMappingService inputMappingService,
+        IWacomService wacomService,
+        MainViewModel viewModel)
     {
         _midiService = midiService;
+        _inputMappingService = inputMappingService;
+        _wacomService = wacomService;
         _viewModel = viewModel;
         InitializeComponent();
         DataContext = _viewModel;
@@ -294,7 +298,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await Task.Run(StartWacomService);
+            await Task.Run(_wacomService.Start);
             started = true;
         }
         catch (Win32Exception ex)
@@ -322,8 +326,8 @@ public partial class MainWindow : Window
 
                 try
                 {
-                    using var service = new ServiceController(WacomServiceName);
-                    MenuStartWacomService.IsEnabled = service.Status != ServiceControllerStatus.Running;
+                    (_, bool canStart) = _wacomService.GetStatus();
+                    MenuStartWacomService.IsEnabled = canStart;
                 }
                 catch
                 {
@@ -403,7 +407,7 @@ public partial class MainWindow : Window
 
     private void ToolbarInputBackendCycle_Click(object sender, RoutedEventArgs e)
     {
-        string next = NormalizeInputBackendMode(_config.InputBackendMode) switch
+        string next = _inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
             "Wintab Only" => "Mouse",
             "Stylus/Mouse Only" => "Auto",
@@ -461,7 +465,7 @@ public partial class MainWindow : Window
 
     private void SetInputBackendMode(string mode)
     {
-        string normalized = NormalizeInputBackendMode(mode);
+        string normalized = _inputMappingService.NormalizeInputBackendMode(mode);
         if (string.Equals(_config.InputBackendMode, normalized, StringComparison.Ordinal))
         {
             SyncToolbar();
@@ -667,7 +671,7 @@ public partial class MainWindow : Window
             }
         }
 
-        string backendLabel = NormalizeInputBackendMode(_config.InputBackendMode) switch
+        string backendLabel = _inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
             "Wintab Only" => "Input (Wintab)",
             "Stylus/Mouse Only" => "Input (Mouse)",
@@ -684,7 +688,7 @@ public partial class MainWindow : Window
                 {
                     "Wintab" => string.Equals(_config.InputBackendMode, "Wintab Only", StringComparison.Ordinal),
                     "Mouse" => string.Equals(_config.InputBackendMode, "Stylus/Mouse Only", StringComparison.Ordinal),
-                    _ => string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Auto", StringComparison.Ordinal)
+                    _ => string.Equals(_inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode), "Auto", StringComparison.Ordinal)
                 };
 
                 mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
@@ -752,8 +756,8 @@ public partial class MainWindow : Window
         ZoneInvertXCheckBox.IsChecked = zone.InvertX;
         ZoneInvertYCheckBox.IsChecked = zone.InvertY;
         ZoneSendPressureCheckBox.IsChecked = zone.SendPressure;
-        ZoneReleaseBehaviorComboBox.SelectedItem = NormalizeReleaseBehavior(zone.ReleaseBehavior);
-        ZoneReleaseBehaviorComboBox.Text = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        ZoneReleaseBehaviorComboBox.SelectedItem = _inputMappingService.NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        ZoneReleaseBehaviorComboBox.Text = _inputMappingService.NormalizeReleaseBehavior(zone.ReleaseBehavior);
 
         _isLoadingUi = false;
     }
@@ -783,7 +787,7 @@ public partial class MainWindow : Window
         zone.InvertX = ZoneInvertXCheckBox.IsChecked == true;
         zone.InvertY = ZoneInvertYCheckBox.IsChecked == true;
         zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
-        zone.ReleaseBehavior = NormalizeReleaseBehavior(ZoneReleaseBehaviorComboBox.Text);
+        zone.ReleaseBehavior = _inputMappingService.NormalizeReleaseBehavior(ZoneReleaseBehaviorComboBox.Text);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
         SetZoneSelectionSummary(zone);
 
@@ -805,7 +809,7 @@ public partial class MainWindow : Window
             $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
         ZoneSelectionSummarySecondaryText.Text =
             $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
-            $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
+            $"Release {_inputMappingService.NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
 
     private void InitMidi()
@@ -1097,30 +1101,30 @@ public partial class MainWindow : Window
 
         if ((_resizeEdge & ResizeEdge.Left) != 0)
         {
-            newLeft = Snap(Math.Clamp(_resizeOrigLeft + dxNorm, 0.0, _resizeOrigLeft + _resizeOrigWidth - minSize), snap);
+            newLeft = _inputMappingService.Snap(Math.Clamp(_resizeOrigLeft + dxNorm, 0.0, _resizeOrigLeft + _resizeOrigWidth - minSize), snap);
             newWidth = (_resizeOrigLeft + _resizeOrigWidth) - newLeft;
         }
         else if ((_resizeEdge & ResizeEdge.Right) != 0)
         {
-            double newRight = Snap(Math.Clamp(_resizeOrigLeft + _resizeOrigWidth + dxNorm, _resizeOrigLeft + minSize, 1.0), snap);
+            double newRight = _inputMappingService.Snap(Math.Clamp(_resizeOrigLeft + _resizeOrigWidth + dxNorm, _resizeOrigLeft + minSize, 1.0), snap);
             newWidth = newRight - _resizeOrigLeft;
         }
 
         if ((_resizeEdge & ResizeEdge.Top) != 0)
         {
-            newTop = Snap(Math.Clamp(_resizeOrigTop + dyNorm, 0.0, _resizeOrigTop + _resizeOrigHeight - minSize), snap);
+            newTop = _inputMappingService.Snap(Math.Clamp(_resizeOrigTop + dyNorm, 0.0, _resizeOrigTop + _resizeOrigHeight - minSize), snap);
             newHeight = (_resizeOrigTop + _resizeOrigHeight) - newTop;
         }
         else if ((_resizeEdge & ResizeEdge.Bottom) != 0)
         {
-            double newBottom = Snap(Math.Clamp(_resizeOrigTop + _resizeOrigHeight + dyNorm, _resizeOrigTop + minSize, 1.0), snap);
+            double newBottom = _inputMappingService.Snap(Math.Clamp(_resizeOrigTop + _resizeOrigHeight + dyNorm, _resizeOrigTop + minSize, 1.0), snap);
             newHeight = newBottom - _resizeOrigTop;
         }
 
         newLeft = Math.Clamp(newLeft, 0.0, 1.0);
         newTop = Math.Clamp(newTop, 0.0, 1.0);
-        newWidth = Snap(Math.Clamp(newWidth, minSize, 1.0 - newLeft), snap);
-        newHeight = Snap(Math.Clamp(newHeight, minSize, 1.0 - newTop), snap);
+        newWidth = _inputMappingService.Snap(Math.Clamp(newWidth, minSize, 1.0 - newLeft), snap);
+        newHeight = _inputMappingService.Snap(Math.Clamp(newHeight, minSize, 1.0 - newTop), snap);
 
         if (newLeft + newWidth > 1.0)
         {
@@ -1268,8 +1272,8 @@ public partial class MainWindow : Window
 
         var local = NormalizeWithinZone(zone, xNorm, yNorm);
         local = ApplyPositionConditioning(zone, local.x, local.y);
-        string lowerAction = NormalizePenButtonAction(_config.LowerPenButtonAction);
-        string upperAction = NormalizePenButtonAction(_config.UpperPenButtonAction);
+        string lowerAction = _inputMappingService.NormalizePenButtonAction(_config.LowerPenButtonAction);
+        string upperAction = _inputMappingService.NormalizePenButtonAction(_config.UpperPenButtonAction);
         bool lockXY =
             (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockXY, StringComparison.Ordinal)) ||
             (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockXY, StringComparison.Ordinal));
@@ -1299,9 +1303,9 @@ public partial class MainWindow : Window
         }
         _lastZonePoints[zone] = new Point(local.x, local.y);
         DrawZoneOverlay();
-        int x = ToCc(local.x, zone.InvertX);
-        int y = ToCc(local.y, zone.InvertY);
-        int curvedPressure = ApplyPressureCurve(pressure);
+        int x = _inputMappingService.ToCc(local.x, zone.InvertX);
+        int y = _inputMappingService.ToCc(local.y, zone.InvertY);
+        int curvedPressure = _inputMappingService.ApplyPressureCurve(pressure, _config.PressureCurve);
 
         ActiveZoneText.Text = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
@@ -1361,7 +1365,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        string behavior = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        string behavior = _inputMappingService.NormalizeReleaseBehavior(zone.ReleaseBehavior);
 
         if (string.Equals(behavior, ZoneReleaseBehaviors.Hold, StringComparison.Ordinal) ||
             string.Equals(behavior, ZoneReleaseBehaviors.NoSendOnRelease, StringComparison.Ordinal))
@@ -1605,17 +1609,6 @@ public partial class MainWindow : Window
         _midiService.SendNoteIfChanged(channel, note, on, velocity, force);
     }
 
-    private static int ToCc(double normalized, bool invert)
-    {
-        normalized = Math.Clamp(normalized, 0.0, 1.0);
-        if (invert)
-        {
-            normalized = 1.0 - normalized;
-        }
-
-        return (int)Math.Round(normalized * 127.0);
-    }
-
     private static int ReadInt(string? text, int min, int max, string fieldName)
     {
         if (!int.TryParse(text, out int value))
@@ -1670,7 +1663,7 @@ public partial class MainWindow : Window
 
     private void InitializeWintab()
     {
-        string backendMode = NormalizeInputBackendMode(_config.InputBackendMode);
+        string backendMode = _inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode);
         if (string.Equals(backendMode, "Stylus/Mouse Only", StringComparison.Ordinal))
         {
             ShutdownWintab();
@@ -2038,7 +2031,7 @@ public partial class MainWindow : Window
         _useWintab = openedContexts > 0;
         _lastInputBackend = _useWintab
             ? "Wintab"
-            : string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
+            : string.Equals(_inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
                 ? "Wintab unavailable"
                 : "Stylus/Mouse Fallback";
         UpdateInputBackendStatus();
@@ -2142,7 +2135,7 @@ public partial class MainWindow : Window
 
         ExpressKeyConfig.EnsureCount(_config.ExpressKeys, control + 1);
         var keyConfig = _config.ExpressKeys[control];
-        string action = NormalizePenButtonAction(keyConfig.Action);
+        string action = _inputMappingService.NormalizePenButtonAction(keyConfig.Action);
         int channel = keyConfig.MidiChannel;
         int cc = Math.Clamp(keyConfig.Cc, 0, 127);
         int note = Math.Clamp(keyConfig.Note, 0, 127);
@@ -2258,7 +2251,7 @@ public partial class MainWindow : Window
 
     private bool AllowsStylusMouseFallback()
     {
-        return !string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
+        return !string.Equals(_inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
     }
 
     private (double x, double y) ApplyPositionConditioning(ZoneConfig zone, double x, double y)
@@ -2284,69 +2277,6 @@ public partial class MainWindow : Window
         return (filtered.X, filtered.Y);
     }
 
-    private int ApplyPressureCurve(int pressure)
-    {
-        double normalized = Math.Clamp(pressure / 127.0, 0.0, 1.0);
-        double curved = _config.PressureCurve switch
-        {
-            "Logarithmic" => Math.Sqrt(normalized),
-            "Exponential" => Math.Pow(normalized, 2.0),
-            _ => normalized
-        };
-
-        return Math.Clamp((int)Math.Round(curved * 127.0), 0, 127);
-    }
-
-    private static double Snap(double value, double increment)
-    {
-        return Math.Round(value / increment) * increment;
-    }
-
-    private static string NormalizeInputBackendMode(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Wintab" => "Wintab Only",
-            "Mouse" => "Stylus/Mouse Only",
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => "Auto"
-        };
-    }
-
-    private static string NormalizeReleaseBehavior(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
-            ZoneReleaseBehaviors.Hold => value,
-            ZoneReleaseBehaviors.ResetAll => value,
-            ZoneReleaseBehaviors.NoSendOnRelease => value,
-            _ => ZoneReleaseBehaviors.ResetPressureOnly
-        };
-    }
-
-    private static string NormalizePenButtonAction(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            PenButtonActions.None => value,
-            PenButtonActions.LockXY => value,
-            PenButtonActions.LockX => value,
-            PenButtonActions.LockY => value,
-            PenButtonActions.DisablePressure => value,
-            PenButtonActions.EnablePressure => value,
-            PenButtonActions.CcMomentary => value,
-            PenButtonActions.CcToggle => value,
-            PenButtonActions.NoteMomentary => value,
-            PenButtonActions.NoteToggle => value,
-            _ => PenButtonActions.None
-        };
-    }
-
     private void MarkInputBackend(string backend)
     {
         _lastInputBackend = backend;
@@ -2365,39 +2295,9 @@ public partial class MainWindow : Window
 
     private void RefreshWacomServiceStatus()
     {
-        try
-        {
-            using var service = new ServiceController(WacomServiceName);
-            string displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? WacomServiceName : service.DisplayName;
-            bool running = service.Status == ServiceControllerStatus.Running;
-            MenuWacomServiceStatus.Header = running
-                ? $"Service: {displayName} running"
-                : $"Service: {displayName} {service.Status}";
-            MenuStartWacomService.IsEnabled = !running;
-        }
-        catch (InvalidOperationException)
-        {
-            MenuWacomServiceStatus.Header = "Service: not found";
-            MenuStartWacomService.IsEnabled = false;
-        }
-        catch (Exception ex)
-        {
-            MenuWacomServiceStatus.Header = $"Service: {ex.Message}";
-            MenuStartWacomService.IsEnabled = false;
-        }
-    }
-
-    private static void StartWacomService()
-    {
-        using var service = new ServiceController(WacomServiceName);
-
-        if (service.Status == ServiceControllerStatus.Running)
-        {
-            return;
-        }
-
-        service.Start();
-        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+        (string header, bool canStart) = _wacomService.GetStatus();
+        MenuWacomServiceStatus.Header = header;
+        MenuStartWacomService.IsEnabled = canStart;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)
@@ -2422,7 +2322,7 @@ public partial class MainWindow : Window
             isHeld: (buttons & 0x0002) != 0,
             ref _lowerPenButtonHeld,
             ref _lowerPenButtonToggleState,
-            NormalizePenButtonAction(_config.LowerPenButtonAction),
+            _inputMappingService.NormalizePenButtonAction(_config.LowerPenButtonAction),
             _config.LowerPenButtonMidiChannel,
             _config.LowerPenButtonCc,
             _config.LowerPenButtonNote);
@@ -2431,7 +2331,7 @@ public partial class MainWindow : Window
             isHeld: (buttons & 0x0004) != 0,
             ref _upperPenButtonHeld,
             ref _upperPenButtonToggleState,
-            NormalizePenButtonAction(_config.UpperPenButtonAction),
+            _inputMappingService.NormalizePenButtonAction(_config.UpperPenButtonAction),
             _config.UpperPenButtonMidiChannel,
             _config.UpperPenButtonCc,
             _config.UpperPenButtonNote);
@@ -2507,8 +2407,8 @@ public partial class MainWindow : Window
     {
         var parts = new List<string>();
 
-        AppendPenButtonModifier(parts, "lower", NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
-        AppendPenButtonModifier(parts, "upper", NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
+        AppendPenButtonModifier(parts, "lower", _inputMappingService.NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
+        AppendPenButtonModifier(parts, "upper", _inputMappingService.NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
 
         ModifiersText.Text = parts.Count > 0
             ? $"Modifiers: {string.Join(" | ", parts)}"

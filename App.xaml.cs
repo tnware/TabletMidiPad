@@ -37,6 +37,8 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMidiService, MidiService>();
+        services.AddSingleton<IInputMappingService, InputMappingService>();
+        services.AddSingleton<IWacomService, WacomService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
