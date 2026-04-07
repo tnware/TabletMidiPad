@@ -66,7 +66,7 @@ public partial class MainWindow
             "Exponential" => "Exp",
             _ => "Lin"
         };
-        ToolbarPressureLabel.Text = $"Pressure ({curveShort})";
+        _viewModel.ToolbarPressureLabelText = $"Pressure ({curveShort})";
 
         foreach (var item in PressureCurveMenu.Items)
         {
@@ -84,7 +84,7 @@ public partial class MainWindow
             _ => "Input (Auto)"
         };
 
-        ToolbarInputBackendLabel.Text = backendLabel;
+        _viewModel.ToolbarInputBackendLabelText = backendLabel;
 
         foreach (var item in InputBackendMenu.Items)
         {

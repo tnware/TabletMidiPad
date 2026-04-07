@@ -24,6 +24,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private Brush _settingsResultBrush = Brushes.DarkSeaGreen;
     private string _wacomServiceStatusText = "Service: checking...";
     private bool _canStartWacomService;
+    private string _toolbarPressureLabelText = "Pressure (Lin)";
+    private string _toolbarInputBackendLabelText = "Input (Auto)";
 
     public AppConfig Config
     {
@@ -146,6 +148,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _canStartWacomService = value;
             OnPropertyChanged();
         }
+    }
+
+    public string ToolbarPressureLabelText
+    {
+        get => _toolbarPressureLabelText;
+        set => SetField(ref _toolbarPressureLabelText, value);
+    }
+
+    public string ToolbarInputBackendLabelText
+    {
+        get => _toolbarInputBackendLabelText;
+        set => SetField(ref _toolbarInputBackendLabelText, value);
     }
 
     public MainViewModel(ISettingsService settingsService)

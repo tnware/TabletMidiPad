@@ -296,7 +296,7 @@
                                 </Style>
                             </ToggleButton.Style>
                             <TextBlock Name="ToolbarPressureLabel"
-                                       Text="Pressure"
+                                       Text="{Binding ToolbarPressureLabelText}"
                                        FontSize="11"/>
                         </ToggleButton>
                         <Border Width="1"
@@ -414,7 +414,7 @@
                                 Padding="8,4"
                                 Click="ToolbarInputBackendCycle_Click">
                             <TextBlock Name="ToolbarInputBackendLabel"
-                                       Text="Input (Auto)"
+                                       Text="{Binding ToolbarInputBackendLabelText}"
                                        FontSize="11"/>
                         </Button>
                         <Border Width="1"
