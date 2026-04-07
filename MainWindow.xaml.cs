@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, int> _lastSentValues = new();
 
     private IntPtr _midiOutHandle;
+    private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
@@ -37,6 +38,11 @@ public partial class MainWindow : Window
     private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
     private string _wintabDiagnostics = "Wintab not initialized yet";
+    private uint _lastWintabButtons;
+    private bool _precisionModeActive;
+    private double _precisionAnchorX;
+    private double _precisionAnchorY;
+    private bool _hasPrecisionAnchor;
 
     public MainWindow()
     {
@@ -271,6 +277,7 @@ public partial class MainWindow : Window
         DawPortNameTextBox.Text = config.DawPortName;
         AssociationIdTextBox.Text = config.LoopbackAssociationId;
         MousePressureTextBox.Text = config.MousePressureValue.ToString();
+        PrecisionScaleTextBox.Text = config.PrecisionModeScale.ToString("0.##");
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
@@ -345,6 +352,7 @@ public partial class MainWindow : Window
         _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
         _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
         _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
+        _config.PrecisionModeScale = ReadDouble(PrecisionScaleTextBox.Text, 0.01, 1.0, "Precision Scale");
         _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
         _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
 
@@ -484,6 +492,8 @@ public partial class MainWindow : Window
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
         ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | {switchMode}";
         ValueText.Text = "X: -, Y: -, Pressure: -";
+        PenButtonsText.Text = "Pen buttons: -";
+        ModifiersText.Text = "Modifiers: none";
     }
 
     private void ShutdownMidi()
@@ -560,6 +570,7 @@ public partial class MainWindow : Window
     private void HandleStylus(StylusEventArgs e)
     {
         MarkInputBackend("Stylus");
+        PenButtonsText.Text = "Pen buttons: stylus fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -585,6 +596,7 @@ public partial class MainWindow : Window
     private void HandleMouse(MouseEventArgs e)
     {
         MarkInputBackend("Mouse");
+        PenButtonsText.Text = "Pen buttons: mouse fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -615,6 +627,9 @@ public partial class MainWindow : Window
         }
 
         var local = NormalizeWithinZone(zone, xNorm, yNorm);
+        local = ApplyPrecisionMode(local.x, local.y);
+        _lastZonePoints[zone] = new Point(local.x, local.y);
+        DrawZoneOverlay();
         int x = ToCc(local.x, zone.InvertX);
         int y = ToCc(local.y, zone.InvertY);
 
@@ -638,6 +653,8 @@ public partial class MainWindow : Window
         SendZoneRelease(_activeZone);
         _activeZone = null;
         ActiveZoneText.Text = "Active zone: none";
+        _hasPrecisionAnchor = false;
+        UpdateModifiersText();
     }
 
     private void SendZoneRelease(ZoneConfig? zone)
@@ -755,6 +772,38 @@ public partial class MainWindow : Window
 
             ZoneOverlayCanvas.Children.Add(rect);
             ZoneOverlayCanvas.Children.Add(label);
+
+            if (_lastZonePoints.TryGetValue(zone, out Point lastPoint))
+            {
+                double markerCenterX = rectLeft + (lastPoint.X * rectWidth);
+                double markerCenterY = rectTop + (lastPoint.Y * rectHeight);
+
+                var markerRing = new Ellipse
+                {
+                    Width = 18,
+                    Height = 18,
+                    Stroke = new SolidColorBrush(Color.FromArgb(220, 255, 244, 180)),
+                    StrokeThickness = 2,
+                    Fill = Brushes.Transparent
+                };
+
+                var markerDot = new Ellipse
+                {
+                    Width = 8,
+                    Height = 8,
+                    Fill = new SolidColorBrush(Color.FromArgb(235, 255, 214, 118)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(180, 45, 35, 20)),
+                    StrokeThickness = 1
+                };
+
+                Canvas.SetLeft(markerRing, markerCenterX - (markerRing.Width / 2));
+                Canvas.SetTop(markerRing, markerCenterY - (markerRing.Height / 2));
+                Canvas.SetLeft(markerDot, markerCenterX - (markerDot.Width / 2));
+                Canvas.SetTop(markerDot, markerCenterY - (markerDot.Height / 2));
+
+                ZoneOverlayCanvas.Children.Add(markerRing);
+                ZoneOverlayCanvas.Children.Add(markerDot);
+            }
         }
     }
 
@@ -1279,10 +1328,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
-
         double xNorm = NormalizeWintabCoordinate(packet.X, context.OutputMinX, context.OutputMaxX);
         double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
+        MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
+        UpdatePenButtonsDebug(packet.Buttons);
+        UpdatePrecisionMode(packet.Buttons, xNorm, yNorm);
         double xPx = xNorm * width;
         double yPx = yNorm * height;
         int pressure = context.PressureMax > 0
@@ -1334,6 +1384,79 @@ public partial class MainWindow : Window
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
         InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
+    }
+
+    private void UpdatePenButtonsDebug(uint buttons)
+    {
+        _lastWintabButtons = buttons;
+        uint buttonMask = buttons & 0xFFFF;
+        uint transition = (buttons >> 16) & 0xFFFF;
+
+        string transitionText = transition switch
+        {
+            1 => "up",
+            2 => "down",
+            _ => "none"
+        };
+
+        PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
+    }
+
+    private void UpdatePrecisionMode(uint buttons, double xNorm, double yNorm)
+    {
+        bool precisionActive = (buttons & 0x0004) != 0;
+        if (precisionActive && !_precisionModeActive)
+        {
+            _precisionAnchorX = xNorm;
+            _precisionAnchorY = yNorm;
+            _hasPrecisionAnchor = true;
+        }
+        else if (!precisionActive && _precisionModeActive)
+        {
+            _hasPrecisionAnchor = false;
+        }
+
+        _precisionModeActive = precisionActive;
+        UpdateModifiersText();
+    }
+
+    private (double x, double y) ApplyPrecisionMode(double x, double y)
+    {
+        if (!_precisionModeActive || !_hasPrecisionAnchor)
+        {
+            return (x, y);
+        }
+
+        double scale = Math.Clamp(_config.PrecisionModeScale, 0.01, 1.0);
+        double adjustedX = _precisionAnchorX + ((x - _precisionAnchorX) * scale);
+        double adjustedY = _precisionAnchorY + ((y - _precisionAnchorY) * scale);
+        return (Math.Clamp(adjustedX, 0.0, 1.0), Math.Clamp(adjustedY, 0.0, 1.0));
+    }
+
+    private void UpdateModifiersText()
+    {
+        ModifiersText.Text = _precisionModeActive
+            ? $"Modifiers: precision x{_config.PrecisionModeScale:0.##}"
+            : "Modifiers: none";
+    }
+
+    private static string FormatPressedButtons(uint buttonMask)
+    {
+        if (buttonMask == 0)
+        {
+            return "none";
+        }
+
+        var pressed = new List<string>();
+        for (int bit = 0; bit < 16; bit++)
+        {
+            if ((buttonMask & (1u << bit)) != 0)
+            {
+                pressed.Add((bit + 1).ToString());
+            }
+        }
+
+        return string.Join(",", pressed);
     }
 
     private void SetLoadingState(string title, string detail)

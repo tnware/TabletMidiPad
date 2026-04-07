@@ -365,6 +365,12 @@
                     <TextBox Name="MousePressureTextBox"
                              Margin="0,6,0,0"/>
 
+                    <TextBlock Text="Precision Scale"
+                               Foreground="#bcbcbc"
+                               Margin="0,12,0,0"/>
+                    <TextBox Name="PrecisionScaleTextBox"
+                             Margin="0,6,0,0"/>
+
                     <CheckBox Name="SendPressureGloballyCheckBox"
                               Margin="0,12,0,0"
                               Content="Send pressure globally"/>
@@ -594,6 +600,16 @@
                                    Margin="0,8,0,0"
                                    FontSize="14"
                                    Text="X: -, Y: -, Pressure: -"/>
+                        <TextBlock Name="PenButtonsText"
+                                   Foreground="#93B7A0"
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Text="Pen buttons: -"/>
+                        <TextBlock Name="ModifiersText"
+                                   Foreground="#9DA6D4"
+                                   Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Text="Modifiers: none"/>
                         <TextBlock Name="ConfigSummaryText"
                                    Foreground="#7f7f7f"
                                    Margin="0,12,0,0"
