@@ -68,16 +68,22 @@ A more advanced version of the note grid, where each zone represents a single "c
 - **Pressure Integration**: Pressure can simultaneously control note velocity at the start and aftertouch/modulation throughout the note's duration.
 - **Expressive Latching**: Incorporating latch controls or synth-style ADSR modifiers that respond to how the pen is held or released within the zone.
 
-### D. MPE (MIDI Polyphonic Expression)
+### D. Hybrid Performance Integration
+A zone shouldn't be limited to *either* notes *or* CCs.
+- **Concept**: Map a zone to emit both a musical note (based on pen down/hit) and simultaneous CC data mapped to specific parameters within the same plugin or instrument.
+- **Use Case**: Playing a note in a synth while simultaneously using the X and Y movement to modulate the synth's internal filter cutoff and resonance. This allows for deeply integrated performance where the "playing" and "tweaking" happen in a single fluid gesture.
+- **Meaningful Mapping**: Providing a way to link tablet axes to DAW/Plugin parameters in a way that feels musically coherent (e.g., Y-axis for brightness, X-axis for stereo width).
+
+### E. MPE (MIDI Polyphonic Expression)
 Modern Wacom pens often support **Tilt** (X/Y) and sometimes **Rotation**.
 - **Concept**: Map pen tilt to MPE dimensions (e.g., Slide or Timbre).
 - **Use Case**: Tilting the pen forward to open a filter while moving it across the pad to change pitch.
 
-### E. Advanced Gesture Support
+### F. Advanced Gesture Support
 - **Flicks and Swipes**: Recognizing quick movements to trigger specific events (e.g., "Flick left" to undo).
 - **Dwell Actions**: Triggering a MIDI event if the pen stays still in a zone for a certain duration.
 
-### F. Visual Feedback (HUD & Overlays)
+### G. Visual Feedback (HUD & Overlays)
 - **Dynamic Labels**: Showing the name of the parameter being controlled near the cursor dot.
 - **Ghosting**: Visualizing the "path" of the last few pen movements to help the user understand the automation being generated.
 
