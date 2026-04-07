@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -18,6 +19,7 @@ namespace TabletMidiPad;
 public partial class MainWindow : Window
 {
     private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
+    private const string WacomServiceName = "WTabletServicePro";
 
     private readonly Dictionary<string, int> _lastSentValues = new();
 
@@ -71,6 +73,7 @@ public partial class MainWindow : Window
         PopulateChannelList(ZoneChannelComboBox);
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
+        RefreshWacomServiceStatus();
         await Task.Yield();
 
         SetLoadingProgress(34);
@@ -98,6 +101,31 @@ public partial class MainWindow : Window
     private void ApplyButton_Click(object sender, RoutedEventArgs e)
     {
         ApplySettings();
+    }
+
+    private void RefreshWacomServiceButton_Click(object sender, RoutedEventArgs e)
+    {
+        RefreshWacomServiceStatus();
+    }
+
+    private async void StartWacomServiceButton_Click(object sender, RoutedEventArgs e)
+    {
+        StartWacomServiceButton.IsEnabled = false;
+        WacomServiceStatusText.Text = "Starting Wacom Professional Service...";
+
+        try
+        {
+            await Task.Run(StartWacomService);
+        }
+        catch (Exception ex)
+        {
+            WacomServiceStatusText.Text = $"Could not start Wacom Professional Service: {ex.Message}";
+        }
+        finally
+        {
+            StartWacomServiceButton.IsEnabled = true;
+            RefreshWacomServiceStatus();
+        }
     }
 
     private void ResetDefaultsButton_Click(object sender, RoutedEventArgs e)
@@ -1395,6 +1423,43 @@ public partial class MainWindow : Window
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
         InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
+    }
+
+    private void RefreshWacomServiceStatus()
+    {
+        try
+        {
+            using var service = new ServiceController(WacomServiceName);
+            string displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? WacomServiceName : service.DisplayName;
+            bool running = service.Status == ServiceControllerStatus.Running;
+            WacomServiceStatusText.Text = running
+                ? $"{displayName}: running"
+                : $"{displayName}: {service.Status}";
+            StartWacomServiceButton.IsEnabled = !running;
+        }
+        catch (InvalidOperationException)
+        {
+            WacomServiceStatusText.Text = "Wacom Professional Service not found on this system.";
+            StartWacomServiceButton.IsEnabled = false;
+        }
+        catch (Exception ex)
+        {
+            WacomServiceStatusText.Text = $"Could not query Wacom service: {ex.Message}";
+            StartWacomServiceButton.IsEnabled = false;
+        }
+    }
+
+    private static void StartWacomService()
+    {
+        using var service = new ServiceController(WacomServiceName);
+
+        if (service.Status == ServiceControllerStatus.Running)
+        {
+            return;
+        }
+
+        service.Start();
+        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
     }
 
     private void UpdatePenButtonsDebug(uint buttons)

@@ -17,4 +17,8 @@
     <Page Remove="wacom-device-kit-windows\**\*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+  </ItemGroup>
+
 </Project>
