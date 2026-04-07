@@ -8,8 +8,6 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="ThemeResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            <!-- If Assets/icon.png exists, expose it as a resource for Window icons. Use pack URI: \n                 Icon="pack://application:,,,/Assets/icon.png" on a Window. -->
-            <BitmapImage x:Key="AppIcon" UriSource="pack://application:,,,/Assets/icon.png"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

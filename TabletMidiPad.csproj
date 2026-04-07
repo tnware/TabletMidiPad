@@ -44,4 +44,9 @@
     <Resource Include="Assets\icon.png" />
   </ItemGroup>
 
+  <!-- Multi-size ICO for Window.Icon (lets the shell pick 16/32/48/256 instead of scaling one huge PNG). -->
+  <ItemGroup Condition="Exists('Assets\\app.ico')">
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
 </Project>
