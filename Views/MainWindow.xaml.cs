@@ -12,13 +12,15 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
+using TabletMidiPad;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window, IMainWindowActions
 {
     private readonly IMidiService _midiService;
     private readonly IInputMappingService _inputMappingService;
+    private readonly ITabletService _tabletService;
     private readonly IWacomService _wacomService;
     private readonly MainViewModel _viewModel;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
@@ -75,11 +77,13 @@ public partial class MainWindow : Window, IMainWindowActions
     public MainWindow(
         IMidiService midiService,
         IInputMappingService inputMappingService,
+        ITabletService tabletService,
         IWacomService wacomService,
         MainViewModel viewModel)
     {
         _midiService = midiService;
         _inputMappingService = inputMappingService;
+        _tabletService = tabletService;
         _wacomService = wacomService;
         _viewModel = viewModel;
         InitializeComponent();

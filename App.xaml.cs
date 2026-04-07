@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
+using TabletMidiPad.Views;
 
 namespace TabletMidiPad;
 
@@ -38,8 +39,10 @@ public partial class App : Application
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMidiService, MidiService>();
         services.AddSingleton<IInputMappingService, InputMappingService>();
+        services.AddSingleton<ITabletService, TabletService>();
         services.AddSingleton<IWacomService, WacomService>();
         services.AddSingleton<MainViewModel>();
+        services.AddSingleton<PreferencesViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider();
     }

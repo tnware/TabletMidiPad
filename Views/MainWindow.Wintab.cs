@@ -3,14 +3,15 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using TabletMidiPad;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow
 {
     private void InitializeWintab()
     {
-        string backendMode = _inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode);
+        string backendMode = _tabletService.NormalizeBackendMode(_config.InputBackendMode);
         if (string.Equals(backendMode, "Stylus/Mouse Only", StringComparison.Ordinal))
         {
             ShutdownWintab();
@@ -378,7 +379,7 @@ public partial class MainWindow
         _useWintab = openedContexts > 0;
         _lastInputBackend = _useWintab
             ? "Wintab"
-            : string.Equals(_inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
+            : string.Equals(_tabletService.NormalizeBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
                 ? "Wintab unavailable"
                 : "Stylus/Mouse Fallback";
         UpdateInputBackendStatus();
@@ -598,7 +599,7 @@ public partial class MainWindow
 
     private bool AllowsStylusMouseFallback()
     {
-        return !string.Equals(_inputMappingService.NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
+        return !string.Equals(_tabletService.NormalizeBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
     }
 
     private (double x, double y) ApplyPositionConditioning(ZoneConfig zone, double x, double y)

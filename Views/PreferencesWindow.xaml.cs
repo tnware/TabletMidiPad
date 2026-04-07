@@ -4,8 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using TabletMidiPad;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class PreferencesWindow : Window
 {

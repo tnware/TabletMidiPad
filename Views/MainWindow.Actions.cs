@@ -1,7 +1,8 @@
 using System.Windows;
 using TabletMidiPad.ViewModels;
+using TabletMidiPad;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow
 {

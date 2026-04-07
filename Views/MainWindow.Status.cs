@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using TabletMidiPad;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow
 {
