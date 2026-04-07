@@ -1,30 +1,57 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using TabletMidiPad.Services;
 
 namespace TabletMidiPad.ViewModels;
 
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed partial class MainViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
     private IMainWindowActions? _actions;
 
     private AppConfig _config = AppConfig.Default;
+
+    [ObservableProperty]
     private string _statusText = "Connected";
+
+    [ObservableProperty]
     private string _routingText = string.Empty;
+
+    [ObservableProperty]
     private string _inputBackendText = string.Empty;
+
+    [ObservableProperty]
     private string _activeZoneText = "Active zone: none";
+
+    [ObservableProperty]
     private string _valueText = "X: -, Y: -, Pressure: -";
+
+    [ObservableProperty]
     private string _penButtonsText = "Pen buttons: -";
+
+    [ObservableProperty]
     private string _modifiersText = "Modifiers: none";
+
+    [ObservableProperty]
     private string _configSummaryText = string.Empty;
+
+    [ObservableProperty]
     private string _settingsResultText = string.Empty;
+
+    [ObservableProperty]
     private Brush _settingsResultBrush = Brushes.DarkSeaGreen;
+
+    [ObservableProperty]
     private string _wacomServiceStatusText = "Service: checking...";
+
+    [ObservableProperty]
     private bool _canStartWacomService;
+
+    [ObservableProperty]
     private string _toolbarPressureLabelText = "Pressure (Lin)";
+
+    [ObservableProperty]
     private string _toolbarInputBackendLabelText = "Input (Auto)";
 
     public AppConfig Config
@@ -32,11 +59,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _config;
         private set
         {
-            _config = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(SendPressureGlobally));
-            OnPropertyChanged(nameof(AllowZoneSwitchWhilePressed));
-            RefreshConfigSummaryFromConfig();
+            if (SetProperty(ref _config, value))
+            {
+                OnPropertyChanged(nameof(SendPressureGlobally));
+                OnPropertyChanged(nameof(AllowZoneSwitchWhilePressed));
+                RefreshConfigSummaryFromConfig();
+            }
         }
     }
 
@@ -71,126 +99,43 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public string StatusText
-    {
-        get => _statusText;
-        set => SetField(ref _statusText, value);
-    }
-
-    public string RoutingText
-    {
-        get => _routingText;
-        set => SetField(ref _routingText, value);
-    }
-
-    public string InputBackendText
-    {
-        get => _inputBackendText;
-        set => SetField(ref _inputBackendText, value);
-    }
-
-    public string ActiveZoneText
-    {
-        get => _activeZoneText;
-        set => SetField(ref _activeZoneText, value);
-    }
-
-    public string ValueText
-    {
-        get => _valueText;
-        set => SetField(ref _valueText, value);
-    }
-
-    public string PenButtonsText
-    {
-        get => _penButtonsText;
-        set => SetField(ref _penButtonsText, value);
-    }
-
-    public string ModifiersText
-    {
-        get => _modifiersText;
-        set => SetField(ref _modifiersText, value);
-    }
-
-    public string ConfigSummaryText
-    {
-        get => _configSummaryText;
-        set => SetField(ref _configSummaryText, value);
-    }
-
-    public string SettingsResultText
-    {
-        get => _settingsResultText;
-        set => SetField(ref _settingsResultText, value);
-    }
-
-    public Brush SettingsResultBrush
-    {
-        get => _settingsResultBrush;
-        set => SetField(ref _settingsResultBrush, value);
-    }
-
-    public string WacomServiceStatusText
-    {
-        get => _wacomServiceStatusText;
-        set => SetField(ref _wacomServiceStatusText, value);
-    }
-
-    public bool CanStartWacomService
-    {
-        get => _canStartWacomService;
-        set
-        {
-            if (_canStartWacomService == value)
-            {
-                return;
-            }
-
-            _canStartWacomService = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string ToolbarPressureLabelText
-    {
-        get => _toolbarPressureLabelText;
-        set => SetField(ref _toolbarPressureLabelText, value);
-    }
-
-    public string ToolbarInputBackendLabelText
-    {
-        get => _toolbarInputBackendLabelText;
-        set => SetField(ref _toolbarInputBackendLabelText, value);
-    }
-
     public MainViewModel(ISettingsService settingsService)
     {
         _settingsService = settingsService;
-        SaveSettingsCommand = new RelayCommand(() => _actions?.ApplySettings());
-        ResetDefaultsCommand = new RelayCommand(() => _actions?.ResetDefaults());
-        OpenPreferencesCommand = new RelayCommand(() => _actions?.OpenPreferences());
-        ExitCommand = new RelayCommand(() => _actions?.Exit());
-        RefreshWacomStatusCommand = new RelayCommand(() => _actions?.RefreshWacomStatus());
-        ReconnectInputCommand = new RelayCommand(() => _actions?.ReconnectInput());
-        StartWacomServiceCommand = new RelayCommand(() => _actions?.StartWacomService());
-        ShowAboutCommand = new RelayCommand(() => _actions?.ShowAbout());
-        AutoLayoutCommand = new RelayCommand(() => _actions?.AutoLayoutZones());
-        AddZoneCommand = new RelayCommand(() => _actions?.AddZone());
-        RemoveZoneCommand = new RelayCommand(() => _actions?.RemoveZone());
     }
 
-    public ICommand SaveSettingsCommand { get; }
-    public ICommand ResetDefaultsCommand { get; }
-    public ICommand OpenPreferencesCommand { get; }
-    public ICommand ExitCommand { get; }
-    public ICommand RefreshWacomStatusCommand { get; }
-    public ICommand ReconnectInputCommand { get; }
-    public ICommand StartWacomServiceCommand { get; }
-    public ICommand ShowAboutCommand { get; }
-    public ICommand AutoLayoutCommand { get; }
-    public ICommand AddZoneCommand { get; }
-    public ICommand RemoveZoneCommand { get; }
+    [RelayCommand]
+    private void SaveSettings() => _actions?.ApplySettings();
+
+    [RelayCommand]
+    private void ResetDefaults() => _actions?.ResetDefaults();
+
+    [RelayCommand]
+    private void OpenPreferences() => _actions?.OpenPreferences();
+
+    [RelayCommand]
+    private void Exit() => _actions?.Exit();
+
+    [RelayCommand]
+    private void RefreshWacomStatus() => _actions?.RefreshWacomStatus();
+
+    [RelayCommand]
+    private void ReconnectInput() => _actions?.ReconnectInput();
+
+    [RelayCommand]
+    private void StartWacomService() => _actions?.StartWacomService();
+
+    [RelayCommand]
+    private void ShowAbout() => _actions?.ShowAbout();
+
+    [RelayCommand]
+    private void AutoLayout() => _actions?.AutoLayoutZones();
+
+    [RelayCommand]
+    private void AddZone() => _actions?.AddZone();
+
+    [RelayCommand]
+    private void RemoveZone() => _actions?.RemoveZone();
 
     public void AttachActions(IMainWindowActions actions) => _actions = actions;
 
@@ -198,33 +143,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void Save() => _settingsService.Save(Config);
     public void ResetToDefaults() => Config = AppConfig.Default;
     public void AutoTileZones() => _settingsService.AutoTileZones(Config);
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    private void SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
-    {
-        if (string.Equals(field, value, System.StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        field = value;
-        OnPropertyChanged(propertyName);
-    }
-
-    private void SetField(ref Brush field, Brush value, [CallerMemberName] string? propertyName = null)
-    {
-        if (ReferenceEquals(field, value))
-        {
-            return;
-        }
-
-        field = value;
-        OnPropertyChanged(propertyName);
-    }
 
     private void RefreshConfigSummaryFromConfig()
     {

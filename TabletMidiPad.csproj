@@ -15,20 +15,17 @@
   <ItemGroup>
     <Compile Remove="teVirtualMIDI.cs" />
     <Compile Remove="wacom-device-kit-windows\**\*.cs" />
+    <Compile Remove="TabletMidiPad.Tests\**\*.cs" />
     <EmbeddedResource Remove="wacom-device-kit-windows\**\*" />
     <None Remove="wacom-device-kit-windows\**\*" />
     <Page Remove="wacom-device-kit-windows\**\*" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
-    <!-- Static analysis / linting packages. Marked as PrivateAssets so they don't flow to consumers. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="7.12.0">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <!-- Try adding a known available StyleCop.Analyzers prerelease version. If this package
-         isn't available in your feed or you prefer a stable release, replace with a compatible version. -->
+    <!-- StyleCop static analysis. Marked as PrivateAssets so it doesn't flow to consumers. -->
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
