@@ -23,6 +23,7 @@ It uses:
 - per-zone MIDI channel
 - per-zone CC numbers for X, Y, and pressure
 - per-zone inversion and pressure behavior
+- configurable lower and upper pen-button actions
 - auto-tiling for newly added zones
 - optional zone locking until release
 - optional target-application gating
@@ -60,6 +61,8 @@ Available settings include:
 - internal app port name
 - loopback association id
 - mouse pressure fallback value
+- lower pen-button action, MIDI channel, CC, and note
+- upper pen-button action, MIDI channel, CC, and note
 - keep window always on top
 - allow switching zones without releasing
 - only send MIDI while a selected target app is active
@@ -109,6 +112,28 @@ This behavior depends on the driver and environment. It is more reliable when:
 - no broken tablet preference state is interfering
 - the driver is not being restarted mid-session
 
+### Wacom pen button setup
+
+If you want both pen side buttons to work in `TabletMidiPad`, configure them in **Wacom Center** so the driver exposes normal pen button events instead of scroll behavior.
+
+Recommended setup:
+
+- set one side button to `Click`
+- set the other side button to `Right Click`
+- do **not** leave a side button mapped to `Scroll` if you want the app to use it
+
+On the tested setup:
+
+- lower pen button (`Click`) reports as `mask=0x0002`, `pressed=2`
+- upper pen button (`Right Click`) reports as `mask=0x0004`, `pressed=3`
+
+`TabletMidiPad` now has separate global actions for:
+
+- Lower Pen Button
+- Upper Pen Button
+
+You can set each one independently in `Preferences`.
+
 ## Zone behavior
 
 Each zone is defined by normalized bounds:
@@ -125,6 +150,13 @@ X and Y are normalized **within the active zone**, not across the whole pad. Eac
 If the pointer or pen is outside all enabled zones, the app sends nothing.
 
 When zone switching is disabled, the currently pressed zone stays active until release even if the pointer crosses into another zone.
+
+Each zone also has a `Release Behavior`:
+
+- `No Send On Release`
+- `Hold`
+- `Reset Pressure Only`
+- `Reset All`
 
 ## Target application gating
 

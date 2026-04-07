@@ -42,7 +42,10 @@ public partial class MainWindow : Window
     private string _lastInputBackend = "Idle";
     private string _wintabDiagnostics = "Wintab not initialized yet";
     private uint _lastWintabButtons;
-    private bool _positionLockActive;
+    private bool _lowerPenButtonHeld;
+    private bool _upperPenButtonHeld;
+    private bool _lowerPenButtonToggleState;
+    private bool _upperPenButtonToggleState;
     private bool _hasLockedPosition;
     private Point _lockedLocalPosition;
 
@@ -171,6 +174,14 @@ public partial class MainWindow : Window
         _config.PositionSmoothing = prefs.PositionSmoothing;
         _config.PressureCurve = prefs.PressureCurve;
         _config.InputBackendMode = prefs.InputBackendMode;
+        _config.LowerPenButtonAction = prefs.LowerPenButtonAction;
+        _config.LowerPenButtonMidiChannel = prefs.LowerPenButtonMidiChannel;
+        _config.LowerPenButtonCc = prefs.LowerPenButtonCc;
+        _config.LowerPenButtonNote = prefs.LowerPenButtonNote;
+        _config.UpperPenButtonAction = prefs.UpperPenButtonAction;
+        _config.UpperPenButtonMidiChannel = prefs.UpperPenButtonMidiChannel;
+        _config.UpperPenButtonCc = prefs.UpperPenButtonCc;
+        _config.UpperPenButtonNote = prefs.UpperPenButtonNote;
         _config.SendPressureGlobally = prefs.SendPressureGlobally;
         _config.AllowZoneSwitchWhilePressed = prefs.AllowZoneSwitchWhilePressed;
 
@@ -1253,7 +1264,19 @@ public partial class MainWindow : Window
 
         var local = NormalizeWithinZone(zone, xNorm, yNorm);
         local = ApplyPositionConditioning(zone, local.x, local.y);
-        if (_positionLockActive)
+        string lowerAction = NormalizePenButtonAction(_config.LowerPenButtonAction);
+        string upperAction = NormalizePenButtonAction(_config.UpperPenButtonAction);
+        bool lockXY =
+            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockXY, StringComparison.Ordinal)) ||
+            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockXY, StringComparison.Ordinal));
+        bool lockX =
+            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockX, StringComparison.Ordinal)) ||
+            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockX, StringComparison.Ordinal));
+        bool lockY =
+            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockY, StringComparison.Ordinal)) ||
+            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockY, StringComparison.Ordinal));
+
+        if (lockXY || lockX || lockY)
         {
             if (!_hasLockedPosition)
             {
@@ -1261,7 +1284,10 @@ public partial class MainWindow : Window
                 _hasLockedPosition = true;
             }
 
-            local = (_lockedLocalPosition.X, _lockedLocalPosition.Y);
+            local = (
+                lockXY || lockX ? _lockedLocalPosition.X : local.x,
+                lockXY || lockY ? _lockedLocalPosition.Y : local.y
+            );
         }
         else
         {
@@ -1275,6 +1301,23 @@ public partial class MainWindow : Window
 
         ActiveZoneText.Text = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
+        if ((_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
+            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
+        {
+            sendPressure = false;
+        }
+
+        bool pressureEnabledByButton =
+            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
+            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
+        bool anyEnablePressureAction =
+            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
+            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
+        if (anyEnablePressureAction)
+        {
+            sendPressure = sendPressure && pressureEnabledByButton;
+        }
+
         string xText = zone.SendX ? x.ToString() : "off";
         string yText = zone.SendY ? y.ToString() : "off";
         string pressureText = sendPressure ? curvedPressure.ToString() : "off";
@@ -1302,7 +1345,8 @@ public partial class MainWindow : Window
         _activeZone = null;
         ActiveZoneText.Text = "Active zone: none";
         _hasLockedPosition = false;
-        _positionLockActive = false;
+        _lowerPenButtonHeld = false;
+        _upperPenButtonHeld = false;
         UpdateModifiersText();
     }
 
@@ -1575,6 +1619,33 @@ public partial class MainWindow : Window
         }
 
         _lastSentValues[key] = value;
+    }
+
+    private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
+    {
+        if (_midiOutHandle == IntPtr.Zero) return;
+
+        string key = $"note:{channel}:{note}";
+        int state = on ? 1 : 0;
+        velocity = Math.Clamp(velocity, 0, 127);
+
+        if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
+        {
+            return;
+        }
+
+        byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
+        byte noteByte = (byte)(note & 0x7F);
+        byte velocityByte = (byte)(velocity & 0x7F);
+
+        int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
+        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
+        if (result != 0)
+        {
+            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
+        }
+
+        _lastSentValues[key] = state;
     }
 
     private void CreateLoopbackPair()
@@ -2106,7 +2177,8 @@ public partial class MainWindow : Window
     {
         _isActive = false;
         _activeZone = null;
-        _positionLockActive = false;
+        _lowerPenButtonHeld = false;
+        _upperPenButtonHeld = false;
         _hasLockedPosition = false;
         CursorDot.Visibility = Visibility.Collapsed;
         ActiveZoneText.Text = "Active zone: none";
@@ -2136,7 +2208,7 @@ public partial class MainWindow : Window
         double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
         MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
         UpdatePenButtonsDebug(packet.Buttons);
-        UpdatePositionLockMode(packet.Buttons);
+        UpdatePenButtonActionState(packet.Buttons);
         double xPx = xNorm * width;
         double yPx = yNorm * height;
         int pressure = context.PressureMax > 0
@@ -2247,6 +2319,25 @@ public partial class MainWindow : Window
         };
     }
 
+    private static string NormalizePenButtonAction(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            PenButtonActions.None => value,
+            PenButtonActions.LockXY => value,
+            PenButtonActions.LockX => value,
+            PenButtonActions.LockY => value,
+            PenButtonActions.DisablePressure => value,
+            PenButtonActions.EnablePressure => value,
+            PenButtonActions.CcMomentary => value,
+            PenButtonActions.CcToggle => value,
+            PenButtonActions.NoteMomentary => value,
+            PenButtonActions.NoteToggle => value,
+            _ => PenButtonActions.None
+        };
+    }
+
     private void MarkInputBackend(string backend)
     {
         _lastInputBackend = backend;
@@ -2315,27 +2406,123 @@ public partial class MainWindow : Window
         PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
     }
 
-    private void UpdatePositionLockMode(uint buttons)
+    private void UpdatePenButtonActionState(uint buttons)
     {
-        bool lockActive = (buttons & 0x0004) != 0;
-        if (lockActive && !_positionLockActive)
-        {
-            _hasLockedPosition = false;
-        }
-        else if (!lockActive && _positionLockActive)
+        HandlePenButtonAction(
+            isHeld: (buttons & 0x0002) != 0,
+            ref _lowerPenButtonHeld,
+            ref _lowerPenButtonToggleState,
+            NormalizePenButtonAction(_config.LowerPenButtonAction),
+            _config.LowerPenButtonMidiChannel,
+            _config.LowerPenButtonCc,
+            _config.LowerPenButtonNote);
+
+        HandlePenButtonAction(
+            isHeld: (buttons & 0x0004) != 0,
+            ref _upperPenButtonHeld,
+            ref _upperPenButtonToggleState,
+            NormalizePenButtonAction(_config.UpperPenButtonAction),
+            _config.UpperPenButtonMidiChannel,
+            _config.UpperPenButtonCc,
+            _config.UpperPenButtonNote);
+
+        UpdateModifiersText();
+    }
+
+    private void HandlePenButtonAction(
+        bool isHeld,
+        ref bool heldState,
+        ref bool toggleState,
+        string action,
+        int midiChannel,
+        int cc,
+        int note)
+    {
+        bool justPressed = isHeld && !heldState;
+        bool justReleased = !isHeld && heldState;
+
+        if (justPressed)
         {
             _hasLockedPosition = false;
         }
 
-        _positionLockActive = lockActive;
-        UpdateModifiersText();
+        if (string.Equals(action, PenButtonActions.CcMomentary, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                SendCcIfChanged(midiChannel, cc, 127, force: true);
+            }
+            else if (justReleased)
+            {
+                SendCcIfChanged(midiChannel, cc, 0, force: true);
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                SendCcIfChanged(midiChannel, cc, toggleState ? 127 : 0, force: true);
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.NoteMomentary, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                SendNoteIfChanged(midiChannel, note, true, 127, force: true);
+            }
+            else if (justReleased)
+            {
+                SendNoteIfChanged(midiChannel, note, false, 0, force: true);
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                SendNoteIfChanged(midiChannel, note, toggleState, toggleState ? 127 : 0, force: true);
+            }
+        }
+
+        if (justReleased)
+        {
+            _hasLockedPosition = false;
+        }
+
+        heldState = isHeld;
     }
 
     private void UpdateModifiersText()
     {
-        ModifiersText.Text = _positionLockActive
-            ? "Modifiers: XY lock"
+        var parts = new List<string>();
+
+        AppendPenButtonModifier(parts, "lower", NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
+        AppendPenButtonModifier(parts, "upper", NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
+
+        ModifiersText.Text = parts.Count > 0
+            ? $"Modifiers: {string.Join(" | ", parts)}"
             : "Modifiers: none";
+    }
+
+    private static void AppendPenButtonModifier(List<string> parts, string label, string action, bool held, bool toggled)
+    {
+        string? text = action switch
+        {
+            var a when held && string.Equals(a, PenButtonActions.LockXY, StringComparison.Ordinal) => $"{label} XY lock",
+            var a when held && string.Equals(a, PenButtonActions.LockX, StringComparison.Ordinal) => $"{label} X lock",
+            var a when held && string.Equals(a, PenButtonActions.LockY, StringComparison.Ordinal) => $"{label} Y lock",
+            var a when held && string.Equals(a, PenButtonActions.DisablePressure, StringComparison.Ordinal) => $"{label} pressure off",
+            var a when held && string.Equals(a, PenButtonActions.EnablePressure, StringComparison.Ordinal) => $"{label} pressure on",
+            var a when string.Equals(a, PenButtonActions.CcToggle, StringComparison.Ordinal) => $"{label} CC {(toggled ? "on" : "off")}",
+            var a when string.Equals(a, PenButtonActions.NoteToggle, StringComparison.Ordinal) => $"{label} note {(toggled ? "on" : "off")}",
+            _ => null
+        };
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            parts.Add(text);
+        }
     }
 
     private static string FormatPressedButtons(uint buttonMask)

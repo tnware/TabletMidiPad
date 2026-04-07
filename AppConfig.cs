@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace TabletMidiPad;
 
-public sealed class AppConfig
+public sealed partial class AppConfig
 {
     public string AppPortName { get; set; } = "Tablet XY (App)";
     public string DawPortName { get; set; } = "Tablet XY (DAW)";
@@ -15,6 +15,14 @@ public sealed class AppConfig
     public double PositionSmoothing { get; set; } = 0.35;
     public string PressureCurve { get; set; } = "Linear";
     public string InputBackendMode { get; set; } = "Auto";
+    public string LowerPenButtonAction { get; set; } = PenButtonActions.None;
+    public int LowerPenButtonMidiChannel { get; set; } = 1;
+    public int LowerPenButtonCc { get; set; } = 64;
+    public int LowerPenButtonNote { get; set; } = 60;
+    public string UpperPenButtonAction { get; set; } = PenButtonActions.None;
+    public int UpperPenButtonMidiChannel { get; set; } = 1;
+    public int UpperPenButtonCc { get; set; } = 65;
+    public int UpperPenButtonNote { get; set; } = 61;
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
     public int MaxZoneRows { get; set; } = 2;
@@ -50,6 +58,14 @@ public sealed class AppConfig
                 config.Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() };
             }
 
+            if (string.IsNullOrWhiteSpace(config.UpperPenButtonAction) && !string.IsNullOrWhiteSpace(config.PenButtonAction))
+            {
+                config.UpperPenButtonAction = config.PenButtonAction;
+                config.UpperPenButtonMidiChannel = config.PenButtonMidiChannel;
+                config.UpperPenButtonCc = config.PenButtonCc;
+                config.UpperPenButtonNote = config.PenButtonNote;
+            }
+
             foreach (var zone in config.Zones)
             {
                 if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
@@ -78,6 +94,20 @@ public sealed class AppConfig
 
         File.WriteAllText(path, JsonSerializer.Serialize(this, options));
     }
+}
+
+public static class PenButtonActions
+{
+    public const string None = "None";
+    public const string LockXY = "Lock XY";
+    public const string LockX = "Lock X";
+    public const string LockY = "Lock Y";
+    public const string DisablePressure = "Disable Pressure";
+    public const string EnablePressure = "Enable Pressure";
+    public const string CcMomentary = "CC Momentary";
+    public const string CcToggle = "CC Toggle";
+    public const string NoteMomentary = "Note Momentary";
+    public const string NoteToggle = "Note Toggle";
 }
 
 public static class ZoneReleaseBehaviors
@@ -113,4 +143,13 @@ public sealed class ZoneConfig
     {
         return new ZoneConfig();
     }
+}
+
+public sealed partial class AppConfig
+{
+    // Legacy compatibility only.
+    public string PenButtonAction { get; set; } = string.Empty;
+    public int PenButtonMidiChannel { get; set; } = 1;
+    public int PenButtonCc { get; set; } = 64;
+    public int PenButtonNote { get; set; } = 60;
 }

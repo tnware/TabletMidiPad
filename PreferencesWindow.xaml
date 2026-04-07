@@ -291,6 +291,74 @@
                 <ComboBox Name="InputBackendModeComboBox"
                           Margin="0,6,0,0"/>
 
+                <TextBlock Text="Lower Pen Button"
+                           Foreground="#bcbcbc"
+                           Margin="0,12,0,0"/>
+                <ComboBox Name="LowerPenButtonActionComboBox"
+                          Margin="0,6,0,0"/>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="MIDI Ch"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="LowerPenButtonMidiChannelTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="CC"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="LowerPenButtonCcTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Note"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="LowerPenButtonNoteTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="Upper Pen Button"
+                           Foreground="#bcbcbc"
+                           Margin="0,12,0,0"/>
+                <ComboBox Name="UpperPenButtonActionComboBox"
+                          Margin="0,6,0,0"/>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="MIDI Ch"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="UpperPenButtonMidiChannelTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="CC"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="UpperPenButtonCcTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Note"
+                                   Foreground="#bcbcbc"/>
+                        <TextBox Name="UpperPenButtonNoteTextBox"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Grid>
+
                 <CheckBox Name="SendPressureGloballyCheckBox"
                           Margin="0,14,0,0"
                           Content="Send pressure globally"/>

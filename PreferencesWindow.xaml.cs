@@ -15,6 +15,14 @@ public partial class PreferencesWindow : Window
     public double PositionSmoothing { get; private set; }
     public string PressureCurve => PressureCurveComboBox.Text;
     public string InputBackendMode => InputBackendModeComboBox.Text;
+    public string LowerPenButtonAction => LowerPenButtonActionComboBox.Text;
+    public int LowerPenButtonMidiChannel { get; private set; }
+    public int LowerPenButtonCc { get; private set; }
+    public int LowerPenButtonNote { get; private set; }
+    public string UpperPenButtonAction => UpperPenButtonActionComboBox.Text;
+    public int UpperPenButtonMidiChannel { get; private set; }
+    public int UpperPenButtonCc { get; private set; }
+    public int UpperPenButtonNote { get; private set; }
     public bool SendPressureGlobally => SendPressureGloballyCheckBox.IsChecked == true;
     public bool AllowZoneSwitchWhilePressed => AllowZoneSwitchCheckBox.IsChecked == true;
 
@@ -23,6 +31,7 @@ public partial class PreferencesWindow : Window
         InitializeComponent();
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
+        PopulatePenButtonActionList();
     }
 
     public void LoadFrom(AppConfig config)
@@ -37,6 +46,16 @@ public partial class PreferencesWindow : Window
         PressureCurveComboBox.Text = config.PressureCurve;
         InputBackendModeComboBox.SelectedItem = NormalizeInputBackendMode(config.InputBackendMode);
         InputBackendModeComboBox.Text = NormalizeInputBackendMode(config.InputBackendMode);
+        LowerPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.LowerPenButtonAction);
+        LowerPenButtonActionComboBox.Text = NormalizePenButtonAction(config.LowerPenButtonAction);
+        LowerPenButtonMidiChannelTextBox.Text = config.LowerPenButtonMidiChannel.ToString();
+        LowerPenButtonCcTextBox.Text = config.LowerPenButtonCc.ToString();
+        LowerPenButtonNoteTextBox.Text = config.LowerPenButtonNote.ToString();
+        UpperPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.UpperPenButtonAction);
+        UpperPenButtonActionComboBox.Text = NormalizePenButtonAction(config.UpperPenButtonAction);
+        UpperPenButtonMidiChannelTextBox.Text = config.UpperPenButtonMidiChannel.ToString();
+        UpperPenButtonCcTextBox.Text = config.UpperPenButtonCc.ToString();
+        UpperPenButtonNoteTextBox.Text = config.UpperPenButtonNote.ToString();
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
     }
@@ -70,6 +89,14 @@ public partial class PreferencesWindow : Window
         PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
         ReadPressureCurve(PressureCurveComboBox.Text);
         ReadInputBackendMode(InputBackendModeComboBox.Text);
+        ReadPenButtonAction(LowerPenButtonActionComboBox.Text);
+        ReadPenButtonAction(UpperPenButtonActionComboBox.Text);
+        LowerPenButtonMidiChannel = ReadInt(LowerPenButtonMidiChannelTextBox.Text, 1, 16, "Lower Button MIDI Channel");
+        LowerPenButtonCc = ReadInt(LowerPenButtonCcTextBox.Text, 0, 127, "Lower Button CC");
+        LowerPenButtonNote = ReadInt(LowerPenButtonNoteTextBox.Text, 0, 127, "Lower Button Note");
+        UpperPenButtonMidiChannel = ReadInt(UpperPenButtonMidiChannelTextBox.Text, 1, 16, "Upper Button MIDI Channel");
+        UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
+        UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
     }
 
     private void PopulatePressureCurveList()
@@ -86,6 +113,24 @@ public partial class PreferencesWindow : Window
         InputBackendModeComboBox.Items.Add("Auto");
         InputBackendModeComboBox.Items.Add("Wintab Only");
         InputBackendModeComboBox.Items.Add("Stylus/Mouse Only");
+    }
+
+    private void PopulatePenButtonActionList()
+    {
+        foreach (var comboBox in new[] { LowerPenButtonActionComboBox, UpperPenButtonActionComboBox })
+        {
+            comboBox.Items.Clear();
+            comboBox.Items.Add(PenButtonActions.None);
+            comboBox.Items.Add(PenButtonActions.LockXY);
+            comboBox.Items.Add(PenButtonActions.LockX);
+            comboBox.Items.Add(PenButtonActions.LockY);
+            comboBox.Items.Add(PenButtonActions.DisablePressure);
+            comboBox.Items.Add(PenButtonActions.EnablePressure);
+            comboBox.Items.Add(PenButtonActions.CcMomentary);
+            comboBox.Items.Add(PenButtonActions.CcToggle);
+            comboBox.Items.Add(PenButtonActions.NoteMomentary);
+            comboBox.Items.Add(PenButtonActions.NoteToggle);
+        }
     }
 
     private static int ReadInt(string? text, int min, int max, string fieldName)
@@ -135,6 +180,11 @@ public partial class PreferencesWindow : Window
             throw new InvalidOperationException("Input Backend must be Auto, Wintab Only, or Stylus/Mouse Only.");
     }
 
+    private static void ReadPenButtonAction(string? text)
+    {
+        _ = NormalizePenButtonAction(text);
+    }
+
     private static string NormalizeInputBackendMode(string? text)
     {
         string value = (text ?? string.Empty).Trim();
@@ -143,6 +193,25 @@ public partial class PreferencesWindow : Window
             "Wintab Only" => value,
             "Stylus/Mouse Only" => value,
             _ => "Auto"
+        };
+    }
+
+    private static string NormalizePenButtonAction(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            PenButtonActions.None => value,
+            PenButtonActions.LockXY => value,
+            PenButtonActions.LockX => value,
+            PenButtonActions.LockY => value,
+            PenButtonActions.DisablePressure => value,
+            PenButtonActions.EnablePressure => value,
+            PenButtonActions.CcMomentary => value,
+            PenButtonActions.CcToggle => value,
+            PenButtonActions.NoteMomentary => value,
+            PenButtonActions.NoteToggle => value,
+            _ => PenButtonActions.None
         };
     }
 }
