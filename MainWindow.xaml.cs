@@ -2039,14 +2039,21 @@ public partial class MainWindow : Window
         }
         else if (msg == _wintabProximityMessage)
         {
-            if (unchecked((uint)wParam.ToInt32()) == 0)
+            bool entering = unchecked((uint)lParam.ToInt32()) != 0;
+            _wintabDiagnostics = $"WT_PROXIMITY: wParam=0x{wParam.ToInt32():X} lParam=0x{lParam.ToInt32():X} entering={entering}";
+            UpdateInputBackendStatus();
+
+            if (!entering)
             {
                 if (_isActive)
                 {
                     _isActive = false;
-                    CursorDot.Visibility = Visibility.Collapsed;
                     HandleRelease();
                 }
+
+                CursorDot.Visibility = Visibility.Collapsed;
+                CursorDot.Opacity = 0.85;
+                ActiveZoneText.Text = "Active zone: none";
             }
 
             handled = true;
@@ -2094,7 +2101,7 @@ public partial class MainWindow : Window
                 WintabInterop.CXL_SENSITIVITY |
                 WintabInterop.CXL_MARGIN |
                 WintabInterop.CXL_SYSOUT;
-            defaultContext.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            defaultContext.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
             if (_expressKeysMask > 0)
                 defaultContext.PktData |= _expressKeysMask;
             defaultContext.PktMode = 0;
@@ -2186,7 +2193,7 @@ public partial class MainWindow : Window
                 WintabInterop.CXL_SENSITIVITY |
                 WintabInterop.CXL_MARGIN |
                 WintabInterop.CXL_SYSOUT;
-            context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            context.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
             if (_expressKeysMask > 0)
                 context.PktData |= _expressKeysMask;
             context.PktMode = 0;
@@ -2425,19 +2432,32 @@ public partial class MainWindow : Window
         int pressure = context.PressureMax > 0
             ? (int)Math.Round(packet.NormalPressure * 127.0 / context.PressureMax)
             : 127;
+        bool hovering = pressure <= 0;
 
-        if (pressure <= 0)
+        _wintabDiagnostics = $"pkt: status=0x{packet.Status:X} p={packet.NormalPressure} x={packet.X} y={packet.Y} hover={hovering}";
+        UpdateInputBackendStatus();
+
+        if (hovering)
         {
             if (_isActive)
             {
                 _isActive = false;
-                CursorDot.Visibility = Visibility.Collapsed;
                 HandleRelease();
             }
 
+            CursorDot.Opacity = 0.35;
+            CursorDot.Visibility = Visibility.Visible;
+            Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
+            Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
+
+            var hoverZone = FindMatchingZone(xNorm, yNorm);
+            ActiveZoneText.Text = hoverZone is not null
+                ? $"Hovering: {hoverZone.Name}"
+                : "Hovering: outside zones";
             return;
         }
 
+        CursorDot.Opacity = 0.85;
         _isActive = true;
         HandlePoint(xPx, yPx, xNorm, yNorm, pressure);
     }

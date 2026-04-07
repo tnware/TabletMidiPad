@@ -65,6 +65,8 @@ internal static class WintabInterop
     public const uint PK_ORIENTATION = 0x1000;
     public const uint PK_ALL = 0x1FFF;
 
+    public const uint TPS_PROXIMITY = 0x0001;
+
     [StructLayout(LayoutKind.Sequential)]
     public struct Fix32
     {
@@ -124,6 +126,7 @@ internal static class WintabInterop
     [StructLayout(LayoutKind.Sequential)]
     public struct Packet
     {
+        public uint Status;
         public uint Buttons;
         public int X;
         public int Y;

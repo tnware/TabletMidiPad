@@ -839,12 +839,14 @@
                     <Canvas Name="ZoneOverlayCanvas"
                             IsHitTestVisible="False"/>
 
-                    <Ellipse Name="CursorDot"
-                             Width="14"
-                             Height="14"
-                             Fill="{StaticResource AccentBrushHover}"
-                             Opacity="0.85"
-                             Visibility="Collapsed"/>
+                    <Canvas IsHitTestVisible="False">
+                        <Ellipse Name="CursorDot"
+                                 Width="14"
+                                 Height="14"
+                                 Fill="{StaticResource AccentBrushHover}"
+                                 Opacity="0.85"
+                                 Visibility="Collapsed"/>
+                    </Canvas>
                 </Grid>
             </Border>
 
