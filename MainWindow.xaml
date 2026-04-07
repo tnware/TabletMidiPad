@@ -493,6 +493,249 @@
             </MenuItem>
         </Menu>
 
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top"
+                Background="#1A1A1A"
+                BorderBrush="#2A2A2A"
+                BorderThickness="0,0,0,1"
+                Padding="6,3">
+            <Border.Resources>
+                <Style x:Key="ToolbarButton" TargetType="Button">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="#C0C0C0"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd"
+                                        Background="{TemplateBinding Background}"
+                                        Padding="{TemplateBinding Padding}"
+                                        CornerRadius="3">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#333333"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+                <Style x:Key="ToolbarToggle" TargetType="ToggleButton">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="#808080"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Padding" Value="8,4"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="Bd"
+                                        Background="{TemplateBinding Background}"
+                                        Padding="{TemplateBinding Padding}"
+                                        CornerRadius="3"
+                                        BorderThickness="1"
+                                        BorderBrush="Transparent">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#2D2117"/>
+                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#5A3A1E"/>
+                                        <Setter Property="Foreground" Value="#D4A060"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+                <Style x:Key="ToolbarSep" TargetType="Border">
+                    <Setter Property="Width" Value="1"/>
+                    <Setter Property="Background" Value="#2E2E2E"/>
+                    <Setter Property="Margin" Value="4,2"/>
+                </Style>
+            </Border.Resources>
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource ToolbarButton}"
+                        Content="Save"
+                        Click="MenuSaveSettings_Click"/>
+                <Border Style="{StaticResource ToolbarSep}"/>
+                <Button Style="{StaticResource ToolbarButton}"
+                        Content="Add Zone"
+                        Click="AddZoneButton_Click"/>
+                <Button Style="{StaticResource ToolbarButton}"
+                        Content="Auto Tile"
+                        Click="AutoLayoutButton_Click"/>
+                <Border Style="{StaticResource ToolbarSep}"/>
+                <!-- Pressure split button: toggle + curve dropdown -->
+                <Border x:Name="PressureSplitBorder"
+                        CornerRadius="3"
+                        BorderThickness="1"
+                        BorderBrush="Transparent"
+                        Background="Transparent">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton Name="ToolbarPressureToggle"
+                                      Click="ToolbarPressureToggle_Click">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="#808080"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border x:Name="Bd"
+                                                        Background="Transparent"
+                                                        Padding="8,4,5,4">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter Property="Foreground" Value="#D4A060"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ToggleButton.Style>
+                            <TextBlock Name="ToolbarPressureLabel"
+                                       Text="Pressure"
+                                       FontSize="11"/>
+                        </ToggleButton>
+                        <Border Width="1"
+                                Background="#2E2E2E"
+                                Margin="0,3"/>
+                        <Button Name="ToolbarPressureCurveDropdown"
+                                Click="ToolbarPressureCurveDropdown_Click">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="#808080"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd"
+                                                        Background="Transparent"
+                                                        Padding="5,4,7,4">
+                                                    <Path Width="7"
+                                                          Height="4"
+                                                          Fill="{TemplateBinding Foreground}"
+                                                          Data="M 0 0 L 7 0 L 3.5 4 Z"
+                                                          VerticalAlignment="Center"
+                                                          HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#2A2A2A"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#333333"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        <Button.ContextMenu>
+                            <ContextMenu Name="PressureCurveMenu">
+                                <ContextMenu.Resources>
+                                    <Style TargetType="ContextMenu">
+                                        <Setter Property="Background" Value="#1D1D1D"/>
+                                        <Setter Property="BorderBrush" Value="#454545"/>
+                                        <Setter Property="Foreground" Value="#E0E0E0"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ContextMenu">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="0,4">
+                                                        <StackPanel IsItemsHost="True"
+                                                                    KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Foreground" Value="#E0E0E0"/>
+                                        <Setter Property="FontSize" Value="12"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="MenuItem">
+                                                    <Border x:Name="Bd"
+                                                            Background="Transparent"
+                                                            Padding="24,6,32,6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="18"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <ContentPresenter Grid.Column="0"
+                                                                              ContentSource="Icon"
+                                                                              VerticalAlignment="Center"/>
+                                                            <ContentPresenter Grid.Column="1"
+                                                                              ContentSource="Header"
+                                                                              RecognizesAccessKey="True"
+                                                                              VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsHighlighted" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="#363636"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ContextMenu.Resources>
+                                <MenuItem Header="Linear"
+                                          Click="PressureCurveLinear_Click"/>
+                                <MenuItem Header="Logarithmic"
+                                          Click="PressureCurveLogarithmic_Click"/>
+                                <MenuItem Header="Exponential"
+                                          Click="PressureCurveExponential_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    </StackPanel>
+                </Border>
+                <ToggleButton Name="ToolbarZoneSwitchToggle"
+                              Style="{StaticResource ToolbarToggle}"
+                              Content="Free Switch"
+                              Click="ToolbarZoneSwitchToggle_Click"/>
+                <Border Style="{StaticResource ToolbarSep}"/>
+                <Button Style="{StaticResource ToolbarButton}"
+                        Content="Reconnect"
+                        Click="MenuReconnectPen_Click"/>
+            </StackPanel>
+        </Border>
+
         <!-- Status bar -->
         <Border DockPanel.Dock="Bottom"
                 Background="#161616"

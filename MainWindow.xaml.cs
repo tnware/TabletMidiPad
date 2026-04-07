@@ -183,6 +183,7 @@ public partial class MainWindow : Window
             RebindInputBackend();
         }
 
+        SyncToolbar();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Preferences applied and saved.";
     }
@@ -251,6 +252,59 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+
+    private void ToolbarPressureToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _config.SendPressureGlobally = ToolbarPressureToggle.IsChecked == true;
+        SyncPressureSplitBorder();
+    }
+
+    private static readonly SolidColorBrush PressureSplitActiveBg = new(Color.FromRgb(0x2D, 0x21, 0x17));
+    private static readonly SolidColorBrush PressureSplitActiveBorder = new(Color.FromRgb(0x5A, 0x3A, 0x1E));
+
+    private void SyncPressureSplitBorder()
+    {
+        bool on = ToolbarPressureToggle.IsChecked == true;
+        PressureSplitBorder.Background = on ? PressureSplitActiveBg : Brushes.Transparent;
+        PressureSplitBorder.BorderBrush = on ? PressureSplitActiveBorder : Brushes.Transparent;
+    }
+
+    private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _config.AllowZoneSwitchWhilePressed = ToolbarZoneSwitchToggle.IsChecked == true;
+        UpdateUiForCurrentConfig();
+    }
+
+    private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu is not null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void PressureCurveLinear_Click(object sender, RoutedEventArgs e)
+    {
+        SetPressureCurve("Linear");
+    }
+
+    private void PressureCurveLogarithmic_Click(object sender, RoutedEventArgs e)
+    {
+        SetPressureCurve("Logarithmic");
+    }
+
+    private void PressureCurveExponential_Click(object sender, RoutedEventArgs e)
+    {
+        SetPressureCurve("Exponential");
+    }
+
+    private void SetPressureCurve(string curve)
+    {
+        _config.PressureCurve = curve;
+        SyncToolbar();
     }
 
     private void MenuAbout_Click(object sender, RoutedEventArgs e)
@@ -414,9 +468,34 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = config.Zones.Count > 0 ? 0 : -1;
         _selectedZoneIndex = ZoneListBox.SelectedIndex;
         LoadSelectedZoneIntoEditor();
+        SyncToolbar();
 
         _isLoadingUi = false;
         DrawZoneOverlay();
+    }
+
+    private void SyncToolbar()
+    {
+        ToolbarPressureToggle.IsChecked = _config.SendPressureGlobally;
+        ToolbarZoneSwitchToggle.IsChecked = _config.AllowZoneSwitchWhilePressed;
+        SyncPressureSplitBorder();
+
+        string curveShort = _config.PressureCurve switch
+        {
+            "Logarithmic" => "Log",
+            "Exponential" => "Exp",
+            _ => "Lin"
+        };
+        ToolbarPressureLabel.Text = $"Pressure ({curveShort})";
+
+        foreach (var item in PressureCurveMenu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                bool active = string.Equals(mi.Header as string, _config.PressureCurve, StringComparison.Ordinal);
+                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
+            }
+        }
     }
 
     private void RefreshZoneList()
@@ -894,18 +973,44 @@ public partial class MainWindow : Window
                 RadiusY = 8
             };
 
+            string bounds = $"{zone.Left:0.##},{zone.Top:0.##} {zone.Width:0.##}\u00D7{zone.Height:0.##}";
+            string pressureFlag = zone.SendPressure ? "" : "  [no pressure]";
+            string enabledFlag = zone.Enabled ? "" : "  [off]";
+
             var label = new TextBlock
             {
-                Text = zone.Name,
-                Foreground = Brushes.White,
-                Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
-                Padding = new Thickness(6, 2, 6, 2)
+                FontSize = 11,
+                Padding = new Thickness(6, 3, 6, 3),
+                Background = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
             };
+            label.Inlines.Add(new System.Windows.Documents.Run(zone.Name)
+            {
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            });
+            label.Inlines.Add(new System.Windows.Documents.Run($"  {bounds}")
+            {
+                Foreground = new SolidColorBrush(Color.FromArgb(180, 180, 180, 180))
+            });
+            if (pressureFlag.Length > 0)
+            {
+                label.Inlines.Add(new System.Windows.Documents.Run(pressureFlag)
+                {
+                    Foreground = new SolidColorBrush(Color.FromArgb(200, 220, 120, 120))
+                });
+            }
+            if (enabledFlag.Length > 0)
+            {
+                label.Inlines.Add(new System.Windows.Documents.Run(enabledFlag)
+                {
+                    Foreground = new SolidColorBrush(Color.FromArgb(160, 160, 160, 160))
+                });
+            }
 
             Canvas.SetLeft(rect, rectLeft);
             Canvas.SetTop(rect, rectTop);
-            Canvas.SetLeft(label, rectLeft + 8);
-            Canvas.SetTop(label, rectTop + 8);
+            Canvas.SetLeft(label, rectLeft + 6);
+            Canvas.SetTop(label, rectTop + 6);
 
             ZoneOverlayCanvas.Children.Add(rect);
             ZoneOverlayCanvas.Children.Add(label);
