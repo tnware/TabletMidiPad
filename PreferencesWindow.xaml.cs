@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace TabletMidiPad;
 
@@ -115,6 +116,11 @@ public partial class PreferencesWindow : Window
         Close();
     }
 
+    private void ComboBox_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     private void Validate()
     {
         RequireText(DawPortNameTextBox.Text, "DAW Input Port");
@@ -204,10 +210,19 @@ public partial class PreferencesWindow : Window
         {
             var label = new TextBlock
             {
-                Text = $"ExpressKey {i}",
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc")),
-                Margin = new Thickness(0, i == 0 ? 0 : 12, 0, 0)
+                Text = $"ExpressKey {i + 1}",
+                Foreground = new SolidColorBrush(
+                    (Color)ColorConverter.ConvertFromString("#E8E8E8")),
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold
+            };
+
+            var hint = new TextBlock
+            {
+                Text = "Action and MIDI mapping for this hardware key.",
+                Foreground = new SolidColorBrush(
+                    (Color)ColorConverter.ConvertFromString("#A7A7A7")),
+                Margin = new Thickness(0, 4, 0, 0)
             };
 
             var actionCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
@@ -257,9 +272,24 @@ public partial class PreferencesWindow : Window
             Grid.SetColumn(noteLabel, 4);
             grid.Children.Add(noteLabel);
 
-            ExpressKeysPanel.Children.Add(label);
-            ExpressKeysPanel.Children.Add(actionCombo);
-            ExpressKeysPanel.Children.Add(grid);
+            var card = new Border
+            {
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#141414")),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#262626")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, i == 0 ? 0 : 14, 0, 0)
+            };
+
+            var stack = new StackPanel();
+            stack.Children.Add(label);
+            stack.Children.Add(hint);
+            stack.Children.Add(actionCombo);
+            stack.Children.Add(grid);
+            card.Child = stack;
+
+            ExpressKeysPanel.Children.Add(card);
 
             _expressKeyRows.Add((actionCombo, channelBox, ccBox, noteBox));
         }

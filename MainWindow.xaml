@@ -73,6 +73,7 @@
                                         <ContentPresenter Margin="8,5,6,5"
                                                           VerticalAlignment="Center"
                                                           HorizontalAlignment="Left"
+                                                          TextElement.Foreground="{TemplateBinding Foreground}"
                                                           Content="{TemplateBinding SelectionBoxItem}"
                                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
                                         <Border Grid.Column="1"

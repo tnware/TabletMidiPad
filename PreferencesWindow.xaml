@@ -2,11 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Preferences"
-        Width="480"
-        Height="620"
-        ResizeMode="NoResize"
+        Width="920"
+        Height="760"
+        MinWidth="780"
+        MinHeight="640"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
-        Background="#111111">
+        Background="#111111"
+        Foreground="#F0F0F0">
     <Window.Resources>
         <SolidColorBrush x:Key="FieldBrush" Color="#202020"/>
         <SolidColorBrush x:Key="FieldBorderBrush" Color="#454545"/>
@@ -14,6 +17,14 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#C96E2D"/>
         <SolidColorBrush x:Key="AccentBrushHover" Color="#DD8240"/>
         <SolidColorBrush x:Key="AccentBrushPressed" Color="#A95A22"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#171717"/>
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#2B2B2B"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#B8B8B8"/>
+        <SolidColorBrush x:Key="TabActiveBrush" Color="#1A2A34"/>
+        <SolidColorBrush x:Key="TabActiveBorderBrush" Color="#2E5A70"/>
+        <SolidColorBrush x:Key="TabIdleBrush" Color="#161616"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#141414"/>
+        <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#242424"/>
 
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="{StaticResource FieldBrush}"/>
@@ -32,6 +43,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="13"/>
+            <EventSetter Event="PreviewMouseWheel" Handler="ComboBox_PreviewMouseWheel"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -60,17 +72,11 @@
                                         <ContentPresenter Margin="10,6,8,6"
                                                           VerticalAlignment="Center"
                                                           HorizontalAlignment="Left"
+                                                          TextElement.Foreground="{TemplateBinding Foreground}"
                                                           Content="{TemplateBinding SelectionBoxItem}"
                                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
-                                        <Border Grid.Column="1"
-                                                CornerRadius="0,8,8,0"
-                                                Background="#2A2A2A">
-                                            <Path Width="10"
-                                                  Height="6"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  Fill="#EAEAEA"
-                                                  Data="M 0 0 L 10 0 L 5 6 Z"/>
+                                        <Border Grid.Column="1" Background="#2A2A2A" CornerRadius="0,8,8,0">
+                                            <Path Width="10" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center" Fill="#EAEAEA" Data="M 0 0 L 10 0 L 5 6 Z"/>
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -87,8 +93,7 @@
                                         BorderBrush="{TemplateBinding BorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8">
-                                    <ScrollViewer MaxHeight="260"
-                                                  CanContentScroll="True">
+                                    <ScrollViewer MaxHeight="260" CanContentScroll="True">
                                         <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                                     </ScrollViewer>
                                 </Border>
@@ -120,9 +125,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="ItemBorder"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="6">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="6">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -150,25 +153,10 @@
                                 <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Border x:Name="Box"
-                                    Width="18"
-                                    Height="18"
-                                    CornerRadius="4"
-                                    Background="#202020"
-                                    BorderBrush="#4D4D4D"
-                                    BorderThickness="1"
-                                    VerticalAlignment="Center">
-                                <Path x:Name="CheckMark"
-                                      Visibility="Collapsed"
-                                      Stroke="#F6F6F6"
-                                      StrokeThickness="2"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Data="M 3 9 L 7 13 L 14 5"/>
+                            <Border x:Name="Box" Width="18" Height="18" CornerRadius="4" Background="#202020" BorderBrush="#4D4D4D" BorderThickness="1" VerticalAlignment="Center">
+                                <Path x:Name="CheckMark" Visibility="Collapsed" Stroke="#F6F6F6" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 3 9 L 7 13 L 14 5"/>
                             </Border>
-                            <ContentPresenter Grid.Column="2"
-                                              VerticalAlignment="Center"
-                                              RecognizesAccessKey="True"/>
+                            <ContentPresenter Grid.Column="2" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
@@ -178,10 +166,6 @@
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Box" Property="BorderBrush" Value="#7A7A7A"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Box" Property="Opacity" Value="0.45"/>
-                                <Setter Property="Opacity" Value="0.55"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -199,11 +183,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -217,179 +198,260 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#2D2D2D"/>
+        </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#D4D4D4"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Background" Value="{StaticResource TabIdleBrush}"/>
+            <Setter Property="BorderBrush" Value="#303030"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="0"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"
+                                              ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource TabActiveBrush}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource TabActiveBorderBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#4A4A4A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Border Margin="0" Padding="22" Background="#171717" CornerRadius="0">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <TextBlock Text="Preferences"
-                           Foreground="#f2f2f2"
-                           FontSize="22"
-                           FontWeight="SemiBold"/>
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-                <TextBlock Text="MIDI Routing"
-                           Foreground="#e9e9e9"
-                           FontSize="16"
-                           Margin="0,22,0,8"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="Preferences" Foreground="#F2F2F2" FontSize="24" FontWeight="SemiBold"/>
+            <TextBlock Text="Separate application routing from device behavior and hardware controls." Foreground="#9F9F9F" Margin="0,6,0,0"/>
+        </StackPanel>
 
-                <TextBlock Text="DAW Input Port"
-                           Foreground="#bcbcbc"/>
-                <TextBox Name="DawPortNameTextBox"
-                         Margin="0,6,0,0"/>
+        <TabControl Grid.Row="1">
+            <TabItem Header="Application">
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <StackPanel>
+                        <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18">
+                            <StackPanel>
+                                <TextBlock Text="MIDI Routing" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Loopback port names and association settings." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                <Grid Margin="0,16,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="18"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="DAW Input Port" Foreground="#BCBCBC"/>
+                                        <TextBox Name="DawPortNameTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Internal App Port" Foreground="#BCBCBC"/>
+                                        <TextBox Name="AppPortNameTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="Association Id" Foreground="#BCBCBC" Margin="0,14,0,0"/>
+                                <TextBox Name="AssociationIdTextBox" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
 
-                <TextBlock Text="Internal App Port"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <TextBox Name="AppPortNameTextBox"
-                         Margin="0,6,0,0"/>
-
-                <TextBlock Text="Association Id"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <TextBox Name="AssociationIdTextBox"
-                         Margin="0,6,0,0"/>
-
-                <TextBlock Text="Input"
-                           Foreground="#e9e9e9"
-                           FontSize="16"
-                           Margin="0,22,0,8"/>
-
-                <TextBlock Text="Mouse Pressure Fallback"
-                           Foreground="#bcbcbc"/>
-                <TextBox Name="MousePressureTextBox"
-                         Margin="0,6,0,0"/>
-
-                <Grid Margin="0,12,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Position Dead Zone"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="DeadZoneTextBox"
-                                 Margin="0,6,0,0"/>
+                        <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Application Behavior" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Global rules that affect how zones behave." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                <CheckBox Name="SendPressureGloballyCheckBox" Margin="0,16,0,0" Content="Send pressure globally"/>
+                                <CheckBox Name="AllowZoneSwitchCheckBox" Margin="0,10,0,0" Content="Latch onto zones when entering while pressed"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="XY Smoothing"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="SmoothingTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Grid>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="Pressure Curve"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <ComboBox Name="PressureCurveComboBox"
-                          Margin="0,6,0,0"/>
+            <TabItem Header="Input Device">
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18">
+                        <StackPanel>
+                            <TextBlock Text="Device Input" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Backend selection and raw signal shaping." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="18"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Input Backend" Foreground="#BCBCBC"/>
+                                    <ComboBox Name="InputBackendModeComboBox" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Pressure Curve" Foreground="#BCBCBC"/>
+                                    <ComboBox Name="PressureCurveComboBox" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="18"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="18"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Mouse Pressure Fallback" Foreground="#BCBCBC"/>
+                                    <TextBox Name="MousePressureTextBox" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Position Dead Zone" Foreground="#BCBCBC"/>
+                                    <TextBox Name="DeadZoneTextBox" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="XY Smoothing" Foreground="#BCBCBC"/>
+                                    <TextBox Name="SmoothingTextBox" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="Input Backend"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <ComboBox Name="InputBackendModeComboBox"
-                          Margin="0,6,0,0"/>
+            <TabItem Header="Pen Buttons">
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="18"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18">
+                            <StackPanel>
+                                <TextBlock Text="Lower Pen Button" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Usually the lower side switch." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Action" Foreground="#BCBCBC" Margin="0,16,0,0"/>
+                                <ComboBox Name="LowerPenButtonActionComboBox" Margin="0,6,0,0"/>
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="MIDI Ch" Foreground="#BCBCBC"/>
+                                        <TextBox Name="LowerPenButtonMidiChannelTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="CC" Foreground="#BCBCBC"/>
+                                        <TextBox Name="LowerPenButtonCcTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="Note" Foreground="#BCBCBC"/>
+                                        <TextBox Name="LowerPenButtonNoteTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18">
+                            <StackPanel>
+                                <TextBlock Text="Upper Pen Button" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Usually the upper side switch." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Action" Foreground="#BCBCBC" Margin="0,16,0,0"/>
+                                <ComboBox Name="UpperPenButtonActionComboBox" Margin="0,6,0,0"/>
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="MIDI Ch" Foreground="#BCBCBC"/>
+                                        <TextBox Name="UpperPenButtonMidiChannelTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="CC" Foreground="#BCBCBC"/>
+                                        <TextBox Name="UpperPenButtonCcTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="Note" Foreground="#BCBCBC"/>
+                                        <TextBox Name="UpperPenButtonNoteTextBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
 
-                <TextBlock Text="Lower Pen Button"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <ComboBox Name="LowerPenButtonActionComboBox"
-                          Margin="0,6,0,0"/>
+            <TabItem Header="Express Keys">
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18">
+                        <StackPanel>
+                            <TextBlock Text="ExpressKey Mapping" Foreground="#E9E9E9" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Configure each detected ExpressKey separately." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                            <StackPanel Name="ExpressKeysPanel" Margin="0,18,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
-                <Grid Margin="0,12,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="MIDI Ch"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="LowerPenButtonMidiChannelTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="CC"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="LowerPenButtonCcTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="Note"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="LowerPenButtonNoteTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock Text="Upper Pen Button"
-                           Foreground="#bcbcbc"
-                           Margin="0,12,0,0"/>
-                <ComboBox Name="UpperPenButtonActionComboBox"
-                          Margin="0,6,0,0"/>
-
-                <Grid Margin="0,12,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="MIDI Ch"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="UpperPenButtonMidiChannelTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="CC"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="UpperPenButtonCcTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="Note"
-                                   Foreground="#bcbcbc"/>
-                        <TextBox Name="UpperPenButtonNoteTextBox"
-                                 Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Grid>
-
-                <StackPanel Name="ExpressKeysPanel"/>
-
-                <CheckBox Name="SendPressureGloballyCheckBox"
-                          Margin="0,14,0,0"
-                          Content="Send pressure globally"/>
-                <CheckBox Name="AllowZoneSwitchCheckBox"
-                          Margin="0,8,0,0"
-                          Content="Latch onto zones when entering while pressed"/>
-
-                <TextBlock Name="ErrorText"
-                           Foreground="#E07070"
-                           Margin="0,16,0,0"
-                           TextWrapping="Wrap"/>
-
-                <Grid Margin="0,20,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="16"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0"
-                            Padding="12,10"
-                            Content="OK"
-                            Click="OkButton_Click"/>
-                    <Button Grid.Column="2"
-                            Padding="12,10"
-                            Background="#333333"
-                            Content="Cancel"
-                            Click="CancelButton_Click"/>
-                </Grid>
-            </StackPanel>
-        </ScrollViewer>
-    </Border>
+        <Border Grid.Row="2"
+                Margin="0,18,0,0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14"
+                Padding="16">
+            <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Name="ErrorText" Grid.Column="0" Foreground="#E07070" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            <Button Grid.Column="1" MinWidth="150" Padding="18,10" Margin="0" Content="OK" Click="OkButton_Click"/>
+            <Button Grid.Column="3" MinWidth="150" Padding="18,10" Margin="0" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Click="CancelButton_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
