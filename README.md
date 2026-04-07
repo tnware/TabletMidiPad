@@ -42,6 +42,7 @@ For direct Wacom pen input:
 - a supported Wacom driver installation
 - **Wacom Professional Service** (`WTabletServicePro`) running
 - `Wintab32.dll` available through the installed driver
+- if you want to start `WTabletServicePro` from inside `TabletMidiPad`, Windows may require running the app as administrator
 
 The app expects the Windows MIDI Services console here:
 
@@ -193,6 +194,7 @@ This keeps the package much smaller than a self-contained publish, but the targe
 - confirm the Wacom driver is installed
 - confirm `WTabletServicePro` is running
 - confirm `Wintab32.dll` is present
+- if the in-app `Start Service` button fails, try running `TabletMidiPad` as administrator or start `Wacom Professional Service` from Windows Services
 - if needed, reboot after installing or updating the driver
 
 If Wintab is unavailable, the app will fall back to stylus/mouse input.

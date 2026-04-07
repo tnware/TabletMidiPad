@@ -73,6 +73,7 @@ public partial class MainWindow : Window
         SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
         PopulatePressureCurveList();
+        PopulateInputBackendModeList();
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
@@ -108,6 +109,14 @@ public partial class MainWindow : Window
         PressureCurveComboBox.Items.Add("Exponential");
     }
 
+    private void PopulateInputBackendModeList()
+    {
+        InputBackendModeComboBox.Items.Clear();
+        InputBackendModeComboBox.Items.Add("Auto");
+        InputBackendModeComboBox.Items.Add("Wintab Only");
+        InputBackendModeComboBox.Items.Add("Stylus/Mouse Only");
+    }
+
     private void ApplyButton_Click(object sender, RoutedEventArgs e)
     {
         ApplySettings();
@@ -118,23 +127,59 @@ public partial class MainWindow : Window
         RefreshWacomServiceStatus();
     }
 
+    private void ReconnectTabletInputButton_Click(object sender, RoutedEventArgs e)
+    {
+        CommitCurrentZoneEdits();
+        RebindInputBackend();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Input backend reconnected.";
+    }
+
     private async void StartWacomServiceButton_Click(object sender, RoutedEventArgs e)
     {
         StartWacomServiceButton.IsEnabled = false;
         WacomServiceStatusText.Text = "Starting Wacom Professional Service...";
+        bool started = false;
+        string? failureText = null;
 
         try
         {
             await Task.Run(StartWacomService);
+            started = true;
+        }
+        catch (Win32Exception ex)
+        {
+            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
         }
         catch (Exception ex)
         {
-            WacomServiceStatusText.Text = $"Could not start Wacom Professional Service: {ex.Message}";
+            failureText = $"Could not start Wacom Professional Service: {ex.Message}";
         }
         finally
         {
-            StartWacomServiceButton.IsEnabled = true;
-            RefreshWacomServiceStatus();
+            if (started)
+            {
+                RefreshWacomServiceStatus();
+                RebindInputBackend();
+            }
+            else
+            {
+                WacomServiceStatusText.Text = failureText ?? "Could not start Wacom Professional Service.";
+
+                try
+                {
+                    using var service = new ServiceController(WacomServiceName);
+                    StartWacomServiceButton.IsEnabled = service.Status != ServiceControllerStatus.Running;
+                }
+                catch
+                {
+                    StartWacomServiceButton.IsEnabled = false;
+                }
+            }
         }
     }
 
@@ -266,6 +311,7 @@ public partial class MainWindow : Window
             string previousAppPortName = _config.AppPortName;
             string previousDawPortName = _config.DawPortName;
             string previousAssociationId = _config.LoopbackAssociationId;
+            string previousInputBackendMode = _config.InputBackendMode;
 
             CommitCurrentZoneEdits();
             ValidateConfig(_config);
@@ -275,6 +321,8 @@ public partial class MainWindow : Window
                 !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
                 !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
                 !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
+            bool inputBackendChanged =
+                !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
 
             if (routingChanged || _midiOutHandle == IntPtr.Zero)
             {
@@ -286,6 +334,11 @@ public partial class MainWindow : Window
                 _activeZone = null;
                 UpdateUiForCurrentConfig();
                 DrawZoneOverlay();
+            }
+
+            if (inputBackendChanged)
+            {
+                RebindInputBackend();
             }
 
             SettingsResultText.Foreground = Brushes.DarkSeaGreen;
@@ -318,6 +371,8 @@ public partial class MainWindow : Window
         SmoothingTextBox.Text = config.PositionSmoothing.ToString("0.##");
         PressureCurveComboBox.SelectedItem = config.PressureCurve;
         PressureCurveComboBox.Text = config.PressureCurve;
+        InputBackendModeComboBox.SelectedItem = NormalizeInputBackendMode(config.InputBackendMode);
+        InputBackendModeComboBox.Text = NormalizeInputBackendMode(config.InputBackendMode);
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
@@ -395,6 +450,7 @@ public partial class MainWindow : Window
         _config.PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
         _config.PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
         _config.PressureCurve = ReadPressureCurve(PressureCurveComboBox.Text);
+        _config.InputBackendMode = ReadInputBackendMode(InputBackendModeComboBox.Text);
         _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
         _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
 
@@ -552,7 +608,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         e.Handled = true;
         _isActive = true;
         Pad.CaptureStylus();
@@ -561,7 +617,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusMove(object sender, StylusEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
@@ -569,7 +625,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusUp(object sender, StylusEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
@@ -581,7 +637,7 @@ public partial class MainWindow : Window
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
         if (e.LeftButton != MouseButtonState.Pressed) return;
         _isActive = true;
@@ -591,7 +647,7 @@ public partial class MainWindow : Window
 
     private void Pad_MouseMove(object sender, MouseEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
@@ -599,7 +655,7 @@ public partial class MainWindow : Window
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (_useWintab) return;
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
         if (!_isActive) return;
         HandleMouse(e);
@@ -1070,11 +1126,29 @@ public partial class MainWindow : Window
 
     private void InitializeWintab()
     {
+        string backendMode = NormalizeInputBackendMode(_config.InputBackendMode);
+        if (string.Equals(backendMode, "Stylus/Mouse Only", StringComparison.Ordinal))
+        {
+            ShutdownWintab();
+            _wintabDiagnostics = "Manual stylus/mouse mode selected";
+            _lastInputBackend = "Stylus/Mouse Fallback";
+            UpdateInputBackendStatus();
+            return;
+        }
+
         if (!WintabInterop.IsAvailable())
         {
             _useWintab = false;
             _wintabDiagnostics = "Wintab32.dll not available";
-            SetLoadingState("Preparing tablet input", "Wintab not found, using stylus and mouse fallback");
+            _lastInputBackend = string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                ? "Wintab unavailable"
+                : "Stylus/Mouse Fallback";
+            SetLoadingState(
+                "Preparing tablet input",
+                string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                    ? "Wintab requested, but Wintab32.dll is not available"
+                    : "Wintab not found, using stylus and mouse fallback");
+            UpdateInputBackendStatus();
             return;
         }
 
@@ -1089,7 +1163,11 @@ public partial class MainWindow : Window
             _wintabMessageSource.AddHook(WndProc);
             int openedContexts = OpenWintabContexts();
             _useWintab = openedContexts > 0;
-            _lastInputBackend = _useWintab ? "Wintab" : "Stylus/Mouse Fallback";
+            _lastInputBackend = _useWintab
+                ? "Wintab"
+                : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                    ? "Wintab unavailable"
+                    : "Stylus/Mouse Fallback";
             if (_useWintab)
             {
                 _wintabDiagnostics = $"Opened {openedContexts} Wintab context(s)";
@@ -1099,15 +1177,25 @@ public partial class MainWindow : Window
                 "Preparing tablet input",
                 _useWintab
                     ? $"Wintab digitizer input active on {openedContexts} tablet context(s)"
-                    : "Wintab detected, but no digitizer contexts could open"
+                    : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                        ? "Wintab requested, but no digitizer contexts could open"
+                        : "Wintab detected, but no digitizer contexts could open"
             );
+            UpdateInputBackendStatus();
         }
         catch (Exception ex)
         {
             _useWintab = false;
-            _lastInputBackend = "Stylus/Mouse Fallback";
+            _lastInputBackend = string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                ? "Wintab unavailable"
+                : "Stylus/Mouse Fallback";
             _wintabDiagnostics = ex.Message;
-            SetLoadingState("Preparing tablet input", "Wintab failed, using stylus and mouse fallback");
+            SetLoadingState(
+                "Preparing tablet input",
+                string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+                    ? "Wintab failed to initialize"
+                    : "Wintab failed, using stylus and mouse fallback");
+            UpdateInputBackendStatus();
         }
     }
 
@@ -1368,8 +1456,36 @@ public partial class MainWindow : Window
 
         int openedContexts = OpenWintabContexts();
         _useWintab = openedContexts > 0;
-        _lastInputBackend = _useWintab ? "Wintab" : "Stylus/Mouse Fallback";
+        _lastInputBackend = _useWintab
+            ? "Wintab"
+            : string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
+                ? "Wintab unavailable"
+                : "Stylus/Mouse Fallback";
         UpdateInputBackendStatus();
+    }
+
+    private void RebindInputBackend()
+    {
+        ResetActiveInputState();
+        ShutdownWintab();
+        InitializeWintab();
+        UpdateUiForCurrentConfig();
+    }
+
+    private void ResetActiveInputState()
+    {
+        _isActive = false;
+        _activeZone = null;
+        _positionLockActive = false;
+        _hasLockedPosition = false;
+        CursorDot.Visibility = Visibility.Collapsed;
+        ActiveZoneText.Text = "Active zone: none";
+        ValueText.Text = "X: -, Y: -, Pressure: -";
+        PenButtonsText.Text = "Pen buttons: -";
+        UpdateModifiersText();
+        HandleRelease();
+        Pad.ReleaseMouseCapture();
+        Pad.ReleaseStylusCapture();
     }
 
     private void HandleWintabPacket(uint contextHandle, WintabInterop.Packet packet)
@@ -1429,6 +1545,11 @@ public partial class MainWindow : Window
         return e.StylusDevice is not null;
     }
 
+    private bool AllowsStylusMouseFallback()
+    {
+        return !string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
+    }
+
     private (double x, double y) ApplyPositionConditioning(ZoneConfig zone, double x, double y)
     {
         if (!_smoothedZonePoints.TryGetValue(zone, out Point lastPoint))
@@ -1474,6 +1595,29 @@ public partial class MainWindow : Window
             "Logarithmic" => value,
             "Exponential" => value,
             _ => throw new InvalidOperationException("Pressure Curve must be Linear, Logarithmic, or Exponential.")
+        };
+    }
+
+    private static string ReadInputBackendMode(string? text)
+    {
+        string value = NormalizeInputBackendMode(text);
+        return value switch
+        {
+            "Auto" => value,
+            "Wintab Only" => value,
+            "Stylus/Mouse Only" => value,
+            _ => throw new InvalidOperationException("Input Backend must be Auto, Wintab Only, or Stylus/Mouse Only.")
+        };
+    }
+
+    private static string NormalizeInputBackendMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            "Wintab Only" => value,
+            "Stylus/Mouse Only" => value,
+            _ => "Auto"
         };
     }
 

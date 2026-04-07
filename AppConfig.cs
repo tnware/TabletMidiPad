@@ -14,6 +14,7 @@ public sealed class AppConfig
     public double PositionDeadZone { get; set; } = 0.003;
     public double PositionSmoothing { get; set; } = 0.35;
     public string PressureCurve { get; set; } = "Linear";
+    public string InputBackendMode { get; set; } = "Auto";
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
     public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };

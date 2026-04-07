@@ -43,34 +43,46 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border x:Name="ComboBorder"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="34"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ContentPresenter Margin="10,6,8,6"
-                                                      VerticalAlignment="Center"
-                                                      HorizontalAlignment="Left"
-                                                      Content="{TemplateBinding SelectionBoxItem}"
-                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
-                                    <Border Grid.Column="1"
-                                            CornerRadius="0,8,8,0"
-                                            Background="#2A2A2A">
-                                        <Path Width="10"
-                                              Height="6"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              Fill="#EAEAEA"
-                                              Data="M 0 0 L 10 0 L 5 6 Z"/>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                            <Popup Name="Popup"
+                            <ToggleButton x:Name="DropDownToggle"
+                                          Focusable="False"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <ContentPresenter/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <Border x:Name="ComboBorder"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="34"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter Margin="10,6,8,6"
+                                                          VerticalAlignment="Center"
+                                                          HorizontalAlignment="Left"
+                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                                        <Border Grid.Column="1"
+                                                CornerRadius="0,8,8,0"
+                                                Background="#2A2A2A">
+                                            <Path Width="10"
+                                                  Height="6"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Fill="#EAEAEA"
+                                                  Data="M 0 0 L 10 0 L 5 6 Z"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup"
                                    Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
@@ -82,9 +94,9 @@
                                         BorderBrush="{TemplateBinding BorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="8">
-                                    <ScrollViewer MaxHeight="260">
-                                        <StackPanel IsItemsHost="True"
-                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    <ScrollViewer MaxHeight="260"
+                                                  CanContentScroll="True">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
@@ -94,6 +106,9 @@
                                 <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#6A6A6A"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger SourceName="DropDownToggle" Property="IsChecked" Value="True">
                                 <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
@@ -391,6 +406,12 @@
                     <ComboBox Name="PressureCurveComboBox"
                               Margin="0,6,0,0"/>
 
+                    <TextBlock Text="Input Backend"
+                               Foreground="#bcbcbc"
+                               Margin="0,12,0,0"/>
+                    <ComboBox Name="InputBackendModeComboBox"
+                              Margin="0,6,0,0"/>
+
                     <CheckBox Name="SendPressureGloballyCheckBox"
                               Margin="0,12,0,0"
                               Content="Send pressure globally"/>
@@ -408,6 +429,11 @@
                                 Padding="12,8"
                                 Click="RefreshWacomServiceButton_Click"
                                 Content="Refresh"/>
+                        <Button Name="ReconnectTabletInputButton"
+                                Margin="0,0,8,8"
+                                Padding="12,8"
+                                Click="ReconnectTabletInputButton_Click"
+                                Content="Reconnect Pen Input"/>
                         <Button Name="StartWacomServiceButton"
                                 Margin="0,0,0,8"
                                 Padding="12,8"
