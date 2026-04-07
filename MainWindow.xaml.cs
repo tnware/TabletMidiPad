@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using TabletMidiPad.Services;
 
 namespace TabletMidiPad;
 
@@ -42,6 +43,7 @@ public partial class MainWindow : Window
     private int _expressKeyCount;
     private string _expressKeyDiagnostics = "";
 
+    private readonly IConfigStore _configStore;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
@@ -76,7 +78,13 @@ public partial class MainWindow : Window
     }
 
     public MainWindow()
+        : this(new JsonConfigStore(AppConfig.GetConfigPath()))
     {
+    }
+
+    internal MainWindow(IConfigStore configStore)
+    {
+        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         InitializeComponent();
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
@@ -126,7 +134,7 @@ public partial class MainWindow : Window
     {
         PopulateChannelList(ZoneChannelComboBox);
         PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
-        _config = AppConfig.Load();
+        _config = _configStore.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
@@ -228,7 +236,7 @@ public partial class MainWindow : Window
         try
         {
             ValidateConfig(_config);
-            _config.Save();
+            _configStore.Save(_config);
         }
         catch (Exception ex)
         {
@@ -603,7 +611,7 @@ public partial class MainWindow : Window
         {
             CommitCurrentZoneEdits();
             ValidateConfig(_config);
-            _config.Save();
+            _configStore.Save(_config);
 
             _lastSentValues.Clear();
             _activeZone = null;

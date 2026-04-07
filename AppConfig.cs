@@ -37,6 +37,61 @@ public sealed partial class AppConfig
         return Path.Combine(AppContext.BaseDirectory, "config.json");
     }
 
+    /// <summary>
+    /// Normalizes and migrates configuration loaded from storage.
+    /// </summary>
+    /// <param name="config">The deserialized configuration object.</param>
+    /// <returns>The normalized configuration.</returns>
+    public static AppConfig NormalizeLoaded(AppConfig config)
+    {
+        if (config is null)
+        {
+            return Default;
+        }
+
+        if (config.Zones is null || config.Zones.Count == 0)
+        {
+            config.Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() };
+        }
+
+        if (string.IsNullOrWhiteSpace(config.UpperPenButtonAction) && !string.IsNullOrWhiteSpace(config.PenButtonAction))
+        {
+            config.UpperPenButtonAction = config.PenButtonAction;
+            config.UpperPenButtonMidiChannel = config.PenButtonMidiChannel;
+            config.UpperPenButtonCc = config.PenButtonCc;
+            config.UpperPenButtonNote = config.PenButtonNote;
+        }
+
+        config.ExpressKeys ??= new List<ExpressKeyConfig>();
+
+        // Migrate legacy single-key settings.
+        if (config.ExpressKeys.Count == 0 && !string.IsNullOrWhiteSpace(config.ExpressKeyAction))
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                config.ExpressKeys.Add(new ExpressKeyConfig
+                {
+                    Action = config.ExpressKeyAction,
+                    MidiChannel = config.ExpressKeyMidiChannel,
+                    Cc = Math.Clamp(config.ExpressKeyBaseCc + i, 0, 127),
+                    Note = Math.Clamp(config.ExpressKeyBaseNote + i, 0, 127)
+                });
+            }
+        }
+
+        foreach (var zone in config.Zones)
+        {
+            if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
+            {
+                zone.ReleaseBehavior = zone.ResetPressureOnRelease
+                    ? ZoneReleaseBehaviors.ResetPressureOnly
+                    : ZoneReleaseBehaviors.NoSendOnRelease;
+            }
+        }
+
+        return config;
+    }
+
     public static AppConfig Load()
     {
         string path = GetConfigPath();
@@ -53,48 +108,7 @@ public sealed partial class AppConfig
             {
                 return Default;
             }
-
-            if (config.Zones is null || config.Zones.Count == 0)
-            {
-                config.Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() };
-            }
-
-            if (string.IsNullOrWhiteSpace(config.UpperPenButtonAction) && !string.IsNullOrWhiteSpace(config.PenButtonAction))
-            {
-                config.UpperPenButtonAction = config.PenButtonAction;
-                config.UpperPenButtonMidiChannel = config.PenButtonMidiChannel;
-                config.UpperPenButtonCc = config.PenButtonCc;
-                config.UpperPenButtonNote = config.PenButtonNote;
-            }
-
-            config.ExpressKeys ??= new List<ExpressKeyConfig>();
-
-            // Migrate legacy single-key settings
-            if (config.ExpressKeys.Count == 0 && !string.IsNullOrWhiteSpace(config.ExpressKeyAction))
-            {
-                for (int i = 0; i < 8; i++)
-                {
-                    config.ExpressKeys.Add(new ExpressKeyConfig
-                    {
-                        Action = config.ExpressKeyAction,
-                        MidiChannel = config.ExpressKeyMidiChannel,
-                        Cc = Math.Clamp(config.ExpressKeyBaseCc + i, 0, 127),
-                        Note = Math.Clamp(config.ExpressKeyBaseNote + i, 0, 127)
-                    });
-                }
-            }
-
-            foreach (var zone in config.Zones)
-            {
-                if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
-                {
-                    zone.ReleaseBehavior = zone.ResetPressureOnRelease
-                        ? ZoneReleaseBehaviors.ResetPressureOnly
-                        : ZoneReleaseBehaviors.NoSendOnRelease;
-                }
-            }
-
-            return config;
+            return NormalizeLoaded(config);
         }
         catch
         {

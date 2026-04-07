@@ -1,7 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using TabletMidiPad.Composition;
 
 namespace TabletMidiPad;
 
@@ -10,11 +12,18 @@ namespace TabletMidiPad;
 /// </summary>
 public partial class App : Application
 {
+    private SimpleContainer? _container;
+
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
+        _container = AppBootstrapper.BuildContainer();
         RegisterApplicationWindowIcon();
         base.OnStartup(e);
+
+        var mainWindow = _container.GetRequiredService<MainWindow>();
+        MainWindow = mainWindow;
+        mainWindow.Show();
     }
 
     /// <summary>
