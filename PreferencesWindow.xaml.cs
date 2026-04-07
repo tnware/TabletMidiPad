@@ -37,6 +37,7 @@ public partial class PreferencesWindow : Window
     {
         _expressKeyCount = expressKeyCount;
         InitializeComponent();
+        WindowChromeTheme.ApplyDarkNonClientChrome(this);
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();

@@ -77,6 +77,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
