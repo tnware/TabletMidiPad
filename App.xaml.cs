@@ -1,27 +1,50 @@
-﻿using System.IO;
+using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Microsoft.Extensions.DependencyInjection;
+using TabletMidiPad.Infrastructure;
+using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
+using TabletMidiPad.Views;
 
 namespace TabletMidiPad;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App : Application
 {
-    /// <inheritdoc />
+    public static IServiceProvider ServiceProvider { get; private set; } = null!;
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        ServiceProvider = services.BuildServiceProvider();
+
         RegisterApplicationWindowIcon();
+
+        var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+
         base.OnStartup(e);
     }
 
-    /// <summary>
-    /// Exposes <c>AppIcon</c> for <see cref="System.Windows.Window.Icon"/>. Uses multi-size <c>app.ico</c> when
-    /// present so Windows can choose 16/32/48/256 px frames instead of scaling one large bitmap (which looks
-    /// soft or distorted in the title bar).
-    /// </summary>
+    private void ConfigureServices(IServiceCollection services)
+    {
+        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IMidiService, MidiService>();
+        services.AddSingleton<ITabletService, TabletService>();
+
+        services.AddTransient<MainViewModel>();
+        services.AddTransient<PreferencesViewModel>();
+        services.AddTransient<MainWindow>();
+        services.AddTransient<Func<int, PreferencesWindow>>(serviceProvider => expressKeyCount =>
+        {
+            var viewModel = serviceProvider.GetRequiredService<PreferencesViewModel>();
+            return new PreferencesWindow(viewModel, expressKeyCount);
+        });
+    }
+
     private void RegisterApplicationWindowIcon()
     {
         if (TryLoadBestIcoFrame(out BitmapFrame? icoFrame))

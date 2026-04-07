@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Infrastructure;
 
 /// <summary>
 /// Applies Windows non-client (title bar / border) dark styling so shell chrome matches the in-app dark theme.

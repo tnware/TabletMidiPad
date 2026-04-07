@@ -4,38 +4,26 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using TabletMidiPad.Behaviors;
+using TabletMidiPad.Infrastructure;
+using TabletMidiPad.Models;
+using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class PreferencesWindow : Window
 {
+    private readonly PreferencesViewModel _viewModel;
     public bool Accepted { get; private set; }
-
-    public string DawPortName => DawPortNameTextBox.Text.Trim();
-    public string AppPortName => AppPortNameTextBox.Text.Trim();
-    public string AssociationId => AssociationIdTextBox.Text.Trim();
-    public int MousePressureValue { get; private set; }
-    public double PositionDeadZone { get; private set; }
-    public double PositionSmoothing { get; private set; }
-    public string PressureCurve => PressureCurveComboBox.Text;
-    public string InputBackendMode => InputBackendModeComboBox.Text;
-    public string LowerPenButtonAction => LowerPenButtonActionComboBox.Text;
-    public int LowerPenButtonMidiChannel { get; private set; }
-    public int LowerPenButtonCc { get; private set; }
-    public int LowerPenButtonNote { get; private set; }
-    public string UpperPenButtonAction => UpperPenButtonActionComboBox.Text;
-    public int UpperPenButtonMidiChannel { get; private set; }
-    public int UpperPenButtonCc { get; private set; }
-    public int UpperPenButtonNote { get; private set; }
-    public bool SendPressureGlobally => SendPressureGloballyCheckBox.IsChecked == true;
-    public bool AllowZoneSwitchWhilePressed => AllowZoneSwitchCheckBox.IsChecked == true;
 
     private readonly int _expressKeyCount;
     private readonly List<(ComboBox Action, ComboBox Channel, TextBox Cc, TextBox Note)> _expressKeyRows = new();
 
-    public PreferencesWindow(int expressKeyCount)
+    public PreferencesWindow(PreferencesViewModel viewModel, int expressKeyCount)
     {
+        _viewModel = viewModel;
         _expressKeyCount = expressKeyCount;
+        DataContext = _viewModel;
         InitializeComponent();
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         PopulatePressureCurveList();
@@ -133,7 +121,9 @@ public partial class PreferencesWindow : Window
         try
         {
             Validate();
+            _viewModel.Save();
             Accepted = true;
+            DialogResult = true;
             Close();
         }
         catch (Exception ex)
@@ -201,19 +191,25 @@ public partial class PreferencesWindow : Window
         RequireText(DawPortNameTextBox.Text, "DAW Input Port");
         RequireText(AppPortNameTextBox.Text, "Internal App Port");
         RequireGuidText(AssociationIdTextBox.Text, "Association Id");
-        MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
-        PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
-        PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
-        ReadPressureCurve(PressureCurveComboBox.Text);
-        ReadInputBackendMode(InputBackendModeComboBox.Text);
-        ReadPenButtonAction(LowerPenButtonActionComboBox.Text);
-        ReadPenButtonAction(UpperPenButtonActionComboBox.Text);
-        LowerPenButtonMidiChannel = ReadMidiChannelFromCombo(LowerPenButtonMidiChannelComboBox, "Lower Button MIDI Channel");
-        LowerPenButtonCc = ReadInt(LowerPenButtonCcTextBox.Text, 0, 127, "Lower Button CC");
-        LowerPenButtonNote = ReadInt(LowerPenButtonNoteTextBox.Text, 0, 127, "Lower Button Note");
-        UpperPenButtonMidiChannel = ReadMidiChannelFromCombo(UpperPenButtonMidiChannelComboBox, "Upper Button MIDI Channel");
-        UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
-        UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
+        _viewModel.Config.DawPortName = DawPortNameTextBox.Text.Trim();
+        _viewModel.Config.AppPortName = AppPortNameTextBox.Text.Trim();
+        _viewModel.Config.LoopbackAssociationId = AssociationIdTextBox.Text.Trim();
+        _viewModel.Config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
+        _viewModel.Config.PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
+        _viewModel.Config.PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
+        _viewModel.Config.PressureCurve = PressureCurveComboBox.Text;
+        _viewModel.Config.InputBackendMode = InputBackendModeComboBox.Text;
+        _viewModel.Config.LowerPenButtonAction = LowerPenButtonActionComboBox.Text;
+        _viewModel.Config.UpperPenButtonAction = UpperPenButtonActionComboBox.Text;
+        _viewModel.Config.LowerPenButtonMidiChannel = ReadMidiChannelFromCombo(LowerPenButtonMidiChannelComboBox, "Lower Button MIDI Channel");
+        _viewModel.Config.LowerPenButtonCc = ReadInt(LowerPenButtonCcTextBox.Text, 0, 127, "Lower Button CC");
+        _viewModel.Config.LowerPenButtonNote = ReadInt(LowerPenButtonNoteTextBox.Text, 0, 127, "Lower Button Note");
+        _viewModel.Config.UpperPenButtonMidiChannel = ReadMidiChannelFromCombo(UpperPenButtonMidiChannelComboBox, "Upper Button MIDI Channel");
+        _viewModel.Config.UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
+        _viewModel.Config.UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
+        _viewModel.Config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
+        _viewModel.Config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
+        _viewModel.Config.ExpressKeys = GetExpressKeyConfigs();
 
         for (int i = 0; i < _expressKeyRows.Count; i++)
         {

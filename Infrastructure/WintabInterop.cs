@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Infrastructure;
 
 internal static class WintabInterop
 {
