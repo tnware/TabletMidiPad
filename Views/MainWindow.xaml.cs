@@ -16,7 +16,7 @@ using TabletMidiPad;
 
 namespace TabletMidiPad.Views;
 
-public partial class MainWindow : Window, IMainWindowActions
+public partial class MainWindow : Window
 {
     private readonly IMidiService _midiService;
     private readonly IInputMappingService _inputMappingService;
@@ -88,8 +88,14 @@ public partial class MainWindow : Window, IMainWindowActions
         _viewModel = viewModel;
         InitializeComponent();
         DataContext = _viewModel;
-        _viewModel.AttachActions(this);
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
+        _viewModel.CloseRequested += (_, _) => Close();
+        _viewModel.OpenPreferencesRequested += (_, _) => MenuPreferences_Click(this, new RoutedEventArgs());
+        _viewModel.ReconnectInputRequested += (_, _) => MenuReconnectPen_Click(this, new RoutedEventArgs());
+        _viewModel.ShowAboutRequested += (_, _) => MenuAbout_Click(this, new RoutedEventArgs());
+        _viewModel.InputBackendChanged += (_, _) => RebindInputBackend();
+        _viewModel.ZoneVisualStateChanged += (_, _) => DrawZoneOverlay();
+
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
