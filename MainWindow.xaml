@@ -725,6 +725,97 @@
                     </Button>
                     </StackPanel>
                 </Border>
+                <Border x:Name="InputBackendSplitBorder"
+                        CornerRadius="3"
+                        BorderThickness="1"
+                        BorderBrush="Transparent"
+                        Background="Transparent">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="ToolbarInputBackendButton"
+                                Style="{StaticResource ToolbarButton}"
+                                Padding="8,4"
+                                Click="ToolbarInputBackendCycle_Click">
+                            <TextBlock Name="ToolbarInputBackendLabel"
+                                       Text="Input (Auto)"
+                                       FontSize="11"/>
+                        </Button>
+                        <Border Width="1"
+                                Margin="2,3"
+                                Background="#2E2E2E"/>
+                        <Button Style="{StaticResource ToolbarButton}"
+                                Padding="6,4"
+                                Click="ToolbarInputBackendDropdown_Click">
+                            <TextBlock Text="▾"
+                                       FontSize="11"/>
+                            <Button.ContextMenu>
+                                <ContextMenu Name="InputBackendMenu"
+                                             Background="#1D1D1D"
+                                             BorderBrush="#454545"
+                                             BorderThickness="1">
+                                    <ContextMenu.Resources>
+                                        <Style TargetType="ContextMenu">
+                                            <Setter Property="Background" Value="#1D1D1D"/>
+                                            <Setter Property="BorderBrush" Value="#454545"/>
+                                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ContextMenu">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                Padding="0,4">
+                                                            <StackPanel IsItemsHost="True"
+                                                                        KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Foreground" Value="#E0E0E0"/>
+                                            <Setter Property="FontSize" Value="12"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="MenuItem">
+                                                        <Border x:Name="Bd"
+                                                                Background="Transparent"
+                                                                Padding="24,6,32,6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="18"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <ContentPresenter Grid.Column="0"
+                                                                                  ContentSource="Icon"
+                                                                                  VerticalAlignment="Center"/>
+                                                                <ContentPresenter Grid.Column="1"
+                                                                                  ContentSource="Header"
+                                                                                  RecognizesAccessKey="True"
+                                                                                  VerticalAlignment="Center"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsHighlighted" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="#363636"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ContextMenu.Resources>
+                                    <MenuItem Header="Auto"
+                                              Click="InputBackendAuto_Click"/>
+                                    <MenuItem Header="Wintab"
+                                              Click="InputBackendWintab_Click"/>
+                                    <MenuItem Header="Mouse"
+                                              Click="InputBackendStylus_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </StackPanel>
+                </Border>
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
                               Content="Free Switch"

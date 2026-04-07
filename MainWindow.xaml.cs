@@ -281,12 +281,20 @@ public partial class MainWindow : Window
 
     private static readonly SolidColorBrush PressureSplitActiveBg = new(Color.FromRgb(0x2D, 0x21, 0x17));
     private static readonly SolidColorBrush PressureSplitActiveBorder = new(Color.FromRgb(0x5A, 0x3A, 0x1E));
+    private static readonly SolidColorBrush BackendSplitActiveBg = new(Color.FromRgb(0x1A, 0x2A, 0x34));
+    private static readonly SolidColorBrush BackendSplitActiveBorder = new(Color.FromRgb(0x2E, 0x5A, 0x70));
 
     private void SyncPressureSplitBorder()
     {
         bool on = ToolbarPressureToggle.IsChecked == true;
         PressureSplitBorder.Background = on ? PressureSplitActiveBg : Brushes.Transparent;
         PressureSplitBorder.BorderBrush = on ? PressureSplitActiveBorder : Brushes.Transparent;
+    }
+
+    private void SyncInputBackendSplitBorder()
+    {
+        InputBackendSplitBorder.Background = BackendSplitActiveBg;
+        InputBackendSplitBorder.BorderBrush = BackendSplitActiveBorder;
     }
 
     private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
@@ -296,6 +304,28 @@ public partial class MainWindow : Window
     }
 
     private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu is not null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void ToolbarInputBackendCycle_Click(object sender, RoutedEventArgs e)
+    {
+        string next = NormalizeInputBackendMode(_config.InputBackendMode) switch
+        {
+            "Wintab Only" => "Mouse",
+            "Stylus/Mouse Only" => "Auto",
+            _ => "Wintab Only"
+        };
+
+        SetInputBackendMode(next);
+    }
+
+    private void ToolbarInputBackendDropdown_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.ContextMenu is not null)
         {
@@ -323,6 +353,35 @@ public partial class MainWindow : Window
     private void SetPressureCurve(string curve)
     {
         _config.PressureCurve = curve;
+        SyncToolbar();
+    }
+
+    private void InputBackendAuto_Click(object sender, RoutedEventArgs e)
+    {
+        SetInputBackendMode("Auto");
+    }
+
+    private void InputBackendWintab_Click(object sender, RoutedEventArgs e)
+    {
+        SetInputBackendMode("Wintab Only");
+    }
+
+    private void InputBackendStylus_Click(object sender, RoutedEventArgs e)
+    {
+        SetInputBackendMode("Mouse");
+    }
+
+    private void SetInputBackendMode(string mode)
+    {
+        string normalized = NormalizeInputBackendMode(mode);
+        if (string.Equals(_config.InputBackendMode, normalized, StringComparison.Ordinal))
+        {
+            SyncToolbar();
+            return;
+        }
+
+        _config.InputBackendMode = normalized;
+        RebindInputBackend();
         SyncToolbar();
     }
 
@@ -498,6 +557,7 @@ public partial class MainWindow : Window
         ToolbarPressureToggle.IsChecked = _config.SendPressureGlobally;
         ToolbarZoneSwitchToggle.IsChecked = _config.AllowZoneSwitchWhilePressed;
         SyncPressureSplitBorder();
+        SyncInputBackendSplitBorder();
 
         string curveShort = _config.PressureCurve switch
         {
@@ -512,6 +572,30 @@ public partial class MainWindow : Window
             if (item is MenuItem mi)
             {
                 bool active = string.Equals(mi.Header as string, _config.PressureCurve, StringComparison.Ordinal);
+                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
+            }
+        }
+
+        string backendLabel = NormalizeInputBackendMode(_config.InputBackendMode) switch
+        {
+            "Wintab Only" => "Input (Wintab)",
+            "Stylus/Mouse Only" => "Input (Mouse)",
+            _ => "Input (Auto)"
+        };
+
+        ToolbarInputBackendLabel.Text = backendLabel;
+
+        foreach (var item in InputBackendMenu.Items)
+        {
+            if (item is MenuItem mi)
+            {
+                bool active = (mi.Header as string) switch
+                {
+                    "Wintab" => string.Equals(_config.InputBackendMode, "Wintab Only", StringComparison.Ordinal),
+                    "Mouse" => string.Equals(_config.InputBackendMode, "Stylus/Mouse Only", StringComparison.Ordinal),
+                    _ => string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Auto", StringComparison.Ordinal)
+                };
+
                 mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
             }
         }
@@ -2063,6 +2147,8 @@ public partial class MainWindow : Window
         string value = (text ?? string.Empty).Trim();
         return value switch
         {
+            "Wintab" => "Wintab Only",
+            "Mouse" => "Stylus/Mouse Only",
             "Wintab Only" => value,
             "Stylus/Mouse Only" => value,
             _ => "Auto"
