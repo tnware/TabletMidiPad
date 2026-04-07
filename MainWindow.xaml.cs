@@ -124,30 +124,29 @@ public partial class MainWindow : Window
 
     private async Task InitializeAppAsync()
     {
-        SetLoadingProgress(8);
-        SetLoadingState("Booting application", "Creating the interface");
-        await Task.Yield();
-
-        SetLoadingProgress(18);
-        SetLoadingState("Loading configuration", "Reading saved routing and zone settings");
         PopulateChannelList(ZoneChannelComboBox);
         PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
         _config = AppConfig.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
-        await Task.Yield();
 
-        SetLoadingProgress(34);
-        SetLoadingState("Preparing tablet input", "Checking for direct tablet capture");
         InitializeWintab();
+
+        MidiStatusPanel.Visibility = Visibility.Visible;
+        MidiStatusText.Text = "Connecting MIDI...";
         await Task.Yield();
 
-        await InitializeMidiAsync();
-
-        SetLoadingProgress(100);
-        SetLoadingState("Ready", "Controller surface is live");
-        await Task.Delay(220);
-        LoadingOverlay.Visibility = Visibility.Collapsed;
+        try
+        {
+            await InitializeMidiAsync();
+            MidiStatusPanel.Visibility = Visibility.Collapsed;
+        }
+        catch
+        {
+            MidiProgressBar.Visibility = Visibility.Collapsed;
+            MidiStatusText.Foreground = FindResource("DangerBrush") as Brush ?? Brushes.IndianRed;
+            MidiStatusText.Text = "MIDI init failed";
+        }
     }
 
     private static void PopulateChannelList(ComboBox comboBox)
@@ -880,16 +879,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            SetLoadingProgress(52);
-            SetLoadingState("Creating MIDI endpoints", "Removing any stale loopback pair");
+            MidiStatusText.Text = "Removing stale MIDI pair...";
             await Task.Run(RemoveLoopbackPair);
 
-            SetLoadingProgress(68);
-            SetLoadingState("Creating MIDI endpoints", "Creating a fresh loopback pair");
+            MidiStatusText.Text = "Creating MIDI loopback...";
             await Task.Run(CreateLoopbackPair);
 
-            SetLoadingProgress(86);
-            SetLoadingState("Opening MIDI output", $"Opening '{_config.AppPortName}'");
+            MidiStatusText.Text = $"Opening '{_config.AppPortName}'...";
             await Task.Run(() => OpenMidiOutWithRetry(_config.AppPortName));
 
             _lastSentValues.Clear();
@@ -898,11 +894,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Windows MIDI Services init failed";
-            RoutingText.Text = string.Empty;
-            InputBackendText.Text = string.Empty;
-            ActiveZoneText.Text = string.Empty;
-            ConfigSummaryText.Text = string.Empty;
+            StatusText.Text = "MIDI init failed";
             ValueText.Text = ex.Message;
             throw;
         }
@@ -1909,11 +1901,6 @@ public partial class MainWindow : Window
             _lastInputBackend = string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
                 ? "Wintab unavailable"
                 : "Stylus/Mouse Fallback";
-            SetLoadingState(
-                "Preparing tablet input",
-                string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                    ? "Wintab requested, but Wintab32.dll is not available"
-                    : "Wintab not found, using stylus and mouse fallback");
             UpdateInputBackendStatus();
             return;
         }
@@ -1939,14 +1926,6 @@ public partial class MainWindow : Window
                 _wintabDiagnostics = $"Opened {openedContexts} Wintab context(s)";
             }
 
-            SetLoadingState(
-                "Preparing tablet input",
-                _useWintab
-                    ? $"Wintab digitizer input active on {openedContexts} tablet context(s)"
-                    : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                        ? "Wintab requested, but no digitizer contexts could open"
-                        : "Wintab detected, but no digitizer contexts could open"
-            );
             UpdateInputBackendStatus();
         }
         catch (Exception ex)
@@ -1956,11 +1935,6 @@ public partial class MainWindow : Window
                 ? "Wintab unavailable"
                 : "Stylus/Mouse Fallback";
             _wintabDiagnostics = ex.Message;
-            SetLoadingState(
-                "Preparing tablet input",
-                string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                    ? "Wintab failed to initialize"
-                    : "Wintab failed, using stylus and mouse fallback");
             UpdateInputBackendStatus();
         }
     }
@@ -2790,29 +2764,6 @@ public partial class MainWindow : Window
         }
 
         return string.Join(",", pressed);
-    }
-
-    private void SetLoadingState(string title, string detail)
-    {
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.Invoke(() => SetLoadingState(title, detail));
-            return;
-        }
-
-        LoadingTitleText.Text = title;
-        LoadingDetailText.Text = detail;
-    }
-
-    private void SetLoadingProgress(double value)
-    {
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.Invoke(() => SetLoadingProgress(value));
-            return;
-        }
-
-        LoadingProgressBar.Value = Math.Clamp(value, LoadingProgressBar.Minimum, LoadingProgressBar.Maximum);
     }
 
     private readonly record struct WintabContextInfo(

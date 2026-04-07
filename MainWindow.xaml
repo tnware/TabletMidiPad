@@ -240,7 +240,9 @@
                     <Setter Property="Margin" Value="6,2"/>
                 </Style>
             </Border.Resources>
-            <StackPanel Orientation="Horizontal">
+            <DockPanel>
+            <StackPanel Orientation="Horizontal"
+                        DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Save"
                         Click="MenuSaveSettings_Click"/>
@@ -503,7 +505,31 @@
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
                         Click="MenuReconnectPen_Click"/>
+
             </StackPanel>
+
+            <!-- right-aligned MIDI status -->
+            <StackPanel Name="MidiStatusPanel"
+                        DockPanel.Dock="Right"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="12,0,4,0">
+                <ProgressBar Name="MidiProgressBar"
+                             Width="60"
+                             Height="3"
+                             Margin="0,0,8,0"
+                             VerticalAlignment="Center"
+                             IsIndeterminate="True"
+                             Foreground="{StaticResource AccentBrush}"
+                             Background="{StaticResource SurfaceMutedBrush}"/>
+                <TextBlock Name="MidiStatusText"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Text="Connecting MIDI..."/>
+            </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Status bar -->
@@ -854,52 +880,7 @@
                 </Grid>
             </Border>
 
-            <!-- Loading overlay -->
-            <Grid Name="LoadingOverlay"
-                  Grid.ColumnSpan="3"
-                  Background="{StaticResource OverlayBrush}">
-                <Border Width="400"
-                        Padding="28"
-                        CornerRadius="16"
-                        Background="{StaticResource SurfaceRaisedBrush}"
-                        BorderBrush="{StaticResource PanelBorderBrush}"
-                        BorderThickness="1"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                    <StackPanel>
-                        <TextBlock Text="Tablet MIDI Pad"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   FontSize="24"
-                                   FontWeight="SemiBold"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="Preparing controller surfaces and MIDI routing"
-                                   Foreground="{StaticResource TextMutedBrush}"
-                                   Margin="0,8,0,0"
-                                   FontSize="13"
-                                   HorizontalAlignment="Center"/>
-                        <ProgressBar Name="LoadingProgressBar"
-                                     Minimum="0"
-                                     Maximum="100"
-                                     Value="6"
-                                     Height="4"
-                                     Margin="0,22,0,0"
-                                     Foreground="{StaticResource AccentBrush}"
-                                     Background="{StaticResource SurfaceMutedBrush}"/>
-                        <TextBlock Name="LoadingTitleText"
-                                   Text="Booting application"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   Margin="0,18,0,0"
-                                   FontSize="14"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Name="LoadingDetailText"
-                                   Text="Creating the UI shell"
-                                   Foreground="{StaticResource TextSoftBrush}"
-                                   Margin="0,4,0,0"
-                                   FontSize="12"
-                                   HorizontalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
+            <!-- (loading overlay removed — MIDI init is non-blocking) -->
         </Grid>
     </DockPanel>
 </Window>
