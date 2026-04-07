@@ -77,12 +77,41 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
         {
             ShutdownMidi();
             ShutdownWintab();
         };
+    }
+
+    private void ConfigureNumericInputs()
+    {
+        foreach (TextBox textBox in new[]
+        {
+            MaxZoneRowsTextBox,
+            MaxZonesPerRowTextBox,
+            ZoneCcXTextBox,
+            ZoneCcYTextBox,
+            ZoneCcPressureTextBox
+        })
+        {
+            NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Integer);
+            textBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+        }
+
+        foreach (TextBox textBox in new[]
+        {
+            ZoneLeftTextBox,
+            ZoneTopTextBox,
+            ZoneWidthTextBox,
+            ZoneHeightTextBox
+        })
+        {
+            NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Decimal);
+            textBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+        }
     }
 
     private async void OnContentRendered(object? sender, EventArgs e)
@@ -308,22 +337,50 @@ public partial class MainWindow : Window
         SyncPressureSplitBorder();
     }
 
-    private static readonly SolidColorBrush PressureSplitActiveBg = new(Color.FromRgb(0x2D, 0x21, 0x17));
-    private static readonly SolidColorBrush PressureSplitActiveBorder = new(Color.FromRgb(0x5A, 0x3A, 0x1E));
-    private static readonly SolidColorBrush BackendSplitActiveBg = new(Color.FromRgb(0x1A, 0x2A, 0x34));
-    private static readonly SolidColorBrush BackendSplitActiveBorder = new(Color.FromRgb(0x2E, 0x5A, 0x70));
+    private static readonly string[] ZonePaletteColorKeys =
+    {
+        "ZonePalette1Color",
+        "ZonePalette2Color",
+        "ZonePalette3Color",
+        "ZonePalette4Color",
+        "ZonePalette5Color",
+        "ZonePalette6Color"
+    };
+
+    private static Brush ThemeBrush(string key, Brush fallback)
+        => Application.Current?.Resources[key] as Brush ?? fallback;
+
+    private static Color ThemeColor(string key, Color fallback)
+    {
+        if (Application.Current?.Resources[key] is Color color)
+        {
+            return color;
+        }
+
+        if (Application.Current?.Resources[key] is SolidColorBrush brush)
+        {
+            return brush.Color;
+        }
+
+        return fallback;
+    }
+
+    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
+
+    private static Color GetZonePaletteColor(int index)
+        => ThemeColor(ZonePaletteColorKeys[index % ZonePaletteColorKeys.Length], Color.FromRgb(0x67, 0xD6, 0x8A));
 
     private void SyncPressureSplitBorder()
     {
         bool on = ToolbarPressureToggle.IsChecked == true;
-        PressureSplitBorder.Background = on ? PressureSplitActiveBg : Brushes.Transparent;
-        PressureSplitBorder.BorderBrush = on ? PressureSplitActiveBorder : Brushes.Transparent;
+        PressureSplitBorder.Background = on ? ThemeBrush("AccentSurfaceBrush", Brushes.Transparent) : Brushes.Transparent;
+        PressureSplitBorder.BorderBrush = on ? ThemeBrush("AccentBrush", Brushes.Transparent) : Brushes.Transparent;
     }
 
     private void SyncInputBackendSplitBorder()
     {
-        InputBackendSplitBorder.Background = BackendSplitActiveBg;
-        InputBackendSplitBorder.BorderBrush = BackendSplitActiveBorder;
+        InputBackendSplitBorder.Background = ThemeBrush("AccentSurfaceBrush", Brushes.Transparent);
+        InputBackendSplitBorder.BorderBrush = ThemeBrush("AccentBrush", Brushes.Transparent);
     }
 
     private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
@@ -1457,16 +1514,12 @@ public partial class MainWindow : Window
             double rectWidth = zone.Width * width;
             double rectHeight = zone.Height * height;
 
-            byte alpha = zone.Enabled ? (byte)70 : (byte)30;
-            byte outlineAlpha = zone.Enabled ? (byte)180 : (byte)90;
-            Color fillColor = Color.FromArgb(alpha, 90, 150, 220);
-            Color strokeColor = Color.FromArgb(outlineAlpha, 180, 220, 255);
-
-            if (i == _selectedZoneIndex)
-            {
-                fillColor = Color.FromArgb(100, 200, 120, 60);
-                strokeColor = Color.FromArgb(220, 255, 180, 110);
-            }
+            Color baseColor = GetZonePaletteColor(i);
+            bool selected = i == _selectedZoneIndex;
+            byte fillAlpha = selected ? (byte)(zone.Enabled ? 100 : 56) : (byte)(zone.Enabled ? 56 : 28);
+            byte outlineAlpha = selected ? (byte)240 : (byte)(zone.Enabled ? 170 : 85);
+            Color fillColor = WithAlpha(baseColor, fillAlpha);
+            Color strokeColor = WithAlpha(baseColor, outlineAlpha);
 
             var rect = new Rectangle
             {
@@ -1488,33 +1541,33 @@ public partial class MainWindow : Window
             {
                 FontSize = 11,
                 Padding = new Thickness(6, 3, 6, 3),
-                Background = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                Background = new SolidColorBrush(WithAlpha(ThemeColor("ColorWindow", Colors.Black), 180)),
             };
             label.Inlines.Add(new System.Windows.Documents.Run(zone.Name)
             {
-                Foreground = Brushes.White,
+                Foreground = ThemeBrush("TextPrimaryBrush", Brushes.White),
                 FontWeight = FontWeights.SemiBold
             });
             label.Inlines.Add(new System.Windows.Documents.Run($"  {bounds}")
             {
-                Foreground = new SolidColorBrush(Color.FromArgb(180, 180, 180, 180))
+                Foreground = ThemeBrush("TextMutedBrush", Brushes.Gainsboro)
             });
             label.Inlines.Add(new System.Windows.Documents.Run(axes)
             {
-                Foreground = new SolidColorBrush(Color.FromArgb(190, 165, 210, 255))
+                Foreground = new SolidColorBrush(WithAlpha(baseColor, 240))
             });
             if (pressureFlag.Length > 0)
             {
                 label.Inlines.Add(new System.Windows.Documents.Run(pressureFlag)
                 {
-                    Foreground = new SolidColorBrush(Color.FromArgb(200, 220, 120, 120))
+                    Foreground = ThemeBrush("DangerBrush", Brushes.IndianRed)
                 });
             }
             if (enabledFlag.Length > 0)
             {
                 label.Inlines.Add(new System.Windows.Documents.Run(enabledFlag)
                 {
-                    Foreground = new SolidColorBrush(Color.FromArgb(160, 160, 160, 160))
+                    Foreground = ThemeBrush("TextSoftBrush", Brushes.Gray)
                 });
             }
 
@@ -1542,7 +1595,7 @@ public partial class MainWindow : Window
                 {
                     Width = 18,
                     Height = 18,
-                    Stroke = new SolidColorBrush(Color.FromArgb(220, 255, 244, 180)),
+                    Stroke = new SolidColorBrush(WithAlpha(baseColor, 235)),
                     StrokeThickness = 2,
                     Fill = Brushes.Transparent
                 };
@@ -1551,8 +1604,8 @@ public partial class MainWindow : Window
                 {
                     Width = 8,
                     Height = 8,
-                    Fill = new SolidColorBrush(Color.FromArgb(235, 255, 214, 118)),
-                    Stroke = new SolidColorBrush(Color.FromArgb(180, 45, 35, 20)),
+                    Fill = ThemeBrush("AccentBrushHover", Brushes.White),
+                    Stroke = ThemeBrush("SurfaceBrush", Brushes.Black),
                     StrokeThickness = 1
                 };
 
@@ -1572,7 +1625,7 @@ public partial class MainWindow : Window
         const double handleSize = 10;
         double half = handleSize / 2;
         var brush = new SolidColorBrush(Color.FromArgb(235, strokeColor.R, strokeColor.G, strokeColor.B));
-        var fill = new SolidColorBrush(Color.FromArgb(220, 18, 18, 18));
+        var fill = ThemeBrush("SurfaceBrush", Brushes.Black);
 
         foreach (Point handleCenter in new[]
         {

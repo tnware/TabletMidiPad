@@ -40,6 +40,35 @@ public partial class PreferencesWindow : Window
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();
         BuildExpressKeyRows();
+        ConfigureNumericInputs();
+    }
+
+    private void ConfigureNumericInputs()
+    {
+        foreach (TextBox textBox in new[]
+        {
+            MousePressureTextBox,
+            LowerPenButtonMidiChannelTextBox,
+            LowerPenButtonCcTextBox,
+            LowerPenButtonNoteTextBox,
+            UpperPenButtonMidiChannelTextBox,
+            UpperPenButtonCcTextBox,
+            UpperPenButtonNoteTextBox
+        })
+        {
+            NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Integer);
+            textBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+        }
+
+        foreach (TextBox textBox in new[]
+        {
+            DeadZoneTextBox,
+            SmoothingTextBox
+        })
+        {
+            NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Decimal);
+            textBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+        }
     }
 
     public void LoadFrom(AppConfig config)
@@ -200,8 +229,7 @@ public partial class PreferencesWindow : Window
         ExpressKeysPanel.Children.Add(new TextBlock
         {
             Text = $"Express Keys ({_expressKeyCount} detected)",
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#e9e9e9")),
+            Foreground = Application.Current.Resources["TextPrimaryBrush"] as Brush ?? Brushes.White,
             FontSize = 16,
             Margin = new Thickness(0, 22, 0, 8)
         });
@@ -211,8 +239,7 @@ public partial class PreferencesWindow : Window
             var label = new TextBlock
             {
                 Text = $"ExpressKey {i + 1}",
-                Foreground = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#E8E8E8")),
+                Foreground = Application.Current.Resources["TextPrimaryBrush"] as Brush ?? Brushes.White,
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold
             };
@@ -220,8 +247,7 @@ public partial class PreferencesWindow : Window
             var hint = new TextBlock
             {
                 Text = "Action and MIDI mapping for this hardware key.",
-                Foreground = new SolidColorBrush(
-                    (Color)ColorConverter.ConvertFromString("#A7A7A7")),
+                Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray,
                 Margin = new Thickness(0, 4, 0, 0)
             };
 
@@ -231,6 +257,12 @@ public partial class PreferencesWindow : Window
             var channelBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
             var ccBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
             var noteBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
+            NumericTextBoxBehavior.SetMode(channelBox, NumericTextMode.Integer);
+            NumericTextBoxBehavior.SetMode(ccBox, NumericTextMode.Integer);
+            NumericTextBoxBehavior.SetMode(noteBox, NumericTextMode.Integer);
+            channelBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+            ccBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+            noteBox.HorizontalContentAlignment = HorizontalAlignment.Right;
 
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -243,8 +275,7 @@ public partial class PreferencesWindow : Window
             chLabel.Children.Add(new TextBlock
             {
                 Text = "MIDI Ch",
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+                Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
             chLabel.Children.Add(channelBox);
             Grid.SetColumn(chLabel, 0);
@@ -254,8 +285,7 @@ public partial class PreferencesWindow : Window
             ccLabel.Children.Add(new TextBlock
             {
                 Text = "CC",
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+                Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
             ccLabel.Children.Add(ccBox);
             Grid.SetColumn(ccLabel, 2);
@@ -265,8 +295,7 @@ public partial class PreferencesWindow : Window
             noteLabel.Children.Add(new TextBlock
             {
                 Text = "Note",
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+                Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
             noteLabel.Children.Add(noteBox);
             Grid.SetColumn(noteLabel, 4);
@@ -274,10 +303,10 @@ public partial class PreferencesWindow : Window
 
             var card = new Border
             {
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#141414")),
-                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#262626")),
+                Background = Application.Current.Resources["PanelBrush"] as Brush ?? Brushes.Black,
+                BorderBrush = Application.Current.Resources["PanelBorderBrush"] as Brush ?? Brushes.DimGray,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(12),
+                CornerRadius = new CornerRadius(16),
                 Padding = new Thickness(16),
                 Margin = new Thickness(0, i == 0 ? 0 : 14, 0, 0)
             };
