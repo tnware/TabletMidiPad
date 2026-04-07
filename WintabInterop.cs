@@ -21,6 +21,7 @@ internal static class WintabInterop
     private const uint WTI_DEVICES = 100;
     private const uint WTI_EXTENSIONS = 300;
     private const uint IFC_NDEVICES = 4;
+    private const uint DVC_NAME = 1;
     private const uint DVC_HARDWARE = 2;
     private const uint DVC_X = 12;
     private const uint DVC_Y = 13;
@@ -178,6 +179,28 @@ internal static class WintabInterop
     {
         uint hardware = unchecked((uint)GetUint(GetDeviceCategory(deviceIndex), DVC_HARDWARE));
         return (hardware & HWC_INTEGRATED) != 0;
+    }
+
+    public static string GetDeviceName(int deviceIndex)
+    {
+        uint category = GetDeviceCategory(deviceIndex);
+        int size = (int)WTInfoA(category, DVC_NAME, IntPtr.Zero);
+        if (size <= 0)
+        {
+            return $"Device {deviceIndex}";
+        }
+
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            WTInfoA(category, DVC_NAME, buffer);
+            string? name = Marshal.PtrToStringAnsi(buffer);
+            return string.IsNullOrWhiteSpace(name) ? $"Device {deviceIndex}" : name.Trim();
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 
     public static Axis GetPressureAxis()

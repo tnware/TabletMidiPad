@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
     private bool _useWintab;
+    private int _selectedDeviceIndex = -1;
     private HwndSource? _wintabMessageSource;
     private readonly Dictionary<uint, WintabContextInfo> _wintabContexts = new();
     private int _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
@@ -1899,6 +1900,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        PopulateTabletDeviceList();
+
         if (!WintabInterop.IsAvailable())
         {
             _useWintab = false;
@@ -1960,6 +1963,79 @@ public partial class MainWindow : Window
                     : "Wintab failed, using stylus and mouse fallback");
             UpdateInputBackendStatus();
         }
+    }
+
+    private void PopulateTabletDeviceList()
+    {
+        TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
+        TabletDeviceComboBox.Items.Clear();
+
+        if (!WintabInterop.IsAvailable())
+        {
+            TabletDeviceComboBox.Items.Add("No Wintab");
+            TabletDeviceComboBox.SelectedIndex = 0;
+            TabletDeviceComboBox.IsEnabled = false;
+            TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
+            return;
+        }
+
+        int deviceCount = WintabInterop.GetAttachedDeviceCount();
+        if (deviceCount <= 0)
+        {
+            TabletDeviceComboBox.Items.Add("No tablets");
+            TabletDeviceComboBox.SelectedIndex = 0;
+            TabletDeviceComboBox.IsEnabled = false;
+            TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
+            return;
+        }
+
+        TabletDeviceComboBox.IsEnabled = true;
+        int validCount = 0;
+        int selectIndex = 0;
+
+        for (int i = 0; i < deviceCount; i++)
+        {
+            string name = WintabInterop.GetDeviceName(i);
+            bool integrated = WintabInterop.IsIntegratedTablet(i);
+            string label = integrated ? $"{name} (built-in)" : name;
+            TabletDeviceComboBox.Items.Add(new TabletDeviceItem(i, label));
+
+            if (_selectedDeviceIndex >= 0 && i == _selectedDeviceIndex)
+            {
+                selectIndex = validCount;
+            }
+
+            validCount++;
+        }
+
+        if (validCount > 0)
+        {
+            TabletDeviceComboBox.SelectedIndex = selectIndex;
+            _selectedDeviceIndex = ((TabletDeviceItem)TabletDeviceComboBox.Items[selectIndex]!).DeviceIndex;
+        }
+
+        TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
+    }
+
+    private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (TabletDeviceComboBox.SelectedItem is not TabletDeviceItem item)
+        {
+            return;
+        }
+
+        if (item.DeviceIndex == _selectedDeviceIndex)
+        {
+            return;
+        }
+
+        _selectedDeviceIndex = item.DeviceIndex;
+        RebindInputBackend();
+    }
+
+    private sealed record TabletDeviceItem(int DeviceIndex, string Label)
+    {
+        public override string ToString() => Label;
     }
 
     private void ShutdownWintab()
@@ -2085,155 +2161,95 @@ public partial class MainWindow : Window
         _wintabContexts.Clear();
         _expressKeyHeld.Clear();
         _expressKeyToggleState.Clear();
-        bool messageBaseInitialized = false;
 
         _expressKeysMask = WintabInterop.GetExtensionMask(WintabInterop.WTX_EXPKEYS2);
 
+        int deviceIndex = _selectedDeviceIndex;
+        if (deviceIndex < 0)
+        {
+            try
+            {
+                var defaultCtx = WintabInterop.GetDefaultDigitizingContext();
+                deviceIndex = (int)defaultCtx.Device;
+            }
+            catch
+            {
+                deviceIndex = 0;
+            }
+        }
+
+        return OpenWintabContextForDevice(deviceIndex);
+    }
+
+    private int OpenWintabContextForDevice(int deviceIndex)
+    {
+        WintabInterop.LogContext context;
         try
         {
-            var defaultContext = WintabInterop.GetDefaultDigitizingContext();
-            defaultContext.Name = "TabletMidiPad Default Digitizer";
-            defaultContext.Options |= WintabInterop.CXO_MESSAGES;
-            defaultContext.Options &= ~WintabInterop.CXO_SYSTEM;
-            defaultContext.Locks =
-                WintabInterop.CXL_INSIZE |
-                WintabInterop.CXL_INASPECT |
-                WintabInterop.CXL_SENSITIVITY |
-                WintabInterop.CXL_MARGIN |
-                WintabInterop.CXL_SYSOUT;
-            defaultContext.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
-            if (_expressKeysMask > 0)
-                defaultContext.PktData |= _expressKeysMask;
-            defaultContext.PktMode = 0;
-            defaultContext.MoveMask = defaultContext.PktData;
-            defaultContext.BtnUpMask = defaultContext.BtnDnMask;
-
-            int defaultDeviceIndex = (int)defaultContext.Device;
-            var xAxis = WintabInterop.GetXAxis(defaultDeviceIndex);
-            var yAxis = WintabInterop.GetYAxis(defaultDeviceIndex);
-            var pressureAxis = WintabInterop.GetPressureAxis(defaultDeviceIndex);
-
-            if (xAxis.Max > xAxis.Min && yAxis.Max > yAxis.Min)
-            {
-                defaultContext.OutOrgX = 0;
-                defaultContext.OutOrgY = 0;
-                defaultContext.OutExtX = xAxis.Max - xAxis.Min + 1;
-                defaultContext.OutExtY = -(yAxis.Max - yAxis.Min + 1);
-                defaultContext.SysMode = false;
-
-                _wintabPacketMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKET);
-                _wintabPacketExtMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKETEXT);
-                _wintabContextOverlapMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_CTXOVERLAP);
-                _wintabProximityMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PROXIMITY);
-                _wintabInfoChangeMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_INFOCHANGE);
-                messageBaseInitialized = true;
-
-                uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref defaultContext, true);
-                if (handle != 0)
-                {
-                    SetupExpressKeyOverrides(handle, (byte)Math.Max(0, defaultDeviceIndex));
-                    _wintabDiagnostics = $"Default digitizing context opened on device {defaultDeviceIndex}";
-                    _wintabContexts[handle] = new WintabContextInfo(
-                        DeviceIndex: defaultDeviceIndex,
-                        OutputMinX: 0,
-                        OutputMaxX: Math.Max(1, defaultContext.OutExtX - 1),
-                        OutputMinY: 0,
-                        OutputMaxY: Math.Max(1, Math.Abs(defaultContext.OutExtY) - 1),
-                        PressureMax: Math.Max(1, pressureAxis.Max),
-                        IsIntegrated: defaultDeviceIndex >= 0 && WintabInterop.IsIntegratedTablet(defaultDeviceIndex)
-                    );
-
-                    return _wintabContexts.Count;
-                }
-
-                _wintabDiagnostics = $"WTOpenA failed for default digitizing context on device {defaultDeviceIndex}";
-            }
-            else
-            {
-                _wintabDiagnostics = $"Default digitizing context axes invalid for device {defaultDeviceIndex}: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
-            }
+            context = WintabInterop.GetDigitizerContext(deviceIndex);
         }
         catch (Exception ex)
         {
-            _wintabDiagnostics = $"Default digitizing context failed: {ex.Message}";
+            _wintabDiagnostics = $"WTI_DDCTXS {deviceIndex} failed: {ex.Message}";
+            return 0;
         }
 
-        int deviceCount = Math.Max(1, WintabInterop.GetAttachedDeviceCount());
-        _wintabDiagnostics = $"Trying {deviceCount} enumerated digitizer context(s)";
+        var xAxis = WintabInterop.GetXAxis(deviceIndex);
+        var yAxis = WintabInterop.GetYAxis(deviceIndex);
+        var pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
 
-        for (int deviceIndex = 0; deviceIndex < deviceCount; deviceIndex++)
+        if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
         {
-            WintabInterop.LogContext context;
-            try
-            {
-                context = WintabInterop.GetDigitizerContext(deviceIndex);
-            }
-            catch (Exception ex)
-            {
-                _wintabDiagnostics = $"WTI_DDCTXS {deviceIndex} failed: {ex.Message}";
-                continue;
-            }
-
-            var xAxis = WintabInterop.GetXAxis(deviceIndex);
-            var yAxis = WintabInterop.GetYAxis(deviceIndex);
-            var pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
-
-            if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
-            {
-                _wintabDiagnostics = $"Device {deviceIndex} axes invalid: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
-                continue;
-            }
-
-            context.Name = $"TabletMidiPad Digitizer {deviceIndex}";
-            context.Options |= WintabInterop.CXO_MESSAGES;
-            context.Options &= ~WintabInterop.CXO_SYSTEM;
-            context.Locks =
-                WintabInterop.CXL_INSIZE |
-                WintabInterop.CXL_INASPECT |
-                WintabInterop.CXL_SENSITIVITY |
-                WintabInterop.CXL_MARGIN |
-                WintabInterop.CXL_SYSOUT;
-            context.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
-            if (_expressKeysMask > 0)
-                context.PktData |= _expressKeysMask;
-            context.PktMode = 0;
-            context.MoveMask = context.PktData;
-            context.BtnUpMask = context.BtnDnMask;
-            context.OutOrgX = 0;
-            context.OutOrgY = 0;
-            context.OutExtX = xAxis.Max - xAxis.Min + 1;
-            context.OutExtY = -(yAxis.Max - yAxis.Min + 1);
-            context.SysMode = false;
-
-            if (!messageBaseInitialized)
-            {
-                _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
-                _wintabPacketExtMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKETEXT);
-                _wintabContextOverlapMessage = unchecked((int)context.MsgBase + WintabInterop.WT_CTXOVERLAP);
-                _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
-                _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
-                messageBaseInitialized = true;
-            }
-
-            uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref context, true);
-            if (handle == 0)
-            {
-                _wintabDiagnostics = $"WTOpenA failed for digitizer context {deviceIndex}";
-                continue;
-            }
-
-            SetupExpressKeyOverrides(handle, (byte)deviceIndex);
-            _wintabDiagnostics = $"Digitizer context {deviceIndex} opened";
-            _wintabContexts[handle] = new WintabContextInfo(
-                DeviceIndex: deviceIndex,
-                OutputMinX: 0,
-                OutputMaxX: Math.Max(1, context.OutExtX - 1),
-                OutputMinY: 0,
-                OutputMaxY: Math.Max(1, Math.Abs(context.OutExtY) - 1),
-                PressureMax: Math.Max(1, pressureAxis.Max),
-                IsIntegrated: WintabInterop.IsIntegratedTablet(deviceIndex)
-            );
+            _wintabDiagnostics = $"Device {deviceIndex} axes invalid: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
+            return 0;
         }
+
+        string name = WintabInterop.GetDeviceName(deviceIndex);
+        context.Name = $"TabletMidiPad {name}";
+        context.Options |= WintabInterop.CXO_MESSAGES;
+        context.Options &= ~WintabInterop.CXO_SYSTEM;
+        context.Locks =
+            WintabInterop.CXL_INSIZE |
+            WintabInterop.CXL_INASPECT |
+            WintabInterop.CXL_SENSITIVITY |
+            WintabInterop.CXL_MARGIN |
+            WintabInterop.CXL_SYSOUT;
+        context.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+        if (_expressKeysMask > 0)
+            context.PktData |= _expressKeysMask;
+        context.PktMode = 0;
+        context.MoveMask = context.PktData;
+        context.BtnUpMask = context.BtnDnMask;
+        context.OutOrgX = 0;
+        context.OutOrgY = 0;
+        context.OutExtX = xAxis.Max - xAxis.Min + 1;
+        context.OutExtY = -(yAxis.Max - yAxis.Min + 1);
+        context.SysMode = false;
+
+        _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
+        _wintabPacketExtMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKETEXT);
+        _wintabContextOverlapMessage = unchecked((int)context.MsgBase + WintabInterop.WT_CTXOVERLAP);
+        _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
+        _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
+
+        uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref context, true);
+        if (handle == 0)
+        {
+            _wintabDiagnostics = $"WTOpenA failed for {name} (device {deviceIndex})";
+            return 0;
+        }
+
+        SetupExpressKeyOverrides(handle, (byte)deviceIndex);
+        _wintabDiagnostics = $"{name} (device {deviceIndex}) opened";
+        _wintabContexts[handle] = new WintabContextInfo(
+            DeviceIndex: deviceIndex,
+            OutputMinX: 0,
+            OutputMaxX: Math.Max(1, context.OutExtX - 1),
+            OutputMinY: 0,
+            OutputMaxY: Math.Max(1, Math.Abs(context.OutExtY) - 1),
+            PressureMax: Math.Max(1, pressureAxis.Max),
+            IsIntegrated: WintabInterop.IsIntegratedTablet(deviceIndex)
+        );
 
         return _wintabContexts.Count;
     }

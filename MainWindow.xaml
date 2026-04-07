@@ -496,6 +496,10 @@
                               Content="Latch On Enter"
                               Click="ToolbarZoneSwitchToggle_Click"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
+                <ComboBox Name="TabletDeviceComboBox"
+                          MinWidth="120"
+                          VerticalAlignment="Center"
+                          SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
                         Click="MenuReconnectPen_Click"/>
