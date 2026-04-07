@@ -365,12 +365,6 @@
                     <TextBox Name="MousePressureTextBox"
                              Margin="0,6,0,0"/>
 
-                    <TextBlock Text="Precision Scale"
-                               Foreground="#bcbcbc"
-                               Margin="0,12,0,0"/>
-                    <TextBox Name="PrecisionScaleTextBox"
-                             Margin="0,6,0,0"/>
-
                     <CheckBox Name="SendPressureGloballyCheckBox"
                               Margin="0,12,0,0"
                               Content="Send pressure globally"/>

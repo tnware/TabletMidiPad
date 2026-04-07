@@ -39,10 +39,9 @@ public partial class MainWindow : Window
     private string _lastInputBackend = "Idle";
     private string _wintabDiagnostics = "Wintab not initialized yet";
     private uint _lastWintabButtons;
-    private bool _precisionModeActive;
-    private double _precisionAnchorX;
-    private double _precisionAnchorY;
-    private bool _hasPrecisionAnchor;
+    private bool _positionLockActive;
+    private bool _hasLockedPosition;
+    private Point _lockedLocalPosition;
 
     public MainWindow()
     {
@@ -277,7 +276,6 @@ public partial class MainWindow : Window
         DawPortNameTextBox.Text = config.DawPortName;
         AssociationIdTextBox.Text = config.LoopbackAssociationId;
         MousePressureTextBox.Text = config.MousePressureValue.ToString();
-        PrecisionScaleTextBox.Text = config.PrecisionModeScale.ToString("0.##");
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
 
@@ -352,7 +350,6 @@ public partial class MainWindow : Window
         _config.DawPortName = RequireText(DawPortNameTextBox.Text, "DAW Input Port");
         _config.LoopbackAssociationId = RequireGuidText(AssociationIdTextBox.Text, "Association Id");
         _config.MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
-        _config.PrecisionModeScale = ReadDouble(PrecisionScaleTextBox.Text, 0.01, 1.0, "Precision Scale");
         _config.SendPressureGlobally = SendPressureGloballyCheckBox.IsChecked == true;
         _config.AllowZoneSwitchWhilePressed = AllowZoneSwitchCheckBox.IsChecked == true;
 
@@ -627,7 +624,20 @@ public partial class MainWindow : Window
         }
 
         var local = NormalizeWithinZone(zone, xNorm, yNorm);
-        local = ApplyPrecisionMode(local.x, local.y);
+        if (_positionLockActive)
+        {
+            if (!_hasLockedPosition)
+            {
+                _lockedLocalPosition = new Point(local.x, local.y);
+                _hasLockedPosition = true;
+            }
+
+            local = (_lockedLocalPosition.X, _lockedLocalPosition.Y);
+        }
+        else
+        {
+            _hasLockedPosition = false;
+        }
         _lastZonePoints[zone] = new Point(local.x, local.y);
         DrawZoneOverlay();
         int x = ToCc(local.x, zone.InvertX);
@@ -653,7 +663,8 @@ public partial class MainWindow : Window
         SendZoneRelease(_activeZone);
         _activeZone = null;
         ActiveZoneText.Text = "Active zone: none";
-        _hasPrecisionAnchor = false;
+        _hasLockedPosition = false;
+        _positionLockActive = false;
         UpdateModifiersText();
     }
 
@@ -1332,7 +1343,7 @@ public partial class MainWindow : Window
         double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
         MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
         UpdatePenButtonsDebug(packet.Buttons);
-        UpdatePrecisionMode(packet.Buttons, xNorm, yNorm);
+        UpdatePositionLockMode(packet.Buttons);
         double xPx = xNorm * width;
         double yPx = yNorm * height;
         int pressure = context.PressureMax > 0
@@ -1402,41 +1413,26 @@ public partial class MainWindow : Window
         PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
     }
 
-    private void UpdatePrecisionMode(uint buttons, double xNorm, double yNorm)
+    private void UpdatePositionLockMode(uint buttons)
     {
-        bool precisionActive = (buttons & 0x0004) != 0;
-        if (precisionActive && !_precisionModeActive)
+        bool lockActive = (buttons & 0x0004) != 0;
+        if (lockActive && !_positionLockActive)
         {
-            _precisionAnchorX = xNorm;
-            _precisionAnchorY = yNorm;
-            _hasPrecisionAnchor = true;
+            _hasLockedPosition = false;
         }
-        else if (!precisionActive && _precisionModeActive)
+        else if (!lockActive && _positionLockActive)
         {
-            _hasPrecisionAnchor = false;
+            _hasLockedPosition = false;
         }
 
-        _precisionModeActive = precisionActive;
+        _positionLockActive = lockActive;
         UpdateModifiersText();
-    }
-
-    private (double x, double y) ApplyPrecisionMode(double x, double y)
-    {
-        if (!_precisionModeActive || !_hasPrecisionAnchor)
-        {
-            return (x, y);
-        }
-
-        double scale = Math.Clamp(_config.PrecisionModeScale, 0.01, 1.0);
-        double adjustedX = _precisionAnchorX + ((x - _precisionAnchorX) * scale);
-        double adjustedY = _precisionAnchorY + ((y - _precisionAnchorY) * scale);
-        return (Math.Clamp(adjustedX, 0.0, 1.0), Math.Clamp(adjustedY, 0.0, 1.0));
     }
 
     private void UpdateModifiersText()
     {
-        ModifiersText.Text = _precisionModeActive
-            ? $"Modifiers: precision x{_config.PrecisionModeScale:0.##}"
+        ModifiersText.Text = _positionLockActive
+            ? "Modifiers: XY lock"
             : "Modifiers: none";
     }
 
