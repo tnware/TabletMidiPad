@@ -61,16 +61,23 @@ Instead of just sending CCs (Continuous Controllers), zones could behave as musi
 - **Aftertouch**: Using sustained pressure while the pen is down to send MIDI Aftertouch (Channel or Polyphonic).
 - **Pitch Bend / Vibrato**: Using small X/Y movements after a note is triggered to control pitch or modulation.
 
-### C. MPE (MIDI Polyphonic Expression)
+### C. The "Expression Zone" (MPE-Style)
+A more advanced version of the note grid, where each zone represents a single "center-tuned" musical note but allows for continuous expressive deviation.
+- **Center-Tuned Note**: The dead center of the zone emits a 100% "on key" note.
+- **Divergence (X/Y)**: Moving away from the center of the zone applies continuous pitch bend, timbre shifts, or other modifiers. For example, the X-axis could control fine-tuning, allowing the performer to play subtly "out of key" for a more human or experimental sound.
+- **Pressure Integration**: Pressure can simultaneously control note velocity at the start and aftertouch/modulation throughout the note's duration.
+- **Expressive Latching**: Incorporating latch controls or synth-style ADSR modifiers that respond to how the pen is held or released within the zone.
+
+### D. MPE (MIDI Polyphonic Expression)
 Modern Wacom pens often support **Tilt** (X/Y) and sometimes **Rotation**.
 - **Concept**: Map pen tilt to MPE dimensions (e.g., Slide or Timbre).
 - **Use Case**: Tilting the pen forward to open a filter while moving it across the pad to change pitch.
 
-### D. Advanced Gesture Support
+### E. Advanced Gesture Support
 - **Flicks and Swipes**: Recognizing quick movements to trigger specific events (e.g., "Flick left" to undo).
 - **Dwell Actions**: Triggering a MIDI event if the pen stays still in a zone for a certain duration.
 
-### E. Visual Feedback (HUD & Overlays)
+### F. Visual Feedback (HUD & Overlays)
 - **Dynamic Labels**: Showing the name of the parameter being controlled near the cursor dot.
 - **Ghosting**: Visualizing the "path" of the last few pen movements to help the user understand the automation being generated.
 
