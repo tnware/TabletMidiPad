@@ -941,6 +941,33 @@
                                     Content="Remove"/>
                         </WrapPanel>
 
+                        <TextBlock Text="Layout"
+                                   Foreground="#808080"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Max Rows"
+                                           Foreground="#808080"
+                                           FontSize="11"/>
+                                <TextBox Name="MaxZoneRowsTextBox"
+                                         Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Max Per Row"
+                                           Foreground="#808080"
+                                           FontSize="11"/>
+                                <TextBox Name="MaxZonesPerRowTextBox"
+                                         Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
                         <ListBox Name="ZoneListBox"
                                  Height="120"
                                  SelectionChanged="ZoneListBox_SelectionChanged"/>
@@ -1060,7 +1087,13 @@
                                            FontSize="11"
                                            FontWeight="SemiBold"
                                            Margin="0,14,0,6"/>
+                                <CheckBox Name="ZoneSendXCheckBox"
+                                          Content="Send X"/>
+                                <CheckBox Name="ZoneSendYCheckBox"
+                                          Margin="0,6,0,0"
+                                          Content="Send Y"/>
                                 <CheckBox Name="ZoneInvertXCheckBox"
+                                          Margin="0,6,0,0"
                                           Content="Invert X"/>
                                 <CheckBox Name="ZoneInvertYCheckBox"
                                           Margin="0,6,0,0"

@@ -131,7 +131,7 @@ public partial class MainWindow : Window
     private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
     {
         _config = AppConfig.Default;
-        AutoTileZones(_config.Zones);
+        AutoTileZones(_config);
         LoadConfigIntoUi(_config);
         ApplySettings();
     }
@@ -397,7 +397,7 @@ public partial class MainWindow : Window
     private void AutoLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         CommitCurrentZoneEdits();
-        AutoTileZones(_config.Zones);
+        AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -420,6 +420,8 @@ public partial class MainWindow : Window
             CcX = nextCcStart,
             CcY = nextCcStart + 1,
             CcPressure = nextCcStart + 2,
+            SendX = true,
+            SendY = true,
             InvertY = true,
             SendPressure = true,
             ResetPressureOnRelease = true,
@@ -430,7 +432,7 @@ public partial class MainWindow : Window
         };
 
         _config.Zones.Add(zone);
-        AutoTileZones(_config.Zones);
+        AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
         LoadSelectedZoneIntoEditor();
@@ -481,7 +483,7 @@ public partial class MainWindow : Window
             _config.Zones.Add(ZoneConfig.CreateDefault());
         }
 
-        AutoTileZones(_config.Zones);
+        AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -542,6 +544,8 @@ public partial class MainWindow : Window
     {
         _isLoadingUi = true;
 
+        MaxZoneRowsTextBox.Text = config.MaxZoneRows.ToString();
+        MaxZonesPerRowTextBox.Text = config.MaxZonesPerRow.ToString();
         RefreshZoneList();
         ZoneListBox.SelectedIndex = config.Zones.Count > 0 ? 0 : -1;
         _selectedZoneIndex = ZoneListBox.SelectedIndex;
@@ -629,6 +633,8 @@ public partial class MainWindow : Window
             ZoneTopTextBox.Text = string.Empty;
             ZoneWidthTextBox.Text = string.Empty;
             ZoneHeightTextBox.Text = string.Empty;
+            ZoneSendXCheckBox.IsChecked = false;
+            ZoneSendYCheckBox.IsChecked = false;
             ZoneInvertXCheckBox.IsChecked = false;
             ZoneInvertYCheckBox.IsChecked = false;
             ZoneSendPressureCheckBox.IsChecked = false;
@@ -649,6 +655,8 @@ public partial class MainWindow : Window
         ZoneTopTextBox.Text = zone.Top.ToString("0.###");
         ZoneWidthTextBox.Text = zone.Width.ToString("0.###");
         ZoneHeightTextBox.Text = zone.Height.ToString("0.###");
+        ZoneSendXCheckBox.IsChecked = zone.SendX;
+        ZoneSendYCheckBox.IsChecked = zone.SendY;
         ZoneInvertXCheckBox.IsChecked = zone.InvertX;
         ZoneInvertYCheckBox.IsChecked = zone.InvertY;
         ZoneSendPressureCheckBox.IsChecked = zone.SendPressure;
@@ -665,6 +673,8 @@ public partial class MainWindow : Window
         }
 
         var zone = _config.Zones[_selectedZoneIndex];
+        _config.MaxZoneRows = ReadInt(MaxZoneRowsTextBox.Text, 1, 16, "Max Zone Rows");
+        _config.MaxZonesPerRow = ReadInt(MaxZonesPerRowTextBox.Text, 1, 32, "Max Zones Per Row");
         zone.Name = RequireText(ZoneNameTextBox.Text, "Zone Name");
         zone.Enabled = ZoneEnabledCheckBox.IsChecked == true;
         zone.MidiChannel = ReadInt(ZoneChannelComboBox.Text, 1, 16, "Zone MIDI Channel");
@@ -675,6 +685,8 @@ public partial class MainWindow : Window
         zone.Top = ReadDouble(ZoneTopTextBox.Text, 0.0, 1.0, "Zone Top");
         zone.Width = ReadDouble(ZoneWidthTextBox.Text, 0.0, 1.0, "Zone Width");
         zone.Height = ReadDouble(ZoneHeightTextBox.Text, 0.0, 1.0, "Zone Height");
+        zone.SendX = ZoneSendXCheckBox.IsChecked != false;
+        zone.SendY = ZoneSendYCheckBox.IsChecked != false;
         zone.InvertX = ZoneInvertXCheckBox.IsChecked == true;
         zone.InvertY = ZoneInvertYCheckBox.IsChecked == true;
         zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
@@ -691,6 +703,16 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("At least one zone is required.");
         }
 
+        if (config.MaxZoneRows < 1)
+        {
+            throw new InvalidOperationException("Max rows must be at least 1.");
+        }
+
+        if (config.MaxZonesPerRow < 1)
+        {
+            throw new InvalidOperationException("Max zones per row must be at least 1.");
+        }
+
         foreach (var zone in config.Zones)
         {
             if (zone.Width <= 0 || zone.Height <= 0)
@@ -705,24 +727,29 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void AutoTileZones(IList<ZoneConfig> zones)
+    private static void AutoTileZones(AppConfig config)
     {
+        IList<ZoneConfig> zones = config.Zones;
         if (zones.Count == 0)
         {
             return;
         }
 
         int count = zones.Count;
-        int columns = (int)Math.Ceiling(Math.Sqrt(count));
-        int rows = (int)Math.Ceiling((double)count / columns);
+        int maxRows = Math.Max(1, config.MaxZoneRows);
+        int maxPerRow = Math.Max(1, config.MaxZonesPerRow);
+        int capacity = maxRows * maxPerRow;
+        int rows = count <= capacity
+            ? Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)))
+            : Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow));
 
         double cellHeight = 1.0 / rows;
 
         for (int index = 0; index < count; index++)
         {
-            int row = index / columns;
-            int colsInThisRow = Math.Min(columns, count - row * columns);
-            int column = index % columns;
+            int row = index / maxPerRow;
+            int colsInThisRow = Math.Min(maxPerRow, count - row * maxPerRow);
+            int column = index % maxPerRow;
             double cellWidth = 1.0 / colsInThisRow;
 
             zones[index].Left = column * cellWidth;
@@ -794,7 +821,7 @@ public partial class MainWindow : Window
         UpdateInputBackendStatus();
         ActiveZoneText.Text = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "free switch" : "locked until release";
-        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | {switchMode}";
+        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
         ValueText.Text = "X: -, Y: -, Pressure: -";
         PenButtonsText.Text = "Pen buttons: -";
         ModifiersText.Text = "Modifiers: none";
@@ -1232,12 +1259,20 @@ public partial class MainWindow : Window
 
         ActiveZoneText.Text = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
-        ValueText.Text = sendPressure
-            ? $"{zone.Name} -> X: {x}, Y: {y}, Pressure: {curvedPressure}"
-            : $"{zone.Name} -> X: {x}, Y: {y}, Pressure: off";
+        string xText = zone.SendX ? x.ToString() : "off";
+        string yText = zone.SendY ? y.ToString() : "off";
+        string pressureText = sendPressure ? curvedPressure.ToString() : "off";
+        ValueText.Text = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
 
-        SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
-        SendCcIfChanged(zone.MidiChannel, zone.CcY, y);
+        if (zone.SendX)
+        {
+            SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
+        }
+
+        if (zone.SendY)
+        {
+            SendCcIfChanged(zone.MidiChannel, zone.CcY, y);
+        }
 
         if (sendPressure)
         {
@@ -1356,6 +1391,7 @@ public partial class MainWindow : Window
             };
 
             string bounds = $"({zone.Left:0.##},{zone.Top:0.##}) {zone.Width:0.##}\u00D7{zone.Height:0.##}";
+            string axes = $"  [{(zone.SendX ? "X" : "-")}{(zone.SendY ? "Y" : "-")}{(zone.SendPressure ? "P" : "-")}]";
             string pressureFlag = zone.SendPressure ? "" : "  [no pressure]";
             string enabledFlag = zone.Enabled ? "" : "  [off]";
 
@@ -1373,6 +1409,10 @@ public partial class MainWindow : Window
             label.Inlines.Add(new System.Windows.Documents.Run($"  {bounds}")
             {
                 Foreground = new SolidColorBrush(Color.FromArgb(180, 180, 180, 180))
+            });
+            label.Inlines.Add(new System.Windows.Documents.Run(axes)
+            {
+                Foreground = new SolidColorBrush(Color.FromArgb(190, 165, 210, 255))
             });
             if (pressureFlag.Length > 0)
             {

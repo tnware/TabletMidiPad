@@ -17,6 +17,8 @@ public sealed class AppConfig
     public string InputBackendMode { get; set; } = "Auto";
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
+    public int MaxZoneRows { get; set; } = 2;
+    public int MaxZonesPerRow { get; set; } = 2;
     public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };
 
     public static AppConfig Default => new();
@@ -76,6 +78,8 @@ public sealed class ZoneConfig
     public int CcX { get; set; } = 16;
     public int CcY { get; set; } = 17;
     public int CcPressure { get; set; } = 18;
+    public bool SendX { get; set; } = true;
+    public bool SendY { get; set; } = true;
     public bool InvertX { get; set; }
     public bool InvertY { get; set; } = true;
     public bool SendPressure { get; set; } = true;
