@@ -338,12 +338,6 @@ public partial class MainWindow : Window, IMainWindowActions
         }
     }
 
-    private void ToolbarPressureToggle_Click(object sender, RoutedEventArgs e)
-    {
-        _config.SendPressureGlobally = _viewModel.SendPressureGlobally;
-        SyncPressureSplitBorder();
-    }
-
     private static readonly string[] ZonePaletteColorKeys =
     {
         "ZonePalette1Color",
@@ -377,23 +371,10 @@ public partial class MainWindow : Window, IMainWindowActions
     private static Color GetZonePaletteColor(int index)
         => ThemeColor(ZonePaletteColorKeys[index % ZonePaletteColorKeys.Length], Color.FromRgb(0x67, 0xD6, 0x8A));
 
-    private void SyncPressureSplitBorder()
-    {
-        bool on = ToolbarPressureToggle.IsChecked == true;
-        PressureSplitBorder.Background = on ? ThemeBrush("AccentSurfaceBrush", Brushes.Transparent) : Brushes.Transparent;
-        PressureSplitBorder.BorderBrush = on ? ThemeBrush("AccentBrush", Brushes.Transparent) : Brushes.Transparent;
-    }
-
     private void SyncInputBackendSplitBorder()
     {
         InputBackendSplitBorder.Background = ThemeBrush("AccentSurfaceBrush", Brushes.Transparent);
         InputBackendSplitBorder.BorderBrush = ThemeBrush("AccentBrush", Brushes.Transparent);
-    }
-
-    private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
-    {
-        _config.AllowZoneSwitchWhilePressed = _viewModel.AllowZoneSwitchWhilePressed;
-        UpdateUiForCurrentConfig();
     }
 
     private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)

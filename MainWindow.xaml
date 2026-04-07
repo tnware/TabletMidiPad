@@ -261,10 +261,22 @@
                         BorderThickness="1"
                         BorderBrush="Transparent"
                         Background="Transparent">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderBrush" Value="Transparent"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ElementName=ToolbarPressureToggle, Path=IsChecked}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource AccentSurfaceBrush}"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <StackPanel Orientation="Horizontal">
                         <ToggleButton Name="ToolbarPressureToggle"
                                       IsChecked="{Binding SendPressureGlobally, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      Click="ToolbarPressureToggle_Click">
+                                      >
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton">
                                     <Setter Property="Background" Value="Transparent"/>

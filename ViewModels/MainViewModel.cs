@@ -36,6 +36,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(SendPressureGlobally));
             OnPropertyChanged(nameof(AllowZoneSwitchWhilePressed));
+            RefreshConfigSummaryFromConfig();
         }
     }
 
@@ -66,6 +67,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             Config.AllowZoneSwitchWhilePressed = value;
             OnPropertyChanged();
+            RefreshConfigSummaryFromConfig();
         }
     }
 
@@ -222,5 +224,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         field = value;
         OnPropertyChanged(propertyName);
+    }
+
+    private void RefreshConfigSummaryFromConfig()
+    {
+        string switchMode = Config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
+        ConfigSummaryText = $"{Config.Zones.Count} zone(s) configured | layout {Config.MaxZoneRows} row(s) max / {Config.MaxZonesPerRow} per row | {switchMode}";
     }
 }

@@ -55,9 +55,6 @@ public partial class MainWindow
 
     private void SyncToolbar()
     {
-        ToolbarPressureToggle.IsChecked = _config.SendPressureGlobally;
-        ToolbarZoneSwitchToggle.IsChecked = _config.AllowZoneSwitchWhilePressed;
-        SyncPressureSplitBorder();
         SyncInputBackendSplitBorder();
 
         string curveShort = _config.PressureCurve switch
