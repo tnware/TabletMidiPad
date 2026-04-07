@@ -46,6 +46,25 @@ public partial class MainWindow : Window
     private bool _hasLockedPosition;
     private Point _lockedLocalPosition;
 
+    // Zone resize drag state
+    private const double ResizeHitMargin = 8.0;
+    private const double ZoneSelectionInset = 0.02;
+    private bool _isResizingZone;
+    private int _resizeZoneIndex = -1;
+    private ResizeEdge _resizeEdge;
+    private Point _resizeDragStart;
+    private double _resizeOrigLeft, _resizeOrigTop, _resizeOrigWidth, _resizeOrigHeight;
+
+    [Flags]
+    private enum ResizeEdge
+    {
+        None = 0,
+        Left = 1,
+        Right = 2,
+        Top = 4,
+        Bottom = 8
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -613,13 +632,14 @@ public partial class MainWindow : Window
         int columns = (int)Math.Ceiling(Math.Sqrt(count));
         int rows = (int)Math.Ceiling((double)count / columns);
 
-        double cellWidth = 1.0 / columns;
         double cellHeight = 1.0 / rows;
 
         for (int index = 0; index < count; index++)
         {
             int row = index / columns;
+            int colsInThisRow = Math.Min(columns, count - row * columns);
             int column = index % columns;
+            double cellWidth = 1.0 / colsInThisRow;
 
             zones[index].Left = column * cellWidth;
             zones[index].Top = row * cellHeight;
@@ -739,9 +759,22 @@ public partial class MainWindow : Window
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
         if (e.LeftButton != MouseButtonState.Pressed) return;
+
+        var pos = e.GetPosition(Pad);
+        SelectZoneAtPoint(pos);
+
+        var hit = HitTestZoneEdge(pos);
+        if (hit.zone >= 0)
+        {
+            StartZoneResize(hit.zone, hit.edge, pos);
+            Pad.CaptureMouse();
+            e.Handled = true;
+            return;
+        }
+
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         _isActive = true;
         Pad.CaptureMouse();
         HandleMouse(e);
@@ -749,22 +782,287 @@ public partial class MainWindow : Window
 
     private void Pad_MouseMove(object sender, MouseEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
+
+        if (_isResizingZone)
+        {
+            UpdateZoneResize(e.GetPosition(Pad));
+            e.Handled = true;
+            return;
+        }
+
+        // Update cursor for resize hints
+        var pos = e.GetPosition(Pad);
+        var hit = HitTestZoneEdge(pos);
+        Pad.Cursor = ResizeEdgeToCursor(hit.edge);
+
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
     }
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (IsPromotedStylusMouseEvent(e)) return;
+
+        if (_isResizingZone)
+        {
+            FinishZoneResize();
+            Pad.ReleaseMouseCapture();
+            e.Handled = true;
+            return;
+        }
+
+        if (_useWintab || !AllowsStylusMouseFallback()) return;
         if (!_isActive) return;
         HandleMouse(e);
         _isActive = false;
         Pad.ReleaseMouseCapture();
         CursorDot.Visibility = Visibility.Collapsed;
         HandleRelease();
+    }
+
+    private (int zone, ResizeEdge edge) HitTestZoneEdge(Point pos)
+    {
+        double width = Pad.ActualWidth;
+        double height = Pad.ActualHeight;
+        if (width <= 0 || height <= 0)
+            return (-1, ResizeEdge.None);
+
+        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        {
+            return (-1, ResizeEdge.None);
+        }
+
+        int i = _selectedZoneIndex;
+        var zone = _config.Zones[i];
+        double zl = zone.Left * width;
+        double zt = zone.Top * height;
+        double zr = (zone.Left + zone.Width) * width;
+        double zb = (zone.Top + zone.Height) * height;
+
+        if (pos.X < zl - ResizeHitMargin || pos.X > zr + ResizeHitMargin ||
+            pos.Y < zt - ResizeHitMargin || pos.Y > zb + ResizeHitMargin)
+            return (-1, ResizeEdge.None);
+
+        ResizeEdge edge = ResizeEdge.None;
+        if (Math.Abs(pos.X - zl) <= ResizeHitMargin) edge |= ResizeEdge.Left;
+        else if (Math.Abs(pos.X - zr) <= ResizeHitMargin) edge |= ResizeEdge.Right;
+        if (Math.Abs(pos.Y - zt) <= ResizeHitMargin) edge |= ResizeEdge.Top;
+        else if (Math.Abs(pos.Y - zb) <= ResizeHitMargin) edge |= ResizeEdge.Bottom;
+
+        return edge != ResizeEdge.None ? (i, edge) : (-1, ResizeEdge.None);
+    }
+
+    private static Cursor ResizeEdgeToCursor(ResizeEdge edge)
+    {
+        return edge switch
+        {
+            ResizeEdge.Left or ResizeEdge.Right => Cursors.SizeWE,
+            ResizeEdge.Top or ResizeEdge.Bottom => Cursors.SizeNS,
+            ResizeEdge.Left | ResizeEdge.Top => Cursors.SizeNWSE,
+            ResizeEdge.Right | ResizeEdge.Bottom => Cursors.SizeNWSE,
+            ResizeEdge.Left | ResizeEdge.Bottom => Cursors.SizeNESW,
+            ResizeEdge.Right | ResizeEdge.Top => Cursors.SizeNESW,
+            _ => null!
+        };
+    }
+
+    private void StartZoneResize(int zoneIndex, ResizeEdge edge, Point pos)
+    {
+        _isResizingZone = true;
+        _resizeZoneIndex = zoneIndex;
+        _resizeEdge = edge;
+        _resizeDragStart = pos;
+
+        var zone = _config.Zones[zoneIndex];
+        _resizeOrigLeft = zone.Left;
+        _resizeOrigTop = zone.Top;
+        _resizeOrigWidth = zone.Width;
+        _resizeOrigHeight = zone.Height;
+
+        // Select this zone in the editor
+        if (_selectedZoneIndex != zoneIndex)
+        {
+            CommitCurrentZoneEdits();
+            _selectedZoneIndex = zoneIndex;
+            ZoneListBox.SelectedIndex = zoneIndex;
+            LoadSelectedZoneIntoEditor();
+        }
+    }
+
+    private void SelectZoneAtPoint(Point pos)
+    {
+        int zoneIndex = HitTestZoneBody(pos);
+        if (zoneIndex < 0 || zoneIndex == _selectedZoneIndex)
+        {
+            return;
+        }
+
+        CommitCurrentZoneEdits();
+        _selectedZoneIndex = zoneIndex;
+        ZoneListBox.SelectedIndex = zoneIndex;
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+    }
+
+    private int HitTestZoneBody(Point pos)
+    {
+        double width = Pad.ActualWidth;
+        double height = Pad.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < _config.Zones.Count; i++)
+        {
+            var zone = _config.Zones[i];
+            double insetX = Math.Min(ZoneSelectionInset, Math.Max(0.0, (zone.Width / 2.0) - 0.001));
+            double insetY = Math.Min(ZoneSelectionInset, Math.Max(0.0, (zone.Height / 2.0) - 0.001));
+            double zl = (zone.Left + insetX) * width;
+            double zt = (zone.Top + insetY) * height;
+            double zr = ((zone.Left + zone.Width) - insetX) * width;
+            double zb = ((zone.Top + zone.Height) - insetY) * height;
+
+            if (pos.X >= zl && pos.X <= zr && pos.Y >= zt && pos.Y <= zb)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private void UpdateZoneResize(Point pos)
+    {
+        if (_resizeZoneIndex < 0 || _resizeZoneIndex >= _config.Zones.Count)
+            return;
+
+        double width = Pad.ActualWidth;
+        double height = Pad.ActualHeight;
+        if (width <= 0 || height <= 0) return;
+
+        double dxNorm = (pos.X - _resizeDragStart.X) / width;
+        double dyNorm = (pos.Y - _resizeDragStart.Y) / height;
+
+        const double snap = 0.05;
+        const double minSize = 0.05;
+        double newLeft = _resizeOrigLeft;
+        double newTop = _resizeOrigTop;
+        double newWidth = _resizeOrigWidth;
+        double newHeight = _resizeOrigHeight;
+
+        if ((_resizeEdge & ResizeEdge.Left) != 0)
+        {
+            newLeft = Snap(Math.Clamp(_resizeOrigLeft + dxNorm, 0.0, _resizeOrigLeft + _resizeOrigWidth - minSize), snap);
+            newWidth = (_resizeOrigLeft + _resizeOrigWidth) - newLeft;
+        }
+        else if ((_resizeEdge & ResizeEdge.Right) != 0)
+        {
+            double newRight = Snap(Math.Clamp(_resizeOrigLeft + _resizeOrigWidth + dxNorm, _resizeOrigLeft + minSize, 1.0), snap);
+            newWidth = newRight - _resizeOrigLeft;
+        }
+
+        if ((_resizeEdge & ResizeEdge.Top) != 0)
+        {
+            newTop = Snap(Math.Clamp(_resizeOrigTop + dyNorm, 0.0, _resizeOrigTop + _resizeOrigHeight - minSize), snap);
+            newHeight = (_resizeOrigTop + _resizeOrigHeight) - newTop;
+        }
+        else if ((_resizeEdge & ResizeEdge.Bottom) != 0)
+        {
+            double newBottom = Snap(Math.Clamp(_resizeOrigTop + _resizeOrigHeight + dyNorm, _resizeOrigTop + minSize, 1.0), snap);
+            newHeight = newBottom - _resizeOrigTop;
+        }
+
+        newLeft = Math.Clamp(newLeft, 0.0, 1.0);
+        newTop = Math.Clamp(newTop, 0.0, 1.0);
+        newWidth = Snap(Math.Clamp(newWidth, minSize, 1.0 - newLeft), snap);
+        newHeight = Snap(Math.Clamp(newHeight, minSize, 1.0 - newTop), snap);
+
+        if (newLeft + newWidth > 1.0)
+        {
+            newWidth = 1.0 - newLeft;
+        }
+
+        if (newTop + newHeight > 1.0)
+        {
+            newHeight = 1.0 - newTop;
+        }
+
+        if (!CanResizeZoneTo(_resizeZoneIndex, newLeft, newTop, newWidth, newHeight))
+        {
+            return;
+        }
+
+        var zone = _config.Zones[_resizeZoneIndex];
+        zone.Left = newLeft;
+        zone.Top = newTop;
+        zone.Width = newWidth;
+        zone.Height = newHeight;
+
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+    }
+
+    private void FinishZoneResize()
+    {
+        _isResizingZone = false;
+        _resizeZoneIndex = -1;
+        _resizeEdge = ResizeEdge.None;
+        Pad.Cursor = null!;
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zone resized. Click Apply Settings to save.";
+    }
+
+    private bool CanResizeZoneTo(int zoneIndex, double left, double top, double width, double height)
+    {
+        const double minSize = 0.05;
+        if (width < minSize || height < minSize)
+        {
+            return false;
+        }
+
+        if (left < 0.0 || top < 0.0 || left + width > 1.0 || top + height > 1.0)
+        {
+            return false;
+        }
+
+        foreach (var other in _config.Zones.Select((zone, index) => (zone, index)))
+        {
+            if (other.index == zoneIndex)
+            {
+                continue;
+            }
+
+            if (ZonesOverlap(left, top, width, height, other.zone.Left, other.zone.Top, other.zone.Width, other.zone.Height))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool ZonesOverlap(
+        double leftA,
+        double topA,
+        double widthA,
+        double heightA,
+        double leftB,
+        double topB,
+        double widthB,
+        double heightB)
+    {
+        double rightA = leftA + widthA;
+        double bottomA = topA + heightA;
+        double rightB = leftB + widthB;
+        double bottomB = topB + heightB;
+
+        return leftA < rightB &&
+               rightA > leftB &&
+               topA < bottomB &&
+               bottomA > topB;
     }
 
     private void HandleStylus(StylusEventArgs e)
@@ -973,7 +1271,7 @@ public partial class MainWindow : Window
                 RadiusY = 8
             };
 
-            string bounds = $"{zone.Left:0.##},{zone.Top:0.##} {zone.Width:0.##}\u00D7{zone.Height:0.##}";
+            string bounds = $"({zone.Left:0.##},{zone.Top:0.##}) {zone.Width:0.##}\u00D7{zone.Height:0.##}";
             string pressureFlag = zone.SendPressure ? "" : "  [no pressure]";
             string enabledFlag = zone.Enabled ? "" : "  [off]";
 
@@ -1015,6 +1313,11 @@ public partial class MainWindow : Window
             ZoneOverlayCanvas.Children.Add(rect);
             ZoneOverlayCanvas.Children.Add(label);
 
+            if (i == _selectedZoneIndex)
+            {
+                AddResizeHandles(rectLeft, rectTop, rectWidth, rectHeight, strokeColor);
+            }
+
             if (_lastZonePoints.TryGetValue(zone, out Point lastPoint))
             {
                 double markerCenterX = rectLeft + (lastPoint.X * rectWidth);
@@ -1046,6 +1349,42 @@ public partial class MainWindow : Window
                 ZoneOverlayCanvas.Children.Add(markerRing);
                 ZoneOverlayCanvas.Children.Add(markerDot);
             }
+        }
+    }
+
+    private void AddResizeHandles(double rectLeft, double rectTop, double rectWidth, double rectHeight, Color strokeColor)
+    {
+        const double handleSize = 10;
+        double half = handleSize / 2;
+        var brush = new SolidColorBrush(Color.FromArgb(235, strokeColor.R, strokeColor.G, strokeColor.B));
+        var fill = new SolidColorBrush(Color.FromArgb(220, 18, 18, 18));
+
+        foreach (Point handleCenter in new[]
+        {
+            new Point(rectLeft, rectTop),
+            new Point(rectLeft + rectWidth / 2, rectTop),
+            new Point(rectLeft + rectWidth, rectTop),
+            new Point(rectLeft, rectTop + rectHeight / 2),
+            new Point(rectLeft + rectWidth, rectTop + rectHeight / 2),
+            new Point(rectLeft, rectTop + rectHeight),
+            new Point(rectLeft + rectWidth / 2, rectTop + rectHeight),
+            new Point(rectLeft + rectWidth, rectTop + rectHeight)
+        })
+        {
+            var handle = new Rectangle
+            {
+                Width = handleSize,
+                Height = handleSize,
+                RadiusX = 3,
+                RadiusY = 3,
+                Fill = fill,
+                Stroke = brush,
+                StrokeThickness = 1.5
+            };
+
+            Canvas.SetLeft(handle, handleCenter.X - half);
+            Canvas.SetTop(handle, handleCenter.Y - half);
+            ZoneOverlayCanvas.Children.Add(handle);
         }
     }
 
@@ -1712,6 +2051,11 @@ public partial class MainWindow : Window
         };
 
         return Math.Clamp((int)Math.Round(curved * 127.0), 0, 127);
+    }
+
+    private static double Snap(double value, double increment)
+    {
+        return Math.Round(value / increment) * increment;
     }
 
     private static string NormalizeInputBackendMode(string? text)
