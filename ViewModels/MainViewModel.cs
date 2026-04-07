@@ -30,6 +30,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _config = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SendPressureGlobally));
+            OnPropertyChanged(nameof(AllowZoneSwitchWhilePressed));
+        }
+    }
+
+    public bool SendPressureGlobally
+    {
+        get => Config.SendPressureGlobally;
+        set
+        {
+            if (Config.SendPressureGlobally == value)
+            {
+                return;
+            }
+
+            Config.SendPressureGlobally = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool AllowZoneSwitchWhilePressed
+    {
+        get => Config.AllowZoneSwitchWhilePressed;
+        set
+        {
+            if (Config.AllowZoneSwitchWhilePressed == value)
+            {
+                return;
+            }
+
+            Config.AllowZoneSwitchWhilePressed = value;
+            OnPropertyChanged();
         }
     }
 

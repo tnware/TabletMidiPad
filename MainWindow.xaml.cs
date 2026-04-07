@@ -340,7 +340,7 @@ public partial class MainWindow : Window, IMainWindowActions
 
     private void ToolbarPressureToggle_Click(object sender, RoutedEventArgs e)
     {
-        _config.SendPressureGlobally = ToolbarPressureToggle.IsChecked == true;
+        _config.SendPressureGlobally = _viewModel.SendPressureGlobally;
         SyncPressureSplitBorder();
     }
 
@@ -392,7 +392,7 @@ public partial class MainWindow : Window, IMainWindowActions
 
     private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
     {
-        _config.AllowZoneSwitchWhilePressed = ToolbarZoneSwitchToggle.IsChecked == true;
+        _config.AllowZoneSwitchWhilePressed = _viewModel.AllowZoneSwitchWhilePressed;
         UpdateUiForCurrentConfig();
     }
 

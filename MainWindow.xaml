@@ -262,6 +262,7 @@
                         Background="Transparent">
                     <StackPanel Orientation="Horizontal">
                         <ToggleButton Name="ToolbarPressureToggle"
+                                      IsChecked="{Binding SendPressureGlobally, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       Click="ToolbarPressureToggle_Click">
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton">
@@ -496,7 +497,7 @@
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
                               Content="Latch On Enter"
-                              Click="ToolbarZoneSwitchToggle_Click"/>
+                              IsChecked="{Binding AllowZoneSwitchWhilePressed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <ComboBox Name="TabletDeviceComboBox"
                           MinWidth="120"
