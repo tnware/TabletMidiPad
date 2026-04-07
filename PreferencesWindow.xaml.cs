@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace TabletMidiPad;
 
@@ -26,12 +28,17 @@ public partial class PreferencesWindow : Window
     public bool SendPressureGlobally => SendPressureGloballyCheckBox.IsChecked == true;
     public bool AllowZoneSwitchWhilePressed => AllowZoneSwitchCheckBox.IsChecked == true;
 
-    public PreferencesWindow()
+    private readonly int _expressKeyCount;
+    private readonly List<(ComboBox Action, TextBox Channel, TextBox Cc, TextBox Note)> _expressKeyRows = new();
+
+    public PreferencesWindow(int expressKeyCount)
     {
+        _expressKeyCount = expressKeyCount;
         InitializeComponent();
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();
+        BuildExpressKeyRows();
     }
 
     public void LoadFrom(AppConfig config)
@@ -58,6 +65,35 @@ public partial class PreferencesWindow : Window
         UpperPenButtonNoteTextBox.Text = config.UpperPenButtonNote.ToString();
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
         AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
+
+        ExpressKeyConfig.EnsureCount(config.ExpressKeys, _expressKeyCount);
+        for (int i = 0; i < _expressKeyRows.Count && i < config.ExpressKeys.Count; i++)
+        {
+            var row = _expressKeyRows[i];
+            var ek = config.ExpressKeys[i];
+            row.Action.SelectedItem = NormalizePenButtonAction(ek.Action);
+            row.Action.Text = NormalizePenButtonAction(ek.Action);
+            row.Channel.Text = ek.MidiChannel.ToString();
+            row.Cc.Text = ek.Cc.ToString();
+            row.Note.Text = ek.Note.ToString();
+        }
+    }
+
+    public List<ExpressKeyConfig> GetExpressKeyConfigs()
+    {
+        var list = new List<ExpressKeyConfig>();
+        for (int i = 0; i < _expressKeyRows.Count; i++)
+        {
+            var row = _expressKeyRows[i];
+            list.Add(new ExpressKeyConfig
+            {
+                Action = NormalizePenButtonAction(row.Action.Text),
+                MidiChannel = int.TryParse(row.Channel.Text, out int ch) ? Math.Clamp(ch, 1, 16) : 1,
+                Cc = int.TryParse(row.Cc.Text, out int cc) ? Math.Clamp(cc, 0, 127) : 70 + i,
+                Note = int.TryParse(row.Note.Text, out int note) ? Math.Clamp(note, 0, 127) : 36 + i
+            });
+        }
+        return list;
     }
 
     private void OkButton_Click(object sender, RoutedEventArgs e)
@@ -97,6 +133,15 @@ public partial class PreferencesWindow : Window
         UpperPenButtonMidiChannel = ReadInt(UpperPenButtonMidiChannelTextBox.Text, 1, 16, "Upper Button MIDI Channel");
         UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
         UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
+
+        for (int i = 0; i < _expressKeyRows.Count; i++)
+        {
+            var row = _expressKeyRows[i];
+            ReadPenButtonAction(row.Action.Text);
+            ReadInt(row.Channel.Text, 1, 16, $"EK{i} MIDI Channel");
+            ReadInt(row.Cc.Text, 0, 127, $"EK{i} CC");
+            ReadInt(row.Note.Text, 0, 127, $"EK{i} Note");
+        }
     }
 
     private void PopulatePressureCurveList()
@@ -119,17 +164,104 @@ public partial class PreferencesWindow : Window
     {
         foreach (var comboBox in new[] { LowerPenButtonActionComboBox, UpperPenButtonActionComboBox })
         {
-            comboBox.Items.Clear();
-            comboBox.Items.Add(PenButtonActions.None);
-            comboBox.Items.Add(PenButtonActions.LockXY);
-            comboBox.Items.Add(PenButtonActions.LockX);
-            comboBox.Items.Add(PenButtonActions.LockY);
-            comboBox.Items.Add(PenButtonActions.DisablePressure);
-            comboBox.Items.Add(PenButtonActions.EnablePressure);
-            comboBox.Items.Add(PenButtonActions.CcMomentary);
-            comboBox.Items.Add(PenButtonActions.CcToggle);
-            comboBox.Items.Add(PenButtonActions.NoteMomentary);
-            comboBox.Items.Add(PenButtonActions.NoteToggle);
+            PopulateActionComboBox(comboBox);
+        }
+    }
+
+    private static void PopulateActionComboBox(ComboBox comboBox)
+    {
+        comboBox.Items.Clear();
+        comboBox.Items.Add(PenButtonActions.None);
+        comboBox.Items.Add(PenButtonActions.LockXY);
+        comboBox.Items.Add(PenButtonActions.LockX);
+        comboBox.Items.Add(PenButtonActions.LockY);
+        comboBox.Items.Add(PenButtonActions.DisablePressure);
+        comboBox.Items.Add(PenButtonActions.EnablePressure);
+        comboBox.Items.Add(PenButtonActions.CcMomentary);
+        comboBox.Items.Add(PenButtonActions.CcToggle);
+        comboBox.Items.Add(PenButtonActions.NoteMomentary);
+        comboBox.Items.Add(PenButtonActions.NoteToggle);
+    }
+
+    private void BuildExpressKeyRows()
+    {
+        if (_expressKeyCount == 0)
+            return;
+
+        ExpressKeysPanel.Children.Clear();
+        _expressKeyRows.Clear();
+
+        ExpressKeysPanel.Children.Add(new TextBlock
+        {
+            Text = $"Express Keys ({_expressKeyCount} detected)",
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#e9e9e9")),
+            FontSize = 16,
+            Margin = new Thickness(0, 22, 0, 8)
+        });
+
+        for (int i = 0; i < _expressKeyCount; i++)
+        {
+            var label = new TextBlock
+            {
+                Text = $"ExpressKey {i}",
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc")),
+                Margin = new Thickness(0, i == 0 ? 0 : 12, 0, 0)
+            };
+
+            var actionCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
+            PopulateActionComboBox(actionCombo);
+
+            var channelBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
+            var ccBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
+            var noteBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
+
+            var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var chLabel = new StackPanel();
+            chLabel.Children.Add(new TextBlock
+            {
+                Text = "MIDI Ch",
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+            });
+            chLabel.Children.Add(channelBox);
+            Grid.SetColumn(chLabel, 0);
+            grid.Children.Add(chLabel);
+
+            var ccLabel = new StackPanel();
+            ccLabel.Children.Add(new TextBlock
+            {
+                Text = "CC",
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+            });
+            ccLabel.Children.Add(ccBox);
+            Grid.SetColumn(ccLabel, 2);
+            grid.Children.Add(ccLabel);
+
+            var noteLabel = new StackPanel();
+            noteLabel.Children.Add(new TextBlock
+            {
+                Text = "Note",
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#bcbcbc"))
+            });
+            noteLabel.Children.Add(noteBox);
+            Grid.SetColumn(noteLabel, 4);
+            grid.Children.Add(noteLabel);
+
+            ExpressKeysPanel.Children.Add(label);
+            ExpressKeysPanel.Children.Add(actionCombo);
+            ExpressKeysPanel.Children.Add(grid);
+
+            _expressKeyRows.Add((actionCombo, channelBox, ccBox, noteBox));
         }
     }
 

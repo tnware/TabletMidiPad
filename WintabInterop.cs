@@ -13,16 +13,32 @@ internal static class WintabInterop
     public const int WT_CTXOVERLAP = 4;
     public const int WT_PROXIMITY = 5;
     public const int WT_INFOCHANGE = 6;
+    public const int WT_PACKETEXT = 8;
     private const uint WTI_INTERFACE = 1;
     private const uint WTI_DEFCONTEXT = 3;
     private const uint WTI_DEFSYSCTX = 4;
     private const uint WTI_DDCTXS = 400;
     private const uint WTI_DEVICES = 100;
+    private const uint WTI_EXTENSIONS = 300;
     private const uint IFC_NDEVICES = 4;
     private const uint DVC_HARDWARE = 2;
     private const uint DVC_X = 12;
     private const uint DVC_Y = 13;
     private const uint DVC_NPRESSURE = 15;
+
+    private const uint EXT_TAG = 2;
+    private const uint EXT_MASK = 3;
+
+    public const uint WTX_EXPKEYS2 = 8;
+    public const uint WTX_TOUCHRING = 7;
+    public const uint WTX_TOUCHSTRIP = 6;
+
+    public const ushort TABLET_PROPERTY_CONTROLCOUNT = 0;
+    public const ushort TABLET_PROPERTY_FUNCCOUNT = 1;
+    public const ushort TABLET_PROPERTY_AVAILABLE = 2;
+    public const ushort TABLET_PROPERTY_OVERRIDE = 5;
+    public const ushort TABLET_PROPERTY_OVERRIDE_NAME = 6;
+    public const ushort TABLET_PROPERTY_LOCATION = 11;
     public const uint HWC_INTEGRATED = 0x0001;
 
     public const uint CXO_SYSTEM = 0x0001;
@@ -278,4 +294,243 @@ internal static class WintabInterop
     [DllImport("Wintab32.dll", CharSet = CharSet.Auto)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool WTPacket(uint context, uint packetSerialNumber, out Packet packet);
+
+    [DllImport("Wintab32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WTPacket(uint context, uint packetSerialNumber, IntPtr buffer);
+
+    [DllImport("Wintab32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WTExtGet(uint context, uint extensionTag, IntPtr data);
+
+    [DllImport("Wintab32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WTExtSet(uint context, uint extensionTag, IntPtr data);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ExtensionBase
+    {
+        public IntPtr Context;
+        public uint Status;
+        public uint Time;
+        public uint SerialNumber;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ExpKeyData
+    {
+        public byte Tablet;
+        public byte Control;
+        public byte Location;
+        public byte Reserved;
+        public uint State;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SliderData
+    {
+        public byte Tablet;
+        public byte Control;
+        public byte Mode;
+        public byte Reserved;
+        public uint Position;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PacketExt
+    {
+        public ExtensionBase Base;
+        public ExpKeyData ExpKey;
+        public SliderData TouchStrip;
+        public SliderData TouchRing;
+    }
+
+    private const int ExtensionPropertyMaxDataBytes = 32;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ExtensionPropertyBase
+    {
+        public byte Version;
+        public byte TabletIndex;
+        public byte ControlIndex;
+        public byte FunctionIndex;
+        public ushort PropertyId;
+        public ushort Reserved;
+        public uint DataSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ExtensionProperty
+    {
+        public ExtensionPropertyBase Header;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = ExtensionPropertyMaxDataBytes)]
+        public byte[] Data;
+    }
+
+    public static uint FindExtensionIndex(uint extensionTag)
+    {
+        int size = sizeof(uint);
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            for (uint i = 0; ; i++)
+            {
+                int returned = (int)WTInfoA(WTI_EXTENSIONS + i, EXT_TAG, buffer);
+                if (returned <= 0)
+                    break;
+                uint tag = unchecked((uint)Marshal.ReadInt32(buffer));
+                if (tag == extensionTag)
+                    return i;
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+        return 0xFFFFFFFF;
+    }
+
+    public static uint GetExtensionMask(uint extensionTag)
+    {
+        uint extIndex = FindExtensionIndex(extensionTag);
+        if (extIndex == 0xFFFFFFFF)
+            return 0;
+
+        int size = sizeof(uint);
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            int returned = (int)WTInfoA(WTI_EXTENSIONS + extIndex, EXT_MASK, buffer);
+            if (returned > 0)
+                return unchecked((uint)Marshal.ReadInt32(buffer));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+        return 0;
+    }
+
+    public static bool GetExtensionProperty(uint context, uint extensionTag, byte tabletIndex,
+        byte controlIndex, byte functionIndex, ushort propertyId, out uint result)
+    {
+        result = 0;
+        var prop = new ExtensionProperty
+        {
+            Header = new ExtensionPropertyBase
+            {
+                Version = 0,
+                TabletIndex = tabletIndex,
+                ControlIndex = controlIndex,
+                FunctionIndex = functionIndex,
+                PropertyId = propertyId,
+                Reserved = 0,
+                DataSize = sizeof(uint)
+            },
+            Data = new byte[ExtensionPropertyMaxDataBytes]
+        };
+
+        int size = Marshal.SizeOf<ExtensionProperty>();
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(prop, buffer, false);
+            if (!WTExtGet(context, extensionTag, buffer))
+                return false;
+
+            var ret = Marshal.PtrToStructure<ExtensionProperty>(buffer);
+            result = BitConverter.ToUInt32(ret.Data, 0);
+            return true;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public static bool SetExtensionProperty(uint context, uint extensionTag, byte tabletIndex,
+        byte controlIndex, byte functionIndex, ushort propertyId, uint value)
+    {
+        var prop = new ExtensionProperty
+        {
+            Header = new ExtensionPropertyBase
+            {
+                Version = 0,
+                TabletIndex = tabletIndex,
+                ControlIndex = controlIndex,
+                FunctionIndex = functionIndex,
+                PropertyId = propertyId,
+                Reserved = 0,
+                DataSize = sizeof(uint)
+            },
+            Data = new byte[ExtensionPropertyMaxDataBytes]
+        };
+
+        byte[] valueBytes = BitConverter.GetBytes(value);
+        Buffer.BlockCopy(valueBytes, 0, prop.Data, 0, 4);
+
+        int size = Marshal.SizeOf<ExtensionProperty>();
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(prop, buffer, false);
+            return WTExtSet(context, extensionTag, buffer);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public static bool SetExtensionPropertyString(uint context, uint extensionTag, byte tabletIndex,
+        byte controlIndex, byte functionIndex, ushort propertyId, string value)
+    {
+        byte[] utf8 = System.Text.Encoding.UTF8.GetBytes(value);
+        var prop = new ExtensionProperty
+        {
+            Header = new ExtensionPropertyBase
+            {
+                Version = 0,
+                TabletIndex = tabletIndex,
+                ControlIndex = controlIndex,
+                FunctionIndex = functionIndex,
+                PropertyId = propertyId,
+                Reserved = 0,
+                DataSize = (uint)utf8.Length
+            },
+            Data = new byte[ExtensionPropertyMaxDataBytes]
+        };
+
+        Buffer.BlockCopy(utf8, 0, prop.Data, 0, Math.Min(utf8.Length, ExtensionPropertyMaxDataBytes));
+
+        int size = Marshal.SizeOf<ExtensionProperty>();
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(prop, buffer, false);
+            return WTExtSet(context, extensionTag, buffer);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public static bool GetPacketExt(uint context, uint packetId, out PacketExt packetExt)
+    {
+        packetExt = default;
+        int size = Marshal.SizeOf<PacketExt>();
+        IntPtr buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (!WTPacket(context, packetId, buffer))
+                return false;
+            packetExt = Marshal.PtrToStructure<PacketExt>(buffer);
+            return true;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
 }

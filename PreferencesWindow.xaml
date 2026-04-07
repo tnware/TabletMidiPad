@@ -359,6 +359,8 @@
                     </StackPanel>
                 </Grid>
 
+                <StackPanel Name="ExpressKeysPanel"/>
+
                 <CheckBox Name="SendPressureGloballyCheckBox"
                           Margin="0,14,0,0"
                           Content="Send pressure globally"/>

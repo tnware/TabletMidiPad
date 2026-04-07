@@ -33,9 +33,13 @@ public partial class MainWindow : Window
     private HwndSource? _wintabMessageSource;
     private readonly Dictionary<uint, WintabContextInfo> _wintabContexts = new();
     private int _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+    private int _wintabPacketExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
     private int _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
     private int _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
     private int _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
+    private uint _expressKeysMask;
+    private int _expressKeyCount;
+    private string _expressKeyDiagnostics = "";
 
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -48,6 +52,8 @@ public partial class MainWindow : Window
     private bool _upperPenButtonToggleState;
     private bool _hasLockedPosition;
     private Point _lockedLocalPosition;
+    private readonly Dictionary<int, bool> _expressKeyHeld = new();
+    private readonly Dictionary<int, bool> _expressKeyToggleState = new();
 
     // Zone resize drag state
     private const double ResizeHitMargin = 8.0;
@@ -151,7 +157,8 @@ public partial class MainWindow : Window
 
     private void MenuPreferences_Click(object sender, RoutedEventArgs e)
     {
-        var prefs = new PreferencesWindow { Owner = this };
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
+        var prefs = new PreferencesWindow(_expressKeyCount) { Owner = this };
         prefs.LoadFrom(_config);
 
         prefs.ShowDialog();
@@ -184,6 +191,7 @@ public partial class MainWindow : Window
         _config.UpperPenButtonNote = prefs.UpperPenButtonNote;
         _config.SendPressureGlobally = prefs.SendPressureGlobally;
         _config.AllowZoneSwitchWhilePressed = prefs.AllowZoneSwitchWhilePressed;
+        _config.ExpressKeys = prefs.GetExpressKeyConfigs();
 
         CommitCurrentZoneEdits();
 
@@ -1925,9 +1933,13 @@ public partial class MainWindow : Window
         _lastInputBackend = "Stylus/Mouse Fallback";
         _wintabDiagnostics = "Wintab shut down";
         _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
+        _wintabPacketExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
         _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
         _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
         _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
+        _expressKeysMask = 0;
+        _expressKeyHeld.Clear();
+        _expressKeyToggleState.Clear();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -1942,6 +1954,22 @@ public partial class MainWindow : Window
                 HandleWintabPacket(context, packet);
                 handled = true;
             }
+        }
+        else if (msg == _wintabPacketExtMessage)
+        {
+            uint packetId = unchecked((uint)wParam.ToInt32());
+            uint context = unchecked((uint)lParam.ToInt32());
+
+            if (WintabInterop.GetPacketExt(context, packetId, out var pktExt))
+            {
+                HandleExpressKeyPacket(pktExt);
+            }
+            else
+            {
+                _expressKeyDiagnostics = $"EK: GetPacketExt failed (ctx=0x{context:X}, pkt={packetId})";
+                UpdateInputBackendStatus();
+            }
+            handled = true;
         }
         else if (msg == _wintabContextOverlapMessage)
         {
@@ -1994,7 +2022,11 @@ public partial class MainWindow : Window
     private int OpenWintabContexts()
     {
         _wintabContexts.Clear();
+        _expressKeyHeld.Clear();
+        _expressKeyToggleState.Clear();
         bool messageBaseInitialized = false;
+
+        _expressKeysMask = WintabInterop.GetExtensionMask(WintabInterop.WTX_EXPKEYS2);
 
         try
         {
@@ -2009,6 +2041,8 @@ public partial class MainWindow : Window
                 WintabInterop.CXL_MARGIN |
                 WintabInterop.CXL_SYSOUT;
             defaultContext.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            if (_expressKeysMask > 0)
+                defaultContext.PktData |= _expressKeysMask;
             defaultContext.PktMode = 0;
             defaultContext.MoveMask = defaultContext.PktData;
             defaultContext.BtnUpMask = defaultContext.BtnDnMask;
@@ -2027,6 +2061,7 @@ public partial class MainWindow : Window
                 defaultContext.SysMode = false;
 
                 _wintabPacketMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKET);
+                _wintabPacketExtMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PACKETEXT);
                 _wintabContextOverlapMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_CTXOVERLAP);
                 _wintabProximityMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_PROXIMITY);
                 _wintabInfoChangeMessage = unchecked((int)defaultContext.MsgBase + WintabInterop.WT_INFOCHANGE);
@@ -2035,6 +2070,7 @@ public partial class MainWindow : Window
                 uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref defaultContext, true);
                 if (handle != 0)
                 {
+                    SetupExpressKeyOverrides(handle, (byte)Math.Max(0, defaultDeviceIndex));
                     _wintabDiagnostics = $"Default digitizing context opened on device {defaultDeviceIndex}";
                     _wintabContexts[handle] = new WintabContextInfo(
                         DeviceIndex: defaultDeviceIndex,
@@ -2097,6 +2133,8 @@ public partial class MainWindow : Window
                 WintabInterop.CXL_MARGIN |
                 WintabInterop.CXL_SYSOUT;
             context.PktData = WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
+            if (_expressKeysMask > 0)
+                context.PktData |= _expressKeysMask;
             context.PktMode = 0;
             context.MoveMask = context.PktData;
             context.BtnUpMask = context.BtnDnMask;
@@ -2109,6 +2147,7 @@ public partial class MainWindow : Window
             if (!messageBaseInitialized)
             {
                 _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
+                _wintabPacketExtMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKETEXT);
                 _wintabContextOverlapMessage = unchecked((int)context.MsgBase + WintabInterop.WT_CTXOVERLAP);
                 _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
                 _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
@@ -2122,6 +2161,7 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            SetupExpressKeyOverrides(handle, (byte)deviceIndex);
             _wintabDiagnostics = $"Digitizer context {deviceIndex} opened";
             _wintabContexts[handle] = new WintabContextInfo(
                 DeviceIndex: deviceIndex,
@@ -2188,6 +2228,123 @@ public partial class MainWindow : Window
         HandleRelease();
         Pad.ReleaseMouseCapture();
         Pad.ReleaseStylusCapture();
+    }
+
+    private void SetupExpressKeyOverrides(uint contextHandle, byte tabletIndex)
+    {
+        if (_expressKeysMask == 0)
+        {
+            _expressKeyDiagnostics = "EK: mask=0, not supported";
+            return;
+        }
+
+        // WTExtGet/WTExtSet take the extension TAG value, not the WTI_EXTENSIONS index.
+        uint extTag = WintabInterop.WTX_EXPKEYS2;
+
+        if (!WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
+            0, 0, WintabInterop.TABLET_PROPERTY_CONTROLCOUNT, out uint numControls))
+        {
+            _expressKeyDiagnostics = $"EK: CONTROLCOUNT failed (ctx=0x{contextHandle:X}, tag={extTag}, tablet={tabletIndex})";
+            return;
+        }
+
+        if (numControls == 0)
+        {
+            _expressKeyDiagnostics = $"EK: 0 controls on tablet {tabletIndex}";
+            return;
+        }
+
+        int overrideCount = 0;
+        int failCount = 0;
+
+        for (byte controlIndex = 0; controlIndex < numControls; controlIndex++)
+        {
+            if (!WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
+                controlIndex, 0, WintabInterop.TABLET_PROPERTY_FUNCCOUNT, out uint numFuncs))
+                continue;
+
+            for (byte funcIndex = 0; funcIndex < numFuncs; funcIndex++)
+            {
+                WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
+                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_AVAILABLE, out uint available);
+
+                if (available == 0)
+                    continue;
+
+                bool overrideOk = WintabInterop.SetExtensionProperty(contextHandle, extTag, tabletIndex,
+                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE, 1);
+
+                WintabInterop.SetExtensionPropertyString(contextHandle, extTag, tabletIndex,
+                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE_NAME,
+                    $"MIDI EK{controlIndex}");
+
+                if (overrideOk)
+                    overrideCount++;
+                else
+                    failCount++;
+            }
+        }
+
+        _expressKeyCount = (int)numControls;
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
+        _expressKeyDiagnostics = $"EK: {numControls} keys, {overrideCount} overridden";
+    }
+
+    private void HandleExpressKeyPacket(WintabInterop.PacketExt pktExt)
+    {
+        int control = pktExt.ExpKey.Control;
+        bool isPressed = pktExt.ExpKey.State != 0;
+
+        _expressKeyHeld.TryGetValue(control, out bool wasHeld);
+        _expressKeyToggleState.TryGetValue(control, out bool toggleState);
+
+        bool justPressed = isPressed && !wasHeld;
+        bool justReleased = !isPressed && wasHeld;
+
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, control + 1);
+        var keyConfig = _config.ExpressKeys[control];
+        string action = NormalizePenButtonAction(keyConfig.Action);
+        int channel = keyConfig.MidiChannel;
+        int cc = Math.Clamp(keyConfig.Cc, 0, 127);
+        int note = Math.Clamp(keyConfig.Note, 0, 127);
+
+        if (string.Equals(action, PenButtonActions.CcMomentary, StringComparison.Ordinal))
+        {
+            if (justPressed)
+                SendCcIfChanged(channel, cc, 127, force: true);
+            else if (justReleased)
+                SendCcIfChanged(channel, cc, 0, force: true);
+        }
+        else if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                SendCcIfChanged(channel, cc, toggleState ? 127 : 0, force: true);
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.NoteMomentary, StringComparison.Ordinal))
+        {
+            if (justPressed)
+                SendNoteIfChanged(channel, note, true, 127, force: true);
+            else if (justReleased)
+                SendNoteIfChanged(channel, note, false, 0, force: true);
+        }
+        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                SendNoteIfChanged(channel, note, toggleState, toggleState ? 127 : 0, force: true);
+            }
+        }
+
+        _expressKeyHeld[control] = isPressed;
+        _expressKeyToggleState[control] = toggleState;
+
+        _expressKeyDiagnostics = $"EK{control}: {(isPressed ? "pressed" : "released")} [{action}]";
+        MarkInputBackend($"Wintab EK{control}");
+        UpdateInputBackendStatus();
     }
 
     private void HandleWintabPacket(uint contextHandle, WintabInterop.Packet packet)
@@ -2346,8 +2503,9 @@ public partial class MainWindow : Window
 
     private void UpdateInputBackendStatus()
     {
+        string ekPart = string.IsNullOrEmpty(_expressKeyDiagnostics) ? "" : $" | {_expressKeyDiagnostics}";
         string configured = _useWintab
-            ? $"Wintab enabled, {_wintabContexts.Count} context(s)"
+            ? $"Wintab enabled, {_wintabContexts.Count} context(s){ekPart}"
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
         InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
