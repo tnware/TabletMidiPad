@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,6 +7,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- Enable built-in .NET analyzers and enforce code style during build -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +22,26 @@
 
   <ItemGroup>
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+    <!-- Static analysis / linting packages. Marked as PrivateAssets so they don't flow to consumers. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="7.12.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Try adding a known available StyleCop.Analyzers prerelease version. If this package
+         isn't available in your feed or you prefer a stable release, replace with a compatible version. -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- If an application icon is added to Assets\app.ico, embed it as the application icon. This is conditional
+       so builds won't fail when the asset hasn't been added yet. Replace with a proper .ico when available. -->
+  <PropertyGroup Condition="Exists('Assets\\app.ico')">
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- If a PNG icon is added at Assets\icon.png, include it as a resource so WPF pack URIs can reference it. -->
+  <ItemGroup Condition="Exists('Assets\\icon.png')">
+    <Resource Include="Assets\icon.png" />
   </ItemGroup>
 
 </Project>
