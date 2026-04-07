@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
 namespace TabletMidiPad;
@@ -30,7 +31,7 @@ public partial class PreferencesWindow : Window
     public bool AllowZoneSwitchWhilePressed => AllowZoneSwitchCheckBox.IsChecked == true;
 
     private readonly int _expressKeyCount;
-    private readonly List<(ComboBox Action, TextBox Channel, TextBox Cc, TextBox Note)> _expressKeyRows = new();
+    private readonly List<(ComboBox Action, ComboBox Channel, TextBox Cc, TextBox Note)> _expressKeyRows = new();
 
     public PreferencesWindow(int expressKeyCount)
     {
@@ -39,6 +40,8 @@ public partial class PreferencesWindow : Window
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();
+        PopulateMidiChannelCombo(LowerPenButtonMidiChannelComboBox);
+        PopulateMidiChannelCombo(UpperPenButtonMidiChannelComboBox);
         BuildExpressKeyRows();
         ConfigureNumericInputs();
     }
@@ -48,10 +51,8 @@ public partial class PreferencesWindow : Window
         foreach (TextBox textBox in new[]
         {
             MousePressureTextBox,
-            LowerPenButtonMidiChannelTextBox,
             LowerPenButtonCcTextBox,
             LowerPenButtonNoteTextBox,
-            UpperPenButtonMidiChannelTextBox,
             UpperPenButtonCcTextBox,
             UpperPenButtonNoteTextBox
         })
@@ -85,12 +86,12 @@ public partial class PreferencesWindow : Window
         InputBackendModeComboBox.Text = NormalizeInputBackendMode(config.InputBackendMode);
         LowerPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.LowerPenButtonAction);
         LowerPenButtonActionComboBox.Text = NormalizePenButtonAction(config.LowerPenButtonAction);
-        LowerPenButtonMidiChannelTextBox.Text = config.LowerPenButtonMidiChannel.ToString();
+        SetMidiChannelComboSelection(LowerPenButtonMidiChannelComboBox, config.LowerPenButtonMidiChannel);
         LowerPenButtonCcTextBox.Text = config.LowerPenButtonCc.ToString();
         LowerPenButtonNoteTextBox.Text = config.LowerPenButtonNote.ToString();
         UpperPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.UpperPenButtonAction);
         UpperPenButtonActionComboBox.Text = NormalizePenButtonAction(config.UpperPenButtonAction);
-        UpperPenButtonMidiChannelTextBox.Text = config.UpperPenButtonMidiChannel.ToString();
+        SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, config.UpperPenButtonMidiChannel);
         UpperPenButtonCcTextBox.Text = config.UpperPenButtonCc.ToString();
         UpperPenButtonNoteTextBox.Text = config.UpperPenButtonNote.ToString();
         SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
@@ -103,7 +104,7 @@ public partial class PreferencesWindow : Window
             var ek = config.ExpressKeys[i];
             row.Action.SelectedItem = NormalizePenButtonAction(ek.Action);
             row.Action.Text = NormalizePenButtonAction(ek.Action);
-            row.Channel.Text = ek.MidiChannel.ToString();
+            SetMidiChannelComboSelection(row.Channel, ek.MidiChannel);
             row.Cc.Text = ek.Cc.ToString();
             row.Note.Text = ek.Note.ToString();
         }
@@ -118,7 +119,7 @@ public partial class PreferencesWindow : Window
             list.Add(new ExpressKeyConfig
             {
                 Action = NormalizePenButtonAction(row.Action.Text),
-                MidiChannel = int.TryParse(row.Channel.Text, out int ch) ? Math.Clamp(ch, 1, 16) : 1,
+                MidiChannel = ReadMidiChannelFromCombo(row.Channel, $"ExpressKey {i + 1} MIDI Channel"),
                 Cc = int.TryParse(row.Cc.Text, out int cc) ? Math.Clamp(cc, 0, 127) : 70 + i,
                 Note = int.TryParse(row.Note.Text, out int note) ? Math.Clamp(note, 0, 127) : 36 + i
             });
@@ -150,6 +151,50 @@ public partial class PreferencesWindow : Window
         e.Handled = true;
     }
 
+    private void MidiCcNoteStepper_Decrease_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is RepeatButton { Tag: TextBox tb })
+            AdjustMidiCcOrNote(tb, -1);
+    }
+
+    private void MidiCcNoteStepper_Increase_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is RepeatButton { Tag: TextBox tb })
+            AdjustMidiCcOrNote(tb, 1);
+    }
+
+    private static void AdjustMidiCcOrNote(TextBox textBox, int delta)
+    {
+        int current = int.TryParse(textBox.Text, out int v) ? v : 0;
+        int next = Math.Clamp(current + delta, 0, 127);
+        textBox.Text = next.ToString();
+    }
+
+    private static void PopulateMidiChannelCombo(ComboBox comboBox)
+    {
+        comboBox.Items.Clear();
+        for (int channel = 1; channel <= 16; channel++)
+            comboBox.Items.Add(channel);
+    }
+
+    private static void SetMidiChannelComboSelection(ComboBox comboBox, int channel)
+    {
+        int clamped = Math.Clamp(channel, 1, 16);
+        comboBox.SelectedItem = clamped;
+        comboBox.Text = clamped.ToString();
+    }
+
+    private static int ReadMidiChannelFromCombo(ComboBox comboBox, string fieldName)
+    {
+        if (comboBox.SelectedItem is int ch && ch is >= 1 and <= 16)
+            return ch;
+
+        if (int.TryParse(comboBox.Text?.Trim(), out int parsed))
+            return ReadInt(parsed.ToString(), 1, 16, fieldName);
+
+        throw new InvalidOperationException($"{fieldName} must be between 1 and 16.");
+    }
+
     private void Validate()
     {
         RequireText(DawPortNameTextBox.Text, "DAW Input Port");
@@ -162,10 +207,10 @@ public partial class PreferencesWindow : Window
         ReadInputBackendMode(InputBackendModeComboBox.Text);
         ReadPenButtonAction(LowerPenButtonActionComboBox.Text);
         ReadPenButtonAction(UpperPenButtonActionComboBox.Text);
-        LowerPenButtonMidiChannel = ReadInt(LowerPenButtonMidiChannelTextBox.Text, 1, 16, "Lower Button MIDI Channel");
+        LowerPenButtonMidiChannel = ReadMidiChannelFromCombo(LowerPenButtonMidiChannelComboBox, "Lower Button MIDI Channel");
         LowerPenButtonCc = ReadInt(LowerPenButtonCcTextBox.Text, 0, 127, "Lower Button CC");
         LowerPenButtonNote = ReadInt(LowerPenButtonNoteTextBox.Text, 0, 127, "Lower Button Note");
-        UpperPenButtonMidiChannel = ReadInt(UpperPenButtonMidiChannelTextBox.Text, 1, 16, "Upper Button MIDI Channel");
+        UpperPenButtonMidiChannel = ReadMidiChannelFromCombo(UpperPenButtonMidiChannelComboBox, "Upper Button MIDI Channel");
         UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
         UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
 
@@ -173,9 +218,9 @@ public partial class PreferencesWindow : Window
         {
             var row = _expressKeyRows[i];
             ReadPenButtonAction(row.Action.Text);
-            ReadInt(row.Channel.Text, 1, 16, $"EK{i} MIDI Channel");
-            ReadInt(row.Cc.Text, 0, 127, $"EK{i} CC");
-            ReadInt(row.Note.Text, 0, 127, $"EK{i} Note");
+            ReadMidiChannelFromCombo(row.Channel, $"ExpressKey {i + 1} MIDI Channel");
+            ReadInt(row.Cc.Text, 0, 127, $"ExpressKey {i + 1} CC");
+            ReadInt(row.Note.Text, 0, 127, $"ExpressKey {i + 1} Note");
         }
     }
 
@@ -254,15 +299,17 @@ public partial class PreferencesWindow : Window
             var actionCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
             PopulateActionComboBox(actionCombo);
 
-            var channelBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
-            var ccBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
-            var noteBox = new TextBox { Margin = new Thickness(0, 6, 0, 0) };
-            NumericTextBoxBehavior.SetMode(channelBox, NumericTextMode.Integer);
+            var channelCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
+            PopulateMidiChannelCombo(channelCombo);
+
+            var ccBox = new TextBox { Margin = new Thickness(0, 0, 6, 0) };
+            var noteBox = new TextBox { Margin = new Thickness(0, 0, 6, 0) };
             NumericTextBoxBehavior.SetMode(ccBox, NumericTextMode.Integer);
             NumericTextBoxBehavior.SetMode(noteBox, NumericTextMode.Integer);
-            channelBox.HorizontalContentAlignment = HorizontalAlignment.Right;
             ccBox.HorizontalContentAlignment = HorizontalAlignment.Right;
             noteBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+
+            var stepperStyle = (Style)FindResource("NumericStepperRepeatStyle");
 
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -277,7 +324,7 @@ public partial class PreferencesWindow : Window
                 Text = "MIDI Ch",
                 Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
-            chLabel.Children.Add(channelBox);
+            chLabel.Children.Add(channelCombo);
             Grid.SetColumn(chLabel, 0);
             grid.Children.Add(chLabel);
 
@@ -287,7 +334,7 @@ public partial class PreferencesWindow : Window
                 Text = "CC",
                 Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
-            ccLabel.Children.Add(ccBox);
+            ccLabel.Children.Add(CreateMidiCcNoteStepperRow(ccBox, stepperStyle));
             Grid.SetColumn(ccLabel, 2);
             grid.Children.Add(ccLabel);
 
@@ -297,7 +344,7 @@ public partial class PreferencesWindow : Window
                 Text = "Note",
                 Foreground = Application.Current.Resources["TextMutedBrush"] as Brush ?? Brushes.Gray
             });
-            noteLabel.Children.Add(noteBox);
+            noteLabel.Children.Add(CreateMidiCcNoteStepperRow(noteBox, stepperStyle));
             Grid.SetColumn(noteLabel, 4);
             grid.Children.Add(noteLabel);
 
@@ -320,8 +367,42 @@ public partial class PreferencesWindow : Window
 
             ExpressKeysPanel.Children.Add(card);
 
-            _expressKeyRows.Add((actionCombo, channelBox, ccBox, noteBox));
+            _expressKeyRows.Add((actionCombo, channelCombo, ccBox, noteBox));
         }
+    }
+
+    private Grid CreateMidiCcNoteStepperRow(TextBox valueBox, Style stepperStyle)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var down = new RepeatButton
+        {
+            Style = stepperStyle,
+            Content = "−",
+            Margin = new Thickness(0, 0, 6, 0),
+            Tag = valueBox
+        };
+        down.Click += MidiCcNoteStepper_Decrease_Click;
+        Grid.SetColumn(down, 0);
+        grid.Children.Add(down);
+
+        Grid.SetColumn(valueBox, 1);
+        grid.Children.Add(valueBox);
+
+        var up = new RepeatButton
+        {
+            Style = stepperStyle,
+            Content = "+",
+            Tag = valueBox
+        };
+        up.Click += MidiCcNoteStepper_Increase_Click;
+        Grid.SetColumn(up, 2);
+        grid.Children.Add(up);
+
+        return grid;
     }
 
     private static int ReadInt(string? text, int min, int max, string fieldName)

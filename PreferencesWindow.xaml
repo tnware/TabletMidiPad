@@ -65,6 +65,47 @@
         <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
             <EventSetter Event="PreviewMouseWheel" Handler="ComboBox_PreviewMouseWheel"/>
         </Style>
+
+        <Style x:Key="NumericStepperRepeatStyle" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Delay" Value="400"/>
+            <Setter Property="Interval" Value="55"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PanelBorderStrongBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldPressedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="22">
@@ -193,15 +234,51 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="LowerPenButtonMidiChannelTextBox" Margin="0,6,0,0"/>
+                                        <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="LowerPenButtonCcTextBox" Margin="0,6,0,0"/>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <RepeatButton Grid.Column="0"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Margin="0,0,6,0"
+                                                          Content="−"
+                                                          Click="MidiCcNoteStepper_Decrease_Click"
+                                                          Tag="{x:Reference LowerPenButtonCcTextBox}"/>
+                                            <TextBox Name="LowerPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"/>
+                                            <RepeatButton Grid.Column="2"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Content="+"
+                                                          Click="MidiCcNoteStepper_Increase_Click"
+                                                          Tag="{x:Reference LowerPenButtonCcTextBox}"/>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
                                         <TextBlock Text="Note" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="LowerPenButtonNoteTextBox" Margin="0,6,0,0"/>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <RepeatButton Grid.Column="0"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Margin="0,0,6,0"
+                                                          Content="−"
+                                                          Click="MidiCcNoteStepper_Decrease_Click"
+                                                          Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
+                                            <TextBox Name="LowerPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"/>
+                                            <RepeatButton Grid.Column="2"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Content="+"
+                                                          Click="MidiCcNoteStepper_Increase_Click"
+                                                          Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -222,15 +299,51 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="UpperPenButtonMidiChannelTextBox" Margin="0,6,0,0"/>
+                                        <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="UpperPenButtonCcTextBox" Margin="0,6,0,0"/>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <RepeatButton Grid.Column="0"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Margin="0,0,6,0"
+                                                          Content="−"
+                                                          Click="MidiCcNoteStepper_Decrease_Click"
+                                                          Tag="{x:Reference UpperPenButtonCcTextBox}"/>
+                                            <TextBox Name="UpperPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"/>
+                                            <RepeatButton Grid.Column="2"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Content="+"
+                                                          Click="MidiCcNoteStepper_Increase_Click"
+                                                          Tag="{x:Reference UpperPenButtonCcTextBox}"/>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
                                         <TextBlock Text="Note" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="UpperPenButtonNoteTextBox" Margin="0,6,0,0"/>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <RepeatButton Grid.Column="0"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Margin="0,0,6,0"
+                                                          Content="−"
+                                                          Click="MidiCcNoteStepper_Decrease_Click"
+                                                          Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
+                                            <TextBox Name="UpperPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"/>
+                                            <RepeatButton Grid.Column="2"
+                                                          Style="{StaticResource NumericStepperRepeatStyle}"
+                                                          Content="+"
+                                                          Click="MidiCcNoteStepper_Increase_Click"
+                                                          Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
