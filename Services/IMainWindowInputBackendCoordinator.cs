@@ -39,9 +39,6 @@ internal readonly record struct InputBackendLifecycleResult(
 /// </summary>
 internal readonly record struct InputBackendResetResult(
     bool IsActive,
-    bool LowerPenButtonHeld,
-    bool UpperPenButtonHeld,
-    bool HasLockedPosition,
     string ActiveZoneText,
     string ValueText,
     string PenButtonsText,

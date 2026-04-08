@@ -1,17 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
@@ -20,10 +14,8 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
     private readonly Dictionary<string, int> _lastSentValues = new();
 
-    private IntPtr _midiOutHandle;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
@@ -57,18 +49,9 @@ public partial class MainWindow : Window
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
-    private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
     private string _wintabDiagnostics = "Wintab not initialized yet";
     private uint _lastWintabButtons;
-    private bool _lowerPenButtonHeld;
-    private bool _upperPenButtonHeld;
-    private bool _lowerPenButtonToggleState;
-    private bool _upperPenButtonToggleState;
-    private bool _hasLockedPosition;
-    private Point _lockedLocalPosition;
-    private readonly Dictionary<int, bool> _expressKeyHeld = new();
-    private readonly Dictionary<int, bool> _expressKeyToggleState = new();
     private readonly InteractionState _interactionState = new();
 
     private PadInteractionConfig BuildInteractionConfig()
@@ -163,7 +146,7 @@ public partial class MainWindow : Window
             new PadInteractionEngine(),
             new ZoneResizeService(),
             new InputFallbackService(),
-            new InputInteractionOrchestrator(new PadInteractionEngine(), new InputFallbackService()),
+            new InputInteractionOrchestrator(new PadInteractionEngine()),
             new InputBackendStatusFormatter(),
             new WintabEventAdapter(),
             new MainWindowWorkflowCoordinator(),
@@ -329,7 +312,7 @@ public partial class MainWindow : Window
         }
 
         CommitCurrentZoneEdits();
-        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_config, result, _midiOutHandle);
+        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_config, result, IntPtr.Zero);
         if (!applyResult.SaveSucceeded)
         {
             SettingsResultText.Foreground = Brushes.IndianRed;
@@ -355,7 +338,6 @@ public partial class MainWindow : Window
         else
         {
             _lastSentValues.Clear();
-            _activeZone = null;
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
         }
@@ -539,8 +521,6 @@ public partial class MainWindow : Window
         return fallback;
     }
 
-    private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
-
     private static Color GetZonePaletteColor(int index)
         => ThemeColor(ZonePaletteColorKeys[index % ZonePaletteColorKeys.Length], Color.FromRgb(0x67, 0xD6, 0x8A));
 
@@ -677,7 +657,6 @@ public partial class MainWindow : Window
 
             _configStore.Save(_config);
             _lastSentValues.Clear();
-            _activeZone = null;
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
 
@@ -695,7 +674,6 @@ public partial class MainWindow : Window
     {
         _midiEngine.Restart(_config);
         _midiEngine.ClearCachedValues();
-        _activeZone = null;
         UpdateUiForCurrentConfig();
         DrawZoneOverlay();
     }
@@ -760,78 +738,12 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
     }
 
-    private static void ValidateConfig(AppConfig config)
-    {
-        if (config.Zones.Count == 0)
-        {
-            throw new InvalidOperationException("At least one zone is required.");
-        }
-
-        if (config.MaxZoneRows < 1)
-        {
-            throw new InvalidOperationException("Max rows must be at least 1.");
-        }
-
-        if (config.MaxZonesPerRow < 1)
-        {
-            throw new InvalidOperationException("Max zones per row must be at least 1.");
-        }
-
-        foreach (var zone in config.Zones)
-        {
-            if (zone.Width <= 0 || zone.Height <= 0)
-            {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must have width and height greater than 0.");
-            }
-
-            if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
-            {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
-            }
-
-            _ = NormalizeReleaseBehavior(zone.ReleaseBehavior);
-        }
-    }
-
-    private static void AutoTileZones(AppConfig config)
-    {
-        IList<ZoneConfig> zones = config.Zones;
-        if (zones.Count == 0)
-        {
-            return;
-        }
-
-        int count = zones.Count;
-        int maxRows = Math.Max(1, config.MaxZoneRows);
-        int maxPerRow = Math.Max(1, config.MaxZonesPerRow);
-        int capacity = maxRows * maxPerRow;
-        int rows = count <= capacity
-            ? Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)))
-            : Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow));
-
-        double cellHeight = 1.0 / rows;
-
-        for (int index = 0; index < count; index++)
-        {
-            int row = index / maxPerRow;
-            int colsInThisRow = Math.Min(maxPerRow, count - row * maxPerRow);
-            int column = index % maxPerRow;
-            double cellWidth = 1.0 / colsInThisRow;
-
-            zones[index].Left = column * cellWidth;
-            zones[index].Top = row * cellHeight;
-            zones[index].Width = cellWidth;
-            zones[index].Height = cellHeight;
-        }
-    }
-
     private async Task InitializeMidiAsync()
     {
         try
         {
             await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
             _midiEngine.ClearCachedValues();
-            _activeZone = null;
             UpdateUiForCurrentConfig();
         }
         catch (Exception ex)
@@ -1109,10 +1021,6 @@ public partial class MainWindow : Window
 
         ApplyInteractionResult(result);
 
-        _activeZone = result.ActiveZoneIndex >= 0 && result.ActiveZoneIndex < _config.Zones.Count
-            ? _config.Zones[result.ActiveZoneIndex]
-            : null;
-
         DrawZoneOverlay();
     }
 
@@ -1125,9 +1033,6 @@ public partial class MainWindow : Window
             _interactionState,
             _lastWintabButtons);
         ApplyInteractionResult(releaseResult);
-        _activeZone = releaseResult.ActiveZoneIndex >= 0 && releaseResult.ActiveZoneIndex < _config.Zones.Count
-            ? _config.Zones[releaseResult.ActiveZoneIndex]
-            : null;
         DrawZoneOverlay();
 
         ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
@@ -1177,69 +1082,6 @@ public partial class MainWindow : Window
 
     private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
         => _midiEngine.SendNoteIfChanged(channel, note, on, velocity, force);
-
-    private static int ToCc(double normalized, bool invert)
-    {
-        normalized = Math.Clamp(normalized, 0.0, 1.0);
-        if (invert)
-        {
-            normalized = 1.0 - normalized;
-        }
-
-        return (int)Math.Round(normalized * 127.0);
-    }
-
-    private static int ReadInt(string? text, int min, int max, string fieldName)
-    {
-        if (!int.TryParse(text, out int value))
-        {
-            throw new InvalidOperationException($"{fieldName} must be a whole number.");
-        }
-
-        if (value < min || value > max)
-        {
-            throw new InvalidOperationException($"{fieldName} must be between {min} and {max}.");
-        }
-
-        return value;
-    }
-
-    private static double ReadDouble(string? text, double min, double max, string fieldName)
-    {
-        if (!double.TryParse(text, out double value))
-        {
-            throw new InvalidOperationException($"{fieldName} must be a number.");
-        }
-
-        if (value < min || value > max)
-        {
-            throw new InvalidOperationException($"{fieldName} must be between {min:0.###} and {max:0.###}.");
-        }
-
-        return value;
-    }
-
-    private static string RequireText(string? text, string fieldName)
-    {
-        string value = (text ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"{fieldName} is required.");
-        }
-
-        return value;
-    }
-
-    private static string RequireGuidText(string? text, string fieldName)
-    {
-        string value = RequireText(text, fieldName);
-        if (!Guid.TryParse(value, out Guid parsed))
-        {
-            throw new InvalidOperationException($"{fieldName} must be a valid GUID.");
-        }
-
-        return parsed.ToString("B");
-    }
 
     private void InitializeWintab()
     {
@@ -1348,10 +1190,6 @@ public partial class MainWindow : Window
     {
         InputBackendResetResult resetState = _inputBackendCoordinator.BuildResetState();
         _isActive = resetState.IsActive;
-        _activeZone = null;
-        _lowerPenButtonHeld = resetState.LowerPenButtonHeld;
-        _upperPenButtonHeld = resetState.UpperPenButtonHeld;
-        _hasLockedPosition = resetState.HasLockedPosition;
         CursorDot.Visibility = Visibility.Collapsed;
         _viewModel.ActiveZoneText = resetState.ActiveZoneText;
         _viewModel.ValueText = resetState.ValueText;
@@ -1412,19 +1250,6 @@ public partial class MainWindow : Window
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
     {
         return e.StylusDevice is not null;
-    }
-
-    private static string NormalizeReleaseBehavior(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
-            ZoneReleaseBehaviors.Hold => value,
-            ZoneReleaseBehaviors.ResetAll => value,
-            ZoneReleaseBehaviors.NoSendOnRelease => value,
-            _ => ZoneReleaseBehaviors.ResetPressureOnly
-        };
     }
 
     private void MarkInputBackend(string backend)

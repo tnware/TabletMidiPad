@@ -32,8 +32,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IInputFallbackService>(_ => new InputFallbackService());
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
-            c.GetRequiredService<IPadInteractionEngine>(),
-            c.GetRequiredService<IInputFallbackService>()));
+            c.GetRequiredService<IPadInteractionEngine>()));
         container.AddSingleton<IInputBackendStatusFormatter>(_ => new InputBackendStatusFormatter());
         container.AddSingleton<IMainWindowWorkflowCoordinator>(_ => new MainWindowWorkflowCoordinator());
         container.AddSingleton<IMainWindowInputBackendCoordinator>(_ => new MainWindowInputBackendCoordinator());

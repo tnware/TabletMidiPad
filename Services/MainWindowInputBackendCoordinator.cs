@@ -58,9 +58,6 @@ internal sealed class MainWindowInputBackendCoordinator : IMainWindowInputBacken
     {
         return new InputBackendResetResult(
             IsActive: false,
-            LowerPenButtonHeld: false,
-            UpperPenButtonHeld: false,
-            HasLockedPosition: false,
             ActiveZoneText: "Active zone: none",
             ValueText: "X: -, Y: -, Pressure: -",
             PenButtonsText: "Pen buttons: -",

@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Windows;
-using System.Windows.Input;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using Xunit;
@@ -19,8 +17,7 @@ public sealed class InputInteractionOrchestratorTests
             ModifiersLabel: "M",
             MidiMessages: new List<MidiMessage>());
         var engine = new StubPadInteractionEngine(expected);
-        var fallback = new StubInputFallbackService();
-        var sut = new InputInteractionOrchestrator(engine, fallback);
+        var sut = new InputInteractionOrchestrator(engine);
 
         var config = BuildConfig();
         var zones = BuildZones();
@@ -46,8 +43,7 @@ public sealed class InputInteractionOrchestratorTests
             ModifiersLabel: "none",
             MidiMessages: new List<MidiMessage>());
         var engine = new StubPadInteractionEngine(expected);
-        var fallback = new StubInputFallbackService();
-        var sut = new InputInteractionOrchestrator(engine, fallback);
+        var sut = new InputInteractionOrchestrator(engine);
 
         var config = BuildConfig();
         var zones = BuildZones();
@@ -63,12 +59,9 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void Constructor_NullDependencies_Throw()
+    public void Constructor_NullEngine_Throws()
     {
-        var fallback = new StubInputFallbackService();
-        var engine = new StubPadInteractionEngine(new InteractionResult(-1, "-", "-", "-", new List<MidiMessage>()));
-        Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(null!, fallback));
-        Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(engine, null!));
+        Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(null!));
     }
 
     private static PadInteractionConfig BuildConfig()
@@ -143,33 +136,6 @@ public sealed class InputInteractionOrchestratorTests
             LastState = state;
             LastInput = input;
             return _result;
-        }
-    }
-
-    private sealed class StubInputFallbackService : IInputFallbackService
-    {
-        public bool TryBuildStylusSample(
-            StylusEventArgs e,
-            IInputElement relativeTo,
-            double padWidth,
-            double padHeight,
-            int mousePressureFallback,
-            out InputFallbackSample sample)
-        {
-            sample = default;
-            return false;
-        }
-
-        public bool TryBuildMouseSample(
-            MouseEventArgs e,
-            IInputElement relativeTo,
-            double padWidth,
-            double padHeight,
-            int mousePressureFallback,
-            out InputFallbackSample sample)
-        {
-            sample = default;
-            return false;
         }
     }
 }
