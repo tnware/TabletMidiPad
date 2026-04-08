@@ -34,6 +34,11 @@ internal interface IWintabInputBackend : IDisposable
     bool IsActive { get; }
 
     /// <summary>
+    /// Gets the detected express-key count for the active context.
+    /// </summary>
+    int ExpressKeyCount { get; }
+
+    /// <summary>
     /// Gets read-only context information keyed by context handle.
     /// </summary>
     IReadOnlyDictionary<uint, WintabContextInfo> Contexts { get; }

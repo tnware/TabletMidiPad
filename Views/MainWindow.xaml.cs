@@ -1736,6 +1736,7 @@ public partial class MainWindow : Window
         }
 
         _wintabInputBackend.Initialize(_selectedDeviceIndex);
+        _expressKeyCount = Math.Max(_expressKeyCount, _wintabInputBackend.ExpressKeyCount);
         _useWintab = _wintabInputBackend.IsActive;
         _wintabDiagnostics = _useWintab ? "Wintab initialized" : "Wintab32.dll not available";
         _lastInputBackend = _useWintab
@@ -1811,6 +1812,7 @@ public partial class MainWindow : Window
     {
         _wintabInputBackend.Shutdown();
         _useWintab = false;
+        _expressKeyCount = 0;
         _lastInputBackend = "Stylus/Mouse Fallback";
         _wintabDiagnostics = "Wintab shut down";
     }

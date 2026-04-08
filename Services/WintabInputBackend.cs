@@ -28,6 +28,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
 
     public bool IsActive => _contexts.Count > 0;
     public IReadOnlyDictionary<uint, WintabContextInfo> Contexts => _contexts;
+    public int ExpressKeyCount => _expressKeyCount;
 
     public IReadOnlyList<WintabTabletDevice> GetAvailableDevices()
     {
