@@ -142,6 +142,63 @@ public sealed class MainWindowWorkflowCoordinatorTests
         Assert.True(store.SaveCalled);
     }
 
+    [Fact]
+    public void ApplyPreferencesWhenZonesInvalidReturnsSaveFailed()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var config = AppConfig.Default;
+        config.Zones = new List<ZoneConfig>();
+
+        PreferencesWorkflowResult apply = coordinator.ApplyPreferences(config, PreferencesMatching(config), IntPtr.Zero);
+
+        Assert.False(apply.SaveSucceeded);
+        Assert.False(string.IsNullOrEmpty(apply.ErrorMessage));
+        Assert.False(apply.ShouldRestartMidi);
+        Assert.False(apply.ShouldRebindInputBackend);
+    }
+
+    [Fact]
+    public void ApplyPreferencesWhenUnchangedWithOpenMidiDoesNotFlagRestartOrRebind()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var config = AppConfig.Default;
+
+        PreferencesWorkflowResult apply = coordinator.ApplyPreferences(
+            config,
+            PreferencesMatching(config),
+            new IntPtr(1));
+
+        Assert.True(apply.SaveSucceeded);
+        Assert.False(apply.ShouldRestartMidi);
+        Assert.False(apply.ShouldRebindInputBackend);
+    }
+
+    private static PreferencesDialogResult PreferencesMatching(AppConfig config)
+    {
+        return new PreferencesDialogResult
+        {
+            DawPortName = config.DawPortName,
+            AppPortName = config.AppPortName,
+            AssociationId = config.LoopbackAssociationId,
+            MousePressureValue = config.MousePressureValue,
+            PositionDeadZone = config.PositionDeadZone,
+            PositionSmoothing = config.PositionSmoothing,
+            PressureCurve = config.PressureCurve,
+            InputBackendMode = config.InputBackendMode,
+            LowerPenButtonAction = config.LowerPenButtonAction,
+            LowerPenButtonMidiChannel = config.LowerPenButtonMidiChannel,
+            LowerPenButtonCc = config.LowerPenButtonCc,
+            LowerPenButtonNote = config.LowerPenButtonNote,
+            UpperPenButtonAction = config.UpperPenButtonAction,
+            UpperPenButtonMidiChannel = config.UpperPenButtonMidiChannel,
+            UpperPenButtonCc = config.UpperPenButtonCc,
+            UpperPenButtonNote = config.UpperPenButtonNote,
+            SendPressureGlobally = config.SendPressureGlobally,
+            AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed,
+            ExpressKeys = new List<ExpressKeyConfig>(config.ExpressKeys),
+        };
+    }
+
     private sealed class RecordingConfigStore : IConfigStore
     {
         public bool SaveCalled { get; private set; }

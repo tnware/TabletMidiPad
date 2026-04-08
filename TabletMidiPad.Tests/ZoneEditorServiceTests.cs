@@ -49,4 +49,41 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(2, config.MaxZonesPerRow);
         Assert.Equal(ZoneReleaseBehaviors.Hold, z.ReleaseBehavior);
     }
+
+    [Fact]
+    public void LoadSelectedZoneIntoEditor_LoadsMidiChannelAndReleaseBehavior()
+    {
+        var parser = new ConfigValueParser();
+        var sut = new ZoneEditorService(parser);
+        var config = new AppConfig();
+        config.Zones.Clear();
+        config.Zones.Add(new ZoneConfig
+        {
+            Name = "Z",
+            Enabled = true,
+            MidiChannel = 7,
+            ReleaseBehavior = ZoneReleaseBehaviors.Hold,
+        });
+
+        var vm = new MainViewModel();
+        sut.LoadSelectedZoneIntoEditor(vm, config, 0);
+
+        Assert.Equal(7, vm.ZoneMidiChannel);
+        Assert.Equal(ZoneReleaseBehaviors.Hold, vm.ZoneReleaseBehavior);
+        Assert.True(vm.ZoneDetailsEnabled);
+    }
+
+    [Fact]
+    public void LoadSelectedZoneIntoEditor_NoSelection_ClearsEditor()
+    {
+        var parser = new ConfigValueParser();
+        var sut = new ZoneEditorService(parser);
+        var config = AppConfig.Default;
+        var vm = new MainViewModel { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
+
+        sut.LoadSelectedZoneIntoEditor(vm, config, -1);
+
+        Assert.False(vm.ZoneDetailsEnabled);
+        Assert.Equal(1, vm.ZoneMidiChannel);
+    }
 }
