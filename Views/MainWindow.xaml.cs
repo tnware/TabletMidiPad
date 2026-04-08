@@ -14,8 +14,6 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly Dictionary<string, int> _lastSentValues = new();
-
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
@@ -337,7 +335,6 @@ public partial class MainWindow : Window
         }
         else
         {
-            _lastSentValues.Clear();
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
         }
@@ -656,7 +653,6 @@ public partial class MainWindow : Window
             }
 
             _configStore.Save(_config);
-            _lastSentValues.Clear();
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
 
