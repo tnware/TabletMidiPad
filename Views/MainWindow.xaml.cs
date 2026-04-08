@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
     private readonly IWintabEventAdapter _wintabEventAdapter;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
+    private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -158,7 +159,8 @@ public partial class MainWindow : Window
             new InputFallbackService(),
             new InputInteractionOrchestrator(new PadInteractionEngine(), new InputFallbackService()),
             new InputBackendStatusFormatter(),
-            new WintabEventAdapter())
+            new WintabEventAdapter(),
+            new MainWindowWorkflowCoordinator())
     {
     }
 
@@ -177,7 +179,8 @@ public partial class MainWindow : Window
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
-        IWintabEventAdapter wintabEventAdapter)
+        IWintabEventAdapter wintabEventAdapter,
+        IMainWindowWorkflowCoordinator workflowCoordinator)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -194,6 +197,7 @@ public partial class MainWindow : Window
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
         _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
+        _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -293,7 +297,7 @@ public partial class MainWindow : Window
 
     private void MenuPreferences()
     {
-        int effectiveExpressKeyCount = Math.Max(_expressKeyCount, _config.ExpressKeys.Count);
+        int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(_expressKeyCount, _config.ExpressKeys.Count);
         ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
         PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
         if (result is null)
@@ -301,36 +305,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        string previousAppPortName = _config.AppPortName;
-        string previousDawPortName = _config.DawPortName;
-        string previousAssociationId = _config.LoopbackAssociationId;
-        string previousInputBackendMode = _config.InputBackendMode;
-
-        _config.DawPortName = result.DawPortName;
-        _config.AppPortName = result.AppPortName;
-        _config.LoopbackAssociationId = result.AssociationId;
-        _config.MousePressureValue = result.MousePressureValue;
-        _config.PositionDeadZone = result.PositionDeadZone;
-        _config.PositionSmoothing = result.PositionSmoothing;
-        _config.PressureCurve = result.PressureCurve;
-        _config.InputBackendMode = result.InputBackendMode;
-        _config.LowerPenButtonAction = result.LowerPenButtonAction;
-        _config.LowerPenButtonMidiChannel = result.LowerPenButtonMidiChannel;
-        _config.LowerPenButtonCc = result.LowerPenButtonCc;
-        _config.LowerPenButtonNote = result.LowerPenButtonNote;
-        _config.UpperPenButtonAction = result.UpperPenButtonAction;
-        _config.UpperPenButtonMidiChannel = result.UpperPenButtonMidiChannel;
-        _config.UpperPenButtonCc = result.UpperPenButtonCc;
-        _config.UpperPenButtonNote = result.UpperPenButtonNote;
-        _config.SendPressureGlobally = result.SendPressureGlobally;
-        _config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
-        _config.ExpressKeys = result.ExpressKeys;
-
         CommitCurrentZoneEdits();
+        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_config, result, _midiOutHandle);
+        if (!applyResult.SaveSucceeded)
+        {
+            SettingsResultText.Foreground = Brushes.IndianRed;
+            SettingsResultText.Text = applyResult.ErrorMessage ?? "Preferences could not be applied.";
+            return;
+        }
 
         try
         {
-            ValidateConfig(_config);
             _configStore.Save(_config);
         }
         catch (Exception ex)
@@ -340,14 +325,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        bool routingChanged =
-            !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
-            !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
-            !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
-        bool inputBackendChanged =
-            !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
-
-        if (routingChanged || _midiOutHandle == IntPtr.Zero)
+        if (applyResult.ShouldRestartMidi)
         {
             RestartMidi();
         }
@@ -359,7 +337,7 @@ public partial class MainWindow : Window
             DrawZoneOverlay();
         }
 
-        if (inputBackendChanged)
+        if (applyResult.ShouldRebindInputBackend)
         {
             RebindInputBackend();
         }
@@ -707,9 +685,15 @@ public partial class MainWindow : Window
         try
         {
             CommitCurrentZoneEdits();
-            _zoneConfigurationService.ValidateConfig(_config);
-            _configStore.Save(_config);
+            WorkflowSaveResult applyResult = _workflowCoordinator.ValidateAndSave(_config);
+            if (!applyResult.Success)
+            {
+                SettingsResultText.Foreground = Brushes.IndianRed;
+                SettingsResultText.Text = applyResult.ErrorMessage ?? "Settings could not be applied.";
+                return;
+            }
 
+            _configStore.Save(_config);
             _lastSentValues.Clear();
             _activeZone = null;
             UpdateUiForCurrentConfig();
