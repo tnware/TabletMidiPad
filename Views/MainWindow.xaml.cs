@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly IZoneResizeService _zoneResizeService;
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
+    private readonly IWintabEventAdapter _wintabEventAdapter;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -154,7 +155,8 @@ public partial class MainWindow : Window
             new PadInteractionEngine(),
             new ZoneResizeService(),
             new InputFallbackService(),
-            new InputBackendStatusFormatter())
+            new InputBackendStatusFormatter(),
+            new WintabEventAdapter())
     {
     }
 
@@ -171,7 +173,8 @@ public partial class MainWindow : Window
         IPadInteractionEngine padInteractionEngine,
         IZoneResizeService zoneResizeService,
         IInputFallbackService inputFallbackService,
-        IInputBackendStatusFormatter inputBackendStatusFormatter)
+        IInputBackendStatusFormatter inputBackendStatusFormatter,
+        IWintabEventAdapter wintabEventAdapter)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -186,6 +189,7 @@ public partial class MainWindow : Window
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
+        _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -1442,13 +1446,8 @@ public partial class MainWindow : Window
 
     private void HandleExpressKeyPacket(WintabExpressKeyEventArgs expressKey)
     {
-        int control = expressKey.Control;
-        bool isPressed = expressKey.IsPressed;
-        // Keep editor capacity in sync with runtime-observed key indices.
-        _expressKeyCount = Math.Max(_expressKeyCount, control + 1);
-
-        // Engine expects (lower 16 bits = key index, upper 16 bits = pressed flag).
-        uint encoded = (uint)(control & 0xFFFF) | (isPressed ? 0x0001_0000u : 0u);
+        WintabExpressKeyUpdate update = _wintabEventAdapter.BuildExpressKeyUpdate(expressKey, _config.ExpressKeys);
+        _expressKeyCount = Math.Max(_expressKeyCount, update.RequiredExpressKeyCount);
         ApplyInteractionResult(_padInteractionEngine.Process(
             BuildInteractionConfig(),
             BuildZoneSnapshots(),
@@ -1459,40 +1458,27 @@ public partial class MainWindow : Window
                 Pressure: 0,
                 IsDown: false,
                 IsHovering: false,
-                PenButtons: encoded,
+                PenButtons: update.EncodedPenButtons,
                 Backend: InteractionBackend.ExpressKey)));
-
-        string action = control >= 0 && control < _config.ExpressKeys.Count
-            ? NormalizePenButtonAction(_config.ExpressKeys[control].Action)
-            : "Unknown";
-
-        _expressKeyDiagnostics = $"EK{control}: {(isPressed ? "pressed" : "released")} [{action}]";
-        MarkInputBackend($"Wintab EK{control}");
+        _expressKeyDiagnostics = update.ExpressKeyDiagnostics;
+        MarkInputBackend(update.BackendLabel);
         UpdateInputBackendStatus();
     }
 
     private void HandleWintabPacket(WintabPacketEventArgs packet)
     {
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
-        if (width <= 0 || height <= 0)
+        if (!_wintabEventAdapter.TryBuildPacketUpdate(packet, Pad.ActualWidth, Pad.ActualHeight, out WintabPacketUpdate update))
         {
             return;
         }
 
-        double xNorm = packet.XNorm;
-        double yNorm = packet.YNorm;
-        MarkInputBackend($"Wintab D{packet.DeviceIndex + 1}");
-        UpdatePenButtonsDebug(packet.Buttons);
-        double xPx = xNorm * width;
-        double yPx = yNorm * height;
-        int pressure = packet.Pressure127;
-        bool hovering = packet.IsHovering;
+        MarkInputBackend(update.BackendLabel);
+        UpdatePenButtonsDebug(update.PenButtons);
 
-        _wintabDiagnostics = packet.PacketDiagnostics;
+        _wintabDiagnostics = update.PacketDiagnostics;
         UpdateInputBackendStatus();
 
-        if (hovering)
+        if (update.IsHovering)
         {
             if (_isActive)
             {
@@ -1500,43 +1486,32 @@ public partial class MainWindow : Window
                 HandleRelease();
             }
 
-            CursorDot.Opacity = 0.35;
+            CursorDot.Opacity = update.CursorOpacity;
             ProcessInteractionTick(
-                xPx: xPx,
-                yPx: yPx,
-                xNorm: xNorm,
-                yNorm: yNorm,
+                xPx: update.XPixel,
+                yPx: update.YPixel,
+                xNorm: update.XNorm,
+                yNorm: update.YNorm,
                 pressure: 0,
                 isDown: false,
                 isHovering: true,
-                penButtons: packet.Buttons,
+                penButtons: update.PenButtons,
                 backend: InteractionBackend.Wintab);
             return;
         }
 
-        CursorDot.Opacity = 0.85;
-        _isActive = true;
+        CursorDot.Opacity = update.CursorOpacity;
+        _isActive = update.IsDown;
         ProcessInteractionTick(
-            xPx: xPx,
-            yPx: yPx,
-            xNorm: xNorm,
-            yNorm: yNorm,
-            pressure: pressure,
+            xPx: update.XPixel,
+            yPx: update.YPixel,
+            xNorm: update.XNorm,
+            yNorm: update.YNorm,
+            pressure: update.Pressure127,
             isDown: true,
             isHovering: false,
-            penButtons: packet.Buttons,
+            penButtons: update.PenButtons,
             backend: InteractionBackend.Wintab);
-    }
-
-    private static double NormalizeWintabCoordinate(int value, int min, int max)
-    {
-        if (max <= min)
-        {
-            return 0.0;
-        }
-
-        double normalized = (value - min) / (double)(max - min);
-        return Math.Clamp(normalized, 0.0, 1.0);
     }
 
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
@@ -1572,25 +1547,6 @@ public partial class MainWindow : Window
             ZoneReleaseBehaviors.ResetAll => value,
             ZoneReleaseBehaviors.NoSendOnRelease => value,
             _ => ZoneReleaseBehaviors.ResetPressureOnly
-        };
-    }
-
-    private static string NormalizePenButtonAction(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            PenButtonActions.None => value,
-            PenButtonActions.LockXY => value,
-            PenButtonActions.LockX => value,
-            PenButtonActions.LockY => value,
-            PenButtonActions.DisablePressure => value,
-            PenButtonActions.EnablePressure => value,
-            PenButtonActions.CcMomentary => value,
-            PenButtonActions.CcToggle => value,
-            PenButtonActions.NoteMomentary => value,
-            PenButtonActions.NoteToggle => value,
-            _ => PenButtonActions.None
         };
     }
 

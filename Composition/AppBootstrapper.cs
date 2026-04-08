@@ -25,6 +25,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
         container.AddSingleton<IWintabInputBackend>(_ => new WintabInputBackend());
+        container.AddSingleton<IWintabEventAdapter>(_ => new WintabEventAdapter());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IZoneEditorService>(_ => new ZoneEditorService());
@@ -49,7 +50,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IPadInteractionEngine>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IInputFallbackService>(),
-            c.GetRequiredService<IInputBackendStatusFormatter>()));
+            c.GetRequiredService<IInputBackendStatusFormatter>(),
+            c.GetRequiredService<IWintabEventAdapter>()));
 
         return container;
     }
