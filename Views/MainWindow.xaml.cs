@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly IWintabInputBackend _wintabInputBackend;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
+    private readonly IZoneEditorService _zoneEditorService;
     private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
@@ -159,6 +160,7 @@ public partial class MainWindow : Window
             new WintabInputBackend(),
             new PreferencesDialogService(),
             new ZoneConfigurationService(),
+            new ZoneEditorService(),
             new ZoneOverlayRenderer(),
             new ConfigValueParser(),
             new PadInteractionEngine())
@@ -172,6 +174,7 @@ public partial class MainWindow : Window
         IWintabInputBackend wintabInputBackend,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
+        IZoneEditorService zoneEditorService,
         IZoneOverlayRenderer zoneOverlayRenderer,
         IConfigValueParser configValueParser,
         IPadInteractionEngine padInteractionEngine)
@@ -182,6 +185,7 @@ public partial class MainWindow : Window
         _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+        _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
         _zoneOverlayRenderer = zoneOverlayRenderer ?? throw new ArgumentNullException(nameof(zoneOverlayRenderer));
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
@@ -998,100 +1002,30 @@ public partial class MainWindow : Window
 
     private void RefreshZoneList()
     {
-        _viewModel.Zones.Clear();
-        for (int i = 0; i < _config.Zones.Count; i++)
-        {
-            var zone = _config.Zones[i];
-            string enabled = zone.Enabled ? "on" : "off";
-            _viewModel.Zones.Add(new ZoneListItemViewModel
-            {
-                Index = i,
-                DisplayText = $"{i + 1}. {zone.Name} [{enabled}]"
-            });
-        }
+        _zoneEditorService.RefreshZoneList(_viewModel.Zones, _config);
     }
 
     private void LoadSelectedZoneIntoEditor()
     {
         _isLoadingUi = true;
 
-        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
-        {
-            _viewModel.ZoneName = string.Empty;
-            _viewModel.ZoneEnabled = false;
-            _viewModel.ZoneChannel = string.Empty;
-            SetZoneSelectionSummary(null);
-            _viewModel.ZoneDetailsEnabled = false;
-            _viewModel.ZoneCcX = string.Empty;
-            _viewModel.ZoneCcY = string.Empty;
-            _viewModel.ZoneCcPressure = string.Empty;
-            _viewModel.ZoneLeft = string.Empty;
-            _viewModel.ZoneTop = string.Empty;
-            _viewModel.ZoneWidth = string.Empty;
-            _viewModel.ZoneHeight = string.Empty;
-            _viewModel.ZoneSendX = false;
-            _viewModel.ZoneSendY = false;
-            _viewModel.ZoneInvertX = false;
-            _viewModel.ZoneInvertY = false;
-            _viewModel.ZoneSendPressure = false;
-            _viewModel.ZoneReleaseBehavior = string.Empty;
-            _isLoadingUi = false;
-            return;
-        }
-
-        var zone = _config.Zones[_selectedZoneIndex];
-        _viewModel.ZoneDetailsEnabled = true;
-        _viewModel.ZoneName = zone.Name;
-        _viewModel.ZoneEnabled = zone.Enabled;
-        ZoneChannelComboBox.SelectedItem = zone.MidiChannel;
-        _viewModel.ZoneChannel = zone.MidiChannel.ToString();
-        SetZoneSelectionSummary(zone);
-        _viewModel.ZoneCcX = zone.CcX.ToString();
-        _viewModel.ZoneCcY = zone.CcY.ToString();
-        _viewModel.ZoneCcPressure = zone.CcPressure.ToString();
-        _viewModel.ZoneLeft = zone.Left.ToString("0.###");
-        _viewModel.ZoneTop = zone.Top.ToString("0.###");
-        _viewModel.ZoneWidth = zone.Width.ToString("0.###");
-        _viewModel.ZoneHeight = zone.Height.ToString("0.###");
-        _viewModel.ZoneSendX = zone.SendX;
-        _viewModel.ZoneSendY = zone.SendY;
-        _viewModel.ZoneInvertX = zone.InvertX;
-        _viewModel.ZoneInvertY = zone.InvertY;
-        _viewModel.ZoneSendPressure = zone.SendPressure;
-        ZoneReleaseBehaviorComboBox.SelectedItem = NormalizeReleaseBehavior(zone.ReleaseBehavior);
-        _viewModel.ZoneReleaseBehavior = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        _zoneEditorService.LoadSelectedZoneIntoEditor(_viewModel, _config, _selectedZoneIndex);
+        ZoneChannelComboBox.SelectedItem = _selectedZoneIndex >= 0 && _selectedZoneIndex < _config.Zones.Count
+            ? _config.Zones[_selectedZoneIndex].MidiChannel
+            : null;
+        ZoneReleaseBehaviorComboBox.SelectedItem = _viewModel.ZoneReleaseBehavior;
 
         _isLoadingUi = false;
     }
 
     private void CommitCurrentZoneEdits()
     {
-        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
-        {
-            return;
-        }
-
-        var zone = _config.Zones[_selectedZoneIndex];
-        _config.MaxZoneRows = ReadInt(MaxZoneRowsTextBox.Text, 1, 16, "Max Zone Rows");
-        _config.MaxZonesPerRow = ReadInt(MaxZonesPerRowTextBox.Text, 1, 32, "Max Zones Per Row");
-        zone.Name = RequireText(_viewModel.ZoneName, "Zone Name");
-        zone.Enabled = _viewModel.ZoneEnabled;
-        zone.MidiChannel = ReadInt(_viewModel.ZoneChannel, 1, 16, "Zone MIDI Channel");
-        zone.CcX = ReadInt(_viewModel.ZoneCcX, 0, 127, "Zone CC X");
-        zone.CcY = ReadInt(_viewModel.ZoneCcY, 0, 127, "Zone CC Y");
-        zone.CcPressure = ReadInt(_viewModel.ZoneCcPressure, 0, 127, "Zone Pressure CC");
-        zone.Left = ReadDouble(_viewModel.ZoneLeft, 0.0, 1.0, "Zone Left");
-        zone.Top = ReadDouble(_viewModel.ZoneTop, 0.0, 1.0, "Zone Top");
-        zone.Width = ReadDouble(_viewModel.ZoneWidth, 0.0, 1.0, "Zone Width");
-        zone.Height = ReadDouble(_viewModel.ZoneHeight, 0.0, 1.0, "Zone Height");
-        zone.SendX = _viewModel.ZoneSendX;
-        zone.SendY = _viewModel.ZoneSendY;
-        zone.InvertX = _viewModel.ZoneInvertX;
-        zone.InvertY = _viewModel.ZoneInvertY;
-        zone.SendPressure = _viewModel.ZoneSendPressure;
-        zone.ReleaseBehavior = NormalizeReleaseBehavior(_viewModel.ZoneReleaseBehavior);
-        zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
-        SetZoneSelectionSummary(zone);
+        _zoneEditorService.CommitCurrentZoneEdits(
+            _config,
+            _viewModel,
+            _selectedZoneIndex,
+            MaxZoneRowsTextBox.Text,
+            MaxZonesPerRowTextBox.Text);
 
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
@@ -1099,19 +1033,7 @@ public partial class MainWindow : Window
 
     private void SetZoneSelectionSummary(ZoneConfig? zone)
     {
-        if (zone is null)
-        {
-            _viewModel.ZoneSelectionSummaryPrimaryText = "No zone selected";
-            _viewModel.ZoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
-            return;
-        }
-
-        string enabled = zone.Enabled ? "Enabled" : "Disabled";
-        _viewModel.ZoneSelectionSummaryPrimaryText =
-            $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
-        _viewModel.ZoneSelectionSummarySecondaryText =
-            $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
-            $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
+        _zoneEditorService.SetZoneSelectionSummary(_viewModel, zone);
     }
 
     private static void ValidateConfig(AppConfig config)

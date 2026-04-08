@@ -27,6 +27,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IWintabInputBackend>(_ => new WintabInputBackend());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
+        container.AddSingleton<IZoneEditorService>(_ => new ZoneEditorService());
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
@@ -39,6 +40,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IWintabInputBackend>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IConfigValueParser>(),
             c.GetRequiredService<IPadInteractionEngine>()));
