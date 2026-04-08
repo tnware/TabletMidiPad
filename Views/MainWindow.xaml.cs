@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly PadInputSessionState _padState = new();
     private readonly PadInputHost _padInputHost;
     private readonly IMainWindowPadInputSession _padInputSession;
+    private readonly IMainWindowZonePadSession _zonePadSession;
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
@@ -69,10 +70,6 @@ public partial class MainWindow : Window
 
     private void ApplyInteractionResult(InteractionResult result)
         => _interactionOutcomeApplier.Apply(result, _interactionState, _config, _viewModel);
-
-    // Zone resize drag state
-    private bool _isResizingZone;
-    private ZoneResizeSession? _zoneResizeSession;
 
     public MainWindow()
         : this(
@@ -165,6 +162,7 @@ public partial class MainWindow : Window
             inputFallbackService,
             inputInteractionOrchestrator,
             _inputBackendStatusFormatter);
+        _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -614,13 +612,9 @@ public partial class MainWindow : Window
         if (IsPromotedStylusMouseEvent(e)) return;
         if (e.LeftButton != MouseButtonState.Pressed) return;
 
-        var pos = e.GetPosition(Pad);
-        SelectZoneAtPoint(pos);
-
-        var hit = HitTestZoneEdge(pos);
-        if (hit.zone >= 0)
+        Point pos = e.GetPosition(Pad);
+        if (_zonePadSession.TryHandleMouseDown(pos))
         {
-            StartZoneResize(hit.zone, hit.edge, pos);
             Pad.CaptureMouse();
             e.Handled = true;
             return;
@@ -633,17 +627,14 @@ public partial class MainWindow : Window
     {
         if (IsPromotedStylusMouseEvent(e)) return;
 
-        if (_isResizingZone)
+        Point pos = e.GetPosition(Pad);
+        if (_zonePadSession.TryConsumeMouseMove(pos, out ZonePadResizeCursorKind cursorKind))
         {
-            UpdateZoneResize(e.GetPosition(Pad));
             e.Handled = true;
             return;
         }
 
-        // Update cursor for resize hints
-        var pos = e.GetPosition(Pad);
-        var hit = HitTestZoneEdge(pos);
-        Pad.Cursor = ResizeEdgeToCursor(hit.edge);
+        Pad.Cursor = CursorFromResizeKind(cursorKind);
 
         _padInputSession.HandlePadMouseMoveForInteraction(e);
     }
@@ -652,9 +643,8 @@ public partial class MainWindow : Window
     {
         if (IsPromotedStylusMouseEvent(e)) return;
 
-        if (_isResizingZone)
+        if (_zonePadSession.TryConsumeMouseUp())
         {
-            FinishZoneResize();
             Pad.ReleaseMouseCapture();
             e.Handled = true;
             return;
@@ -663,88 +653,17 @@ public partial class MainWindow : Window
         _padInputSession.HandlePadMouseUpForInteraction(e);
     }
 
-    private (int zone, ZoneResizeEdge edge) HitTestZoneEdge(Point pos)
-        => _zoneResizeService.HitTestZoneEdge(_config.Zones, SelectedZoneIndex, Pad.ActualWidth, Pad.ActualHeight, pos);
-
-    private static Cursor? ResizeEdgeToCursor(ZoneResizeEdge edge)
+    private static Cursor? CursorFromResizeKind(ZonePadResizeCursorKind kind)
     {
-        return edge switch
+        return kind switch
         {
-            ZoneResizeEdge.Left or ZoneResizeEdge.Right => Cursors.SizeWE,
-            ZoneResizeEdge.Top or ZoneResizeEdge.Bottom => Cursors.SizeNS,
-            ZoneResizeEdge.Left | ZoneResizeEdge.Top => Cursors.SizeNWSE,
-            ZoneResizeEdge.Right | ZoneResizeEdge.Bottom => Cursors.SizeNWSE,
-            ZoneResizeEdge.Left | ZoneResizeEdge.Bottom => Cursors.SizeNESW,
-            ZoneResizeEdge.Right | ZoneResizeEdge.Top => Cursors.SizeNESW,
+            ZonePadResizeCursorKind.SizeWE => Cursors.SizeWE,
+            ZonePadResizeCursorKind.SizeNS => Cursors.SizeNS,
+            ZonePadResizeCursorKind.SizeNWSE => Cursors.SizeNWSE,
+            ZonePadResizeCursorKind.SizeNESW => Cursors.SizeNESW,
+            ZonePadResizeCursorKind.None => null,
             _ => null
         };
-    }
-
-    private void StartZoneResize(int zoneIndex, ZoneResizeEdge edge, Point pos)
-    {
-        _zoneResizeSession = _zoneResizeService.StartResizeSession(_config.Zones, zoneIndex, edge, pos);
-        _isResizingZone = _zoneResizeSession is not null;
-        if (!_isResizingZone)
-        {
-            return;
-        }
-
-        if (SelectedZoneIndex != zoneIndex)
-        {
-            CommitCurrentZoneEdits();
-            SelectedZoneIndex = zoneIndex;
-            LoadSelectedZoneIntoEditor();
-        }
-    }
-
-    private void SelectZoneAtPoint(Point pos)
-    {
-        int zoneIndex = _zoneResizeService.HitTestZoneBody(_config.Zones, Pad.ActualWidth, Pad.ActualHeight, pos);
-        if (zoneIndex < 0 || zoneIndex == SelectedZoneIndex)
-        {
-            return;
-        }
-
-        CommitCurrentZoneEdits();
-        SelectedZoneIndex = zoneIndex;
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-    }
-
-    private void UpdateZoneResize(Point pos)
-    {
-        if (_zoneResizeSession is null)
-        {
-            return;
-        }
-
-        ZoneResizeUpdate? update = _zoneResizeService.ComputeResizeUpdate(
-            _config.Zones,
-            _zoneResizeSession,
-            Pad.ActualWidth,
-            Pad.ActualHeight,
-            pos);
-        if (update is null)
-        {
-            return;
-        }
-
-        ZoneConfig zone = _config.Zones[update.ZoneIndex];
-        zone.Left = update.Left;
-        zone.Top = update.Top;
-        zone.Width = update.Width;
-        zone.Height = update.Height;
-
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-    }
-
-    private void FinishZoneResize()
-    {
-        _isResizingZone = false;
-        _zoneResizeSession = null;
-        Pad.Cursor = null;
-        SetSettingsResult("Zone resized. Click Apply Settings to save.", SettingsResultKind.Success);
     }
 
     private void RefreshPadZoneOverlay()
@@ -855,5 +774,34 @@ public partial class MainWindow : Window
 
         public void EndPopulateTabletDeviceList()
             => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
+    }
+
+    private sealed class ZonePadHost : IMainWindowZonePadSessionHost
+    {
+        private readonly MainWindow _w;
+
+        public ZonePadHost(MainWindow window) => _w = window;
+
+        public AppConfig Config => _w._config;
+
+        public int SelectedZoneIndex
+        {
+            get => _w.SelectedZoneIndex;
+            set => _w.SelectedZoneIndex = value;
+        }
+
+        public double PadActualWidth => _w.Pad.ActualWidth;
+
+        public double PadActualHeight => _w.Pad.ActualHeight;
+
+        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+
+        public void LoadSelectedZoneIntoEditor() => _w.LoadSelectedZoneIntoEditor();
+
+        public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
+
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+
+        public void ClearPadCursor() => _w.Pad.Cursor = null;
     }
 }
