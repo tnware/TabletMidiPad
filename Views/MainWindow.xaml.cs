@@ -13,24 +13,6 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    /// <summary>Shared MIDI engine for the parameterless designer ctor so <see cref="IPadInteractionOutcomeApplier"/> uses the same instance.</summary>
-    private static readonly IMidiEngine DesignerMidiEngine = new WinMmMidiEngine();
-
-    /// <summary>Shared Wintab backend for the designer ctor so <see cref="ITabletDevicePickerSyncService"/> and <see cref="IWintabInputBackend"/> refer to the same instance.</summary>
-    private static readonly IWintabInputBackend DesignerWintabBackend = new WintabInputBackend();
-
-    /// <summary>Shared zone configuration for designer-time <see cref="IZoneActionWorkflowCoordinator"/> parity.</summary>
-    private static readonly IZoneConfigurationService DesignerZoneConfiguration = new ZoneConfigurationService();
-
-    private static readonly IMainWindowLifecycleCoordinator DesignerLifecycleCoordinator = new MainWindowLifecycleCoordinator();
-
-    private static readonly IMainWindowStartupLifecycleService DesignerStartupLifecycle =
-        new MainWindowStartupLifecycleService(DesignerLifecycleCoordinator);
-
-    private static readonly MainWindowInputBackendCoordinator DesignerInputBackendCoordinator = new();
-
-    private static readonly MainWindowWintabInputBridge DesignerWintabInputBridge = new(new WintabEventAdapter(), DesignerInputBackendCoordinator);
-
     private bool _isLoadingUi;
 
     private readonly PadInputSessionState _padState = new();
@@ -73,35 +55,9 @@ public partial class MainWindow : Window
     private void ApplyInteractionResult(InteractionResult result)
         => _interactionOutcomeApplier.Apply(result, _interactionState, _config, _viewModel);
 
-    public MainWindow()
-        : this(
-            new JsonConfigStore(AppConfig.GetConfigPath()),
-            DesignerMidiEngine,
-            new WacomServiceController(),
-            DesignerWintabBackend,
-            new TabletDevicePickerSyncService(DesignerWintabBackend),
-            new PreferencesDialogService(new ConfigValueParser(), () => new PreferencesViewModel()),
-            DesignerZoneConfiguration,
-            new ZoneEditorService(new ConfigValueParser()),
-            new ZoneOverlayRenderer(),
-            new ZoneResizeService(),
-            new InputFallbackService(),
-            new InputInteractionOrchestrator(new PadInteractionEngine()),
-            new InputBackendStatusFormatter(),
-            new MainWindowWorkflowCoordinator(),
-            DesignerInputBackendCoordinator,
-            new WacomServiceWorkflowCoordinator(),
-            DesignerLifecycleCoordinator,
-            DesignerStartupLifecycle,
-            DesignerWintabInputBridge,
-            new MainWindowPadPresentationCoordinator(),
-            new MainWindowToolbarSession(),
-            new ZoneActionWorkflowCoordinator(DesignerZoneConfiguration),
-            new MainViewModel(),
-            new PadInteractionOutcomeApplier(DesignerMidiEngine))
-    {
-    }
-
+    /// <summary>
+    /// Application entry constructs the window via <see cref="TabletMidiPad.Composition.AppBootstrapper.CreateApplicationShell"/>.
+    /// </summary>
     internal MainWindow(
         IConfigStore configStore,
         IMidiEngine midiEngine,

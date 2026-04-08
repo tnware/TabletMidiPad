@@ -61,8 +61,24 @@ internal static class AppBootstrapper
 
         container.AddTransient<MainViewModel>(_ => new MainViewModel());
 
-        // Views (created by DI so they can receive view models/services later).
-        container.AddTransient(c => new MainWindow(
+        container.AddTransient(CreateMainWindow);
+
+        return container;
+    }
+
+    /// <summary>
+    /// Builds the service container and resolves the main window. Prefer this at application startup so wiring
+    /// stays in one place.
+    /// </summary>
+    public static (SimpleContainer Container, MainWindow MainWindow) CreateApplicationShell()
+    {
+        SimpleContainer container = BuildContainer();
+        return (container, container.GetRequiredService<MainWindow>());
+    }
+
+    private static MainWindow CreateMainWindow(SimpleContainer c)
+    {
+        return new MainWindow(
             c.GetRequiredService<IConfigStore>(),
             c.GetRequiredService<IMidiEngine>(),
             c.GetRequiredService<IWacomServiceController>(),
@@ -86,9 +102,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMainWindowToolbarSession>(),
             c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
             c.GetRequiredService<MainViewModel>(),
-            c.GetRequiredService<IPadInteractionOutcomeApplier>()));
-
-        return container;
+            c.GetRequiredService<IPadInteractionOutcomeApplier>());
     }
 }
 
