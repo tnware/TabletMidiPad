@@ -70,7 +70,7 @@ internal sealed class MainWindowZoneEditorSession : IMainWindowZoneEditorSession
     /// <inheritdoc />
     public void RefreshZoneList()
     {
-        _zoneEditorService.RefreshZoneList(_host.ViewModel.Zones, _host.Config);
+        _zoneEditorService.RefreshZoneList(_host.ViewModel.ZoneList.Zones, _host.Config);
     }
 
     /// <inheritdoc />

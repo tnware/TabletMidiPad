@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
@@ -38,7 +39,7 @@ public sealed class MainWindowZoneEditorSessionTests
     [Fact]
     public void LoadConfigIntoUi_SetsGridTextsSelectionAndToolbar_AndClearsLoadingFlag()
     {
-        var vm = new MainViewModel();
+        var vm = CreateTestMainViewModel();
         var config = AppConfig.Default;
         config.MaxZoneRows = 7;
         config.MaxZonesPerRow = 5;
@@ -64,7 +65,7 @@ public sealed class MainWindowZoneEditorSessionTests
     [Fact]
     public void UpdateUiForCurrentConfig_AppliesConnectedStateThenInputBackendRefreshOrder()
     {
-        var vm = new MainViewModel();
+        var vm = CreateTestMainViewModel();
         var host = new RecordingZoneEditorHost { ViewModel = vm, Config = AppConfig.Default };
         var editor = new RecordingZoneEditorService();
         var coordinator = new DistinctStringsWorkflowCoordinator();
@@ -85,7 +86,7 @@ public sealed class MainWindowZoneEditorSessionTests
     [Fact]
     public void CommitCurrentZoneEdits_DelegatesToZoneEditorService_AndRefreshesList()
     {
-        var vm = new MainViewModel();
+        var vm = CreateTestMainViewModel();
         var host = new RecordingZoneEditorHost { ViewModel = vm, Config = AppConfig.Default, SelectedZoneIndex = 2 };
         var editor = new RecordingZoneEditorService();
         var coordinator = new StubWorkflowCoordinator();
@@ -98,11 +99,28 @@ public sealed class MainWindowZoneEditorSessionTests
         Assert.Equal(1, editor.RefreshZoneListCount);
     }
 
+    private static MainViewModel CreateTestMainViewModel()
+    {
+        var settingsStore = new StubConfigStore();
+        var settingsService = new SettingsService(settingsStore);
+        var zoneActionCoordinator = new StubZoneActionWorkflowCoordinator();
+        var editorService = new RecordingZoneEditorService();
+        var zoneList = new ZoneListViewModel(settingsService, zoneActionCoordinator, editorService);
+        var zoneEditor = new ZoneEditorViewModel(settingsService, editorService, zoneList);
+        return new MainViewModel(
+            zoneList,
+            zoneEditor,
+            settingsService,
+            new StubMainWindowSettingsSession(),
+            new StubMainWindowToolbarSession(),
+            new StubMainWindowPadInputSession());
+    }
+
     private sealed class RecordingZoneEditorHost : IMainWindowZoneEditorSessionHost
     {
         public AppConfig Config { get; set; } = AppConfig.Default;
 
-        public MainViewModel ViewModel { get; set; } = new();
+        public MainViewModel ViewModel { get; set; } = CreateTestMainViewModel();
 
         public int SelectedZoneIndex { get; set; } = -1;
 
@@ -134,12 +152,12 @@ public sealed class MainWindowZoneEditorSessionTests
         public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> zones, AppConfig config)
             => RefreshZoneListCount++;
 
-        public void LoadSelectedZoneIntoEditor(MainViewModel viewModel, AppConfig config, int selectedZoneIndex)
+        public void LoadSelectedZoneIntoEditor(IZoneEditorState state, AppConfig config, int selectedZoneIndex)
             => LoadSelectedZoneIntoEditorCount++;
 
         public void CommitCurrentZoneEdits(
             AppConfig config,
-            MainViewModel viewModel,
+            IZoneEditorState state,
             int selectedZoneIndex,
             string? maxZoneRowsText,
             string? maxZonesPerRowText)
@@ -148,7 +166,7 @@ public sealed class MainWindowZoneEditorSessionTests
             LastCommitSelectedIndex = selectedZoneIndex;
         }
 
-        public void SetZoneSelectionSummary(MainViewModel viewModel, ZoneConfig? zone)
+        public void SetZoneSelectionSummary(IZoneEditorState state, ZoneConfig? zone)
         {
         }
     }
@@ -156,68 +174,82 @@ public sealed class MainWindowZoneEditorSessionTests
     private sealed class StubWorkflowCoordinator : IMainWindowWorkflowCoordinator
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
-
         public WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
-
         public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => new(true, null);
-
         public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store) => new(true, null);
-
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => new(true, null, false, false);
-
         public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status) => new(string.Empty, false);
-
         public MainWindowToolbarState BuildToolbarState(AppConfig config) => new(
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false);
-
+            string.Empty, string.Empty, string.Empty, string.Empty,
+            false, false, false, false, false, false);
         public MainWindowConnectedState BuildConnectedState(AppConfig config) => new(
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty);
+            string.Empty, string.Empty, string.Empty, string.Empty,
+            string.Empty, string.Empty, string.Empty);
     }
 
     private sealed class DistinctStringsWorkflowCoordinator : IMainWindowWorkflowCoordinator
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
-
         public WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
-
         public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => new(true, null);
-
         public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store) => new(true, null);
-
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => new(true, null, false, false);
-
         public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status) => new(string.Empty, false);
-
         public MainWindowToolbarState BuildToolbarState(AppConfig config) => new(
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false);
-
+            string.Empty, string.Empty, string.Empty, string.Empty,
+            false, false, false, false, false, false);
         public MainWindowConnectedState BuildConnectedState(AppConfig config)
             => new("S", "R", "A", "C", "V", "P", "M");
+    }
+
+    private sealed class StubConfigStore : IConfigStore
+    {
+        public AppConfig Load() => AppConfig.Default;
+        public void Save(AppConfig config) { }
+    }
+
+    private sealed class StubZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordinator
+    {
+        public ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex) => new(false, -1, string.Empty);
+        public ZoneActionWorkflowResult AddZone(AppConfig config) => new(false, -1, string.Empty);
+        public ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex) => new(false, -1, string.Empty);
+    }
+
+    private sealed class StubMainWindowSettingsSession : IMainWindowSettingsSession
+    {
+        public void ApplySettings() { }
+        public void RunPreferencesFlow() { }
+        public void ResetToDefaultsAndApply() { }
+    }
+
+    private sealed class StubMainWindowToolbarSession : IMainWindowToolbarSession
+    {
+        public void ApplyPressureCurve(AppConfig config, string curve) { }
+        public ToolbarInputModeApplyResult TryApplyInputBackendMode(AppConfig config, string mode) => new(false, false);
+        public string GetNextCycledInputBackendModeLabel(AppConfig config) => string.Empty;
+    }
+
+    private sealed class StubMainWindowPadInputSession : IMainWindowPadInputSession
+    {
+        public void RebindInputBackend() { }
+        public void ResetActiveInputState() { }
+        public void ShutdownTabletInput() { }
+        public void InitializeTabletInput() { }
+        public void RefreshTabletDeviceListOnly() { }
+        public void ShutdownWintabBackendOnly() { }
+        public void ApplyTabletLifecycle(InputBackendLifecycleResult lifecycle, bool refreshInputBackendStatusText) { }
+        public void HandleWintabPacket(WintabPacketEventArgs packet) { }
+        public void HandleExpressKeyPacket(WintabExpressKeyEventArgs expressKey) { }
+        public void HandleProximityChanged(WintabProximityEventArgs e) { }
+        public void OnWintabDiagnosticsChanged(string diagnostics) { }
+        public void HandleStylusDown(System.Windows.Input.StylusDownEventArgs e) { }
+        public void HandleStylusMove(System.Windows.Input.StylusEventArgs e) { }
+        public void HandleStylusUp(System.Windows.Input.StylusEventArgs e) { }
+        public void HandlePadMouseDownForInteraction(System.Windows.Input.MouseButtonEventArgs e) { }
+        public void HandlePadMouseMoveForInteraction(System.Windows.Input.MouseEventArgs e) { }
+        public void HandlePadMouseUpForInteraction(System.Windows.Input.MouseButtonEventArgs e) { }
+        public void HandleRelease() { }
     }
 }

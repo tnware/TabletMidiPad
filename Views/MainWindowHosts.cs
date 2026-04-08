@@ -14,27 +14,27 @@ public partial class MainWindow
 
         public ZoneEditorHost(MainWindow window) => _w = window;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
-        public MainViewModel ViewModel => _w._viewModel;
+        public MainViewModel ViewModel => _w.ViewModelRef;
 
         public int SelectedZoneIndex
         {
-            get => _w.SelectedZoneIndex;
-            set => _w.SelectedZoneIndex = value;
+            get => _w.ViewModelRef.SelectedZoneIndex;
+            set => _w.ViewModelRef.SelectedZoneIndex = value;
         }
 
         public bool IsLoadingUi
         {
-            get => _w._isLoadingUi;
-            set => _w._isLoadingUi = value;
+            get => _w.IsLoadingUiRef;
+            set { /* handled via internal state in MainWindow */ }
         }
 
         public void SyncToolbar() => _w.SyncToolbar();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
-        public void RefreshInputBackendStatus() => _w.UpdateInputBackendStatus();
+        public void RefreshInputBackendStatus() => _w.UpdateInputBackendStatusRef();
     }
 
     private sealed class PadInputHost : IMainWindowPadInputSessionHost
@@ -43,41 +43,41 @@ public partial class MainWindow
 
         public PadInputHost(MainWindow window) => _w = window;
 
-        public Canvas Pad => _w.Pad;
+        public Canvas Pad => _w.PadRef;
 
-        public IPadInputChromeSurface PadChrome => _w.PadSurface;
+        public IPadInputChromeSurface PadChrome => _w.PadSurfaceRef;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
-        public MainViewModel ViewModel => _w._viewModel;
+        public MainViewModel ViewModel => _w.ViewModelRef;
 
-        public InteractionState InteractionState => _w._interactionState;
+        public InteractionState InteractionState => _w.InteractionStateRef;
 
-        public IPadInteractionOutcomeApplier OutcomeApplier => _w._interactionOutcomeApplier;
+        public IPadInteractionOutcomeApplier OutcomeApplier => _w.OutcomeApplierRef;
 
-        public PadInputSessionState PadState => _w._padState;
+        public PadInputSessionState PadState => _w.PadStateRef;
 
         public int SelectedZoneIndex
         {
-            get => _w.SelectedZoneIndex;
-            set => _w.SelectedZoneIndex = value;
+            get => _w.ViewModelRef.SelectedZoneIndex;
+            set => _w.ViewModelRef.SelectedZoneIndex = value;
         }
 
-        public bool IsLoadingUi => _w._isLoadingUi;
+        public bool IsLoadingUi => _w.IsLoadingUiRef;
 
-        public void ApplyInteractionResult(InteractionResult result) => _w.ApplyInteractionResult(result);
+        public void ApplyInteractionResult(InteractionResult result) => _w.ApplyInteractionResultRef(result);
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
-        public void UpdateInputBackendStatus() => _w.UpdateInputBackendStatus();
+        public void UpdateInputBackendStatus() => _w.UpdateInputBackendStatusRef();
 
-        public void OnRebindCompletedRefreshRouting() => _w._zoneEditorSession.UpdateUiForCurrentConfig();
+        public void OnRebindCompletedRefreshRouting() => _w.ZoneEditorSessionRef.UpdateUiForCurrentConfig();
 
         public void BeginPopulateTabletDeviceList()
-            => _w.TabletDeviceComboBox.SelectionChanged -= _w.TabletDeviceComboBox_SelectionChanged;
+            => _w.BeginPopulateTabletDeviceListRef();
 
         public void EndPopulateTabletDeviceList()
-            => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
+            => _w.EndPopulateTabletDeviceListRef();
     }
 
     private sealed class ZonePadHost : IMainWindowZonePadSessionHost
@@ -86,27 +86,27 @@ public partial class MainWindow
 
         public ZonePadHost(MainWindow window) => _w = window;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
         public int SelectedZoneIndex
         {
-            get => _w.SelectedZoneIndex;
-            set => _w.SelectedZoneIndex = value;
+            get => _w.ViewModelRef.SelectedZoneIndex;
+            set => _w.ViewModelRef.SelectedZoneIndex = value;
         }
 
-        public double PadActualWidth => _w.Pad.ActualWidth;
+        public double PadActualWidth => _w.PadRef.ActualWidth;
 
-        public double PadActualHeight => _w.Pad.ActualHeight;
+        public double PadActualHeight => _w.PadRef.ActualHeight;
 
-        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w.ZoneEditorSessionRef.CommitCurrentZoneEdits();
 
-        public void LoadSelectedZoneIntoEditor() => _w._zoneEditorSession.LoadSelectedZoneIntoEditor();
+        public void LoadSelectedZoneIntoEditor() => _w.ZoneEditorSessionRef.LoadSelectedZoneIntoEditor();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
-        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResultRef(message, kind);
 
-        public void ClearPadCursor() => _w.Pad.Cursor = null;
+        public void ClearPadCursor() => _w.PadRef.Cursor = null;
     }
 
     private sealed class SettingsSessionHost : IMainWindowSettingsSessionHost
@@ -117,23 +117,23 @@ public partial class MainWindow
 
         public Window OwnerWindow => _w;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
-        public void ReplaceConfig(AppConfig config) => _w._config = config;
+        public void ReplaceConfig(AppConfig config) => _w.SettingsServiceRef.UpdateConfig(config, false);
 
-        public PadInputSessionState PadState => _w._padState;
+        public PadInputSessionState PadState => _w.PadStateRef;
 
-        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w.ZoneEditorSessionRef.CommitCurrentZoneEdits();
 
-        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResultRef(message, kind);
 
-        public void UpdateUiForCurrentConfig() => _w._zoneEditorSession.UpdateUiForCurrentConfig();
+        public void UpdateUiForCurrentConfig() => _w.ZoneEditorSessionRef.UpdateUiForCurrentConfig();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
         public void SyncToolbar() => _w.SyncToolbar();
 
-        public void LoadConfigIntoUi(AppConfig config) => _w._zoneEditorSession.LoadConfigIntoUi(config);
+        public void LoadConfigIntoUi(AppConfig config) => _w.ZoneEditorSessionRef.LoadConfigIntoUi(config);
     }
 
     private sealed class ZoneListHost : IMainWindowZoneListSessionHost
@@ -142,25 +142,25 @@ public partial class MainWindow
 
         public ZoneListHost(MainWindow window) => _w = window;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
         public int SelectedZoneIndex
         {
-            get => _w.SelectedZoneIndex;
-            set => _w.SelectedZoneIndex = value;
+            get => _w.ViewModelRef.SelectedZoneIndex;
+            set => _w.ViewModelRef.SelectedZoneIndex = value;
         }
 
-        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w.ZoneEditorSessionRef.CommitCurrentZoneEdits();
 
-        public void RefreshZoneList() => _w._zoneEditorSession.RefreshZoneList();
+        public void RefreshZoneList() => _w.ZoneEditorSessionRef.RefreshZoneList();
 
-        public void NotifySelectedZoneIndexChanged() => _w._viewModel.NotifySelectedZoneIndexChanged();
+        public void NotifySelectedZoneIndexChanged() => _w.ViewModelRef.NotifySelectedZoneIndexChanged();
 
-        public void LoadSelectedZoneIntoEditor() => _w._zoneEditorSession.LoadSelectedZoneIntoEditor();
+        public void LoadSelectedZoneIntoEditor() => _w.ZoneEditorSessionRef.LoadSelectedZoneIntoEditor();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
-        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResultRef(message, kind);
     }
 
     private sealed class StartupHost : IMainWindowStartupHost
@@ -169,24 +169,24 @@ public partial class MainWindow
 
         public StartupHost(MainWindow window) => _w = window;
 
-        public AppConfig Config => _w._config;
+        public AppConfig Config => _w.SettingsServiceRef.Config;
 
-        public void ReplaceRuntimeConfig(AppConfig config) => _w._config = config;
+        public void ReplaceRuntimeConfig(AppConfig config) => _w.SettingsServiceRef.UpdateConfig(config, false);
 
-        public void LoadConfigIntoUi(AppConfig config) => _w._zoneEditorSession.LoadConfigIntoUi(config);
+        public void LoadConfigIntoUi(AppConfig config) => _w.ZoneEditorSessionRef.LoadConfigIntoUi(config);
 
         public WacomServiceStatus GetWacomServiceStatus() => _w._wacomServiceController.GetStatus();
 
         public void ApplyWacomServiceMenuState(WacomServiceStatus status) => _w.RefreshWacomServiceStatus(status);
 
-        public void InitializeTabletInput() => _w._padInputSession.InitializeTabletInput();
+        public void InitializeTabletInput() => _w.InitializeTabletInput();
 
         public void ApplyTabletStackBlockedAtStartup(WacomServiceStatus wacom)
         {
-            _w._padInputSession.ShutdownWintabBackendOnly();
-            _w._padInputSession.RefreshTabletDeviceListOnly();
-            InputBackendLifecycleResult blocked = _w._startupLifecycle.BuildTabletStackBlockedLifecycleResult(_w._config, wacom);
-            _w._padInputSession.ApplyTabletLifecycle(blocked, refreshInputBackendStatusText: true);
+            _w.ShutdownWintabBackendOnly();
+            _w.RefreshTabletDeviceListOnly();
+            InputBackendLifecycleResult blocked = _w.BuildTabletStackBlockedLifecycleResult(_w.SettingsServiceRef.Config, wacom);
+            _w.ApplyTabletLifecycle(blocked, true);
         }
     }
 }

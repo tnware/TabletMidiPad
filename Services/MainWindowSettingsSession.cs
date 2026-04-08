@@ -15,6 +15,7 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
     private readonly IMainWindowPadInputSession _padInputSession;
+    private readonly ISettingsService _settingsService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowSettingsSession"/> class.
@@ -26,7 +27,8 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
         IZoneConfigurationService zoneConfigurationService,
         IConfigStore configStore,
         IMidiEngine midiEngine,
-        IMainWindowPadInputSession padInputSession)
+        IMainWindowPadInputSession padInputSession,
+        ISettingsService settingsService)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
@@ -35,6 +37,7 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _padInputSession = padInputSession ?? throw new ArgumentNullException(nameof(padInputSession));
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
     }
 
     /// <inheritdoc />
@@ -43,7 +46,7 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
         try
         {
             _host.CommitCurrentZoneEdits();
-            WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_host.Config, _configStore);
+            WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_settingsService.Config, _configStore);
             if (!persistResult.Success)
             {
                 _host.SetSettingsResult(persistResult.ErrorMessage ?? "Settings could not be applied.", SettingsResultKind.Error);
@@ -65,11 +68,11 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
     {
         int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(
             _host.PadState.ExpressKeyCount,
-            _host.Config.ExpressKeys.Count);
-        ExpressKeyConfig.EnsureCount(_host.Config.ExpressKeys, effectiveExpressKeyCount);
+            _settingsService.Config.ExpressKeys.Count);
+        ExpressKeyConfig.EnsureCount(_settingsService.Config.ExpressKeys, effectiveExpressKeyCount);
         PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(
             _host.OwnerWindow,
-            _host.Config,
+            _settingsService.Config,
             effectiveExpressKeyCount);
         if (result is null)
         {
@@ -77,14 +80,14 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
         }
 
         _host.CommitCurrentZoneEdits();
-        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_host.Config, result, IntPtr.Zero);
+        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_settingsService.Config, result, IntPtr.Zero);
         if (!applyResult.SaveSucceeded)
         {
             _host.SetSettingsResult(applyResult.ErrorMessage ?? "Preferences could not be applied.", SettingsResultKind.Error);
             return;
         }
 
-        WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_host.Config, _configStore);
+        WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_settingsService.Config, _configStore);
         if (!persistResult.Success)
         {
             _host.SetSettingsResult(persistResult.ErrorMessage ?? "Preferences could not be saved.", SettingsResultKind.Error);
@@ -113,15 +116,15 @@ internal sealed class MainWindowSettingsSession : IMainWindowSettingsSession
     /// <inheritdoc />
     public void ResetToDefaultsAndApply()
     {
-        _host.ReplaceConfig(AppConfig.Default);
-        _zoneConfigurationService.AutoTileZones(_host.Config);
-        _host.LoadConfigIntoUi(_host.Config);
+        _settingsService.UpdateConfig(AppConfig.Default, save: false);
+        _zoneConfigurationService.AutoTileZones(_settingsService.Config);
+        _host.LoadConfigIntoUi(_settingsService.Config);
         ApplySettings();
     }
 
     private void RestartMidi()
     {
-        _midiEngine.Restart(_host.Config);
+        _midiEngine.Restart(_settingsService.Config);
         _midiEngine.ClearCachedValues();
         _host.UpdateUiForCurrentConfig();
         _host.RefreshPadZoneOverlay();

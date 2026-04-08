@@ -13,6 +13,29 @@ public partial class MainWindow : Window
 {
     private bool _isLoadingUi;
 
+    internal PadInputSessionState PadStateRef => _padState;
+    internal IMainWindowZoneEditorSession ZoneEditorSessionRef => _zoneEditorSession;
+    internal ISettingsService SettingsServiceRef => _settingsService;
+    internal void SetSettingsResultRef(string message, SettingsResultKind kind) => SetSettingsResult(message, kind);
+    internal void RefreshPadZoneOverlayRef() => RefreshPadZoneOverlay();
+    internal void SyncToolbarRef() => SyncToolbar();
+    internal Canvas PadRef => Pad;
+    internal IPadInputChromeSurface PadSurfaceRef => PadSurface;
+    internal MainViewModel ViewModelRef => _viewModel;
+    internal InteractionState InteractionStateRef => _interactionState;
+    internal IPadInteractionOutcomeApplier OutcomeApplierRef => _interactionOutcomeApplier;
+    internal bool IsLoadingUiRef => _isLoadingUi;
+    internal void ApplyInteractionResultRef(InteractionResult result) => ApplyInteractionResult(result);
+    internal void UpdateInputBackendStatusRef() => UpdateInputBackendStatus();
+    internal void BeginPopulateTabletDeviceListRef() => TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
+    internal void EndPopulateTabletDeviceListRef() => TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
+
+    internal void ShutdownWintabBackendOnly() => _padInputSession.ShutdownWintabBackendOnly();
+    internal void RefreshTabletDeviceListOnly() => _padInputSession.RefreshTabletDeviceListOnly();
+    internal void InitializeTabletInput() => _padInputSession.InitializeTabletInput();
+    internal void ApplyTabletLifecycle(InputBackendLifecycleResult result, bool refresh) => _padInputSession.ApplyTabletLifecycle(result, refresh);
+    internal InputBackendLifecycleResult BuildTabletStackBlockedLifecycleResult(AppConfig config, WacomServiceStatus wacom) => _startupLifecycle.BuildTabletStackBlockedLifecycleResult(config, wacom);
+
     private readonly PadInputSessionState _padState = new();
     private readonly PadInputHost _padInputHost;
     private readonly IMainWindowPadInputSession _padInputSession;
@@ -42,7 +65,8 @@ public partial class MainWindow : Window
     private readonly MainWindowViewModelConfigBinder _vmConfigBinder;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
-    private AppConfig _config = AppConfig.Default;
+    private readonly ISettingsService _settingsService;
+    private AppConfig _config => _settingsService.Config;
     private readonly InteractionState _interactionState = new();
 
     private Canvas Pad => PadSurface.PadInputElement;
@@ -59,56 +83,27 @@ public partial class MainWindow : Window
     /// <summary>
     /// Application entry constructs the window via <see cref="TabletMidiPad.Composition.AppBootstrapper.CreateApplicationShell"/>.
     /// </summary>
-    internal MainWindow(
-        IConfigStore configStore,
-        IMidiEngine midiEngine,
-        IWacomServiceController wacomServiceController,
-        IWintabInputBackend wintabInputBackend,
-        ITabletDevicePickerSyncService tabletDevicePickerSyncService,
-        IPreferencesDialogService preferencesDialogService,
-        IZoneConfigurationService zoneConfigurationService,
-        IZoneEditorService zoneEditorService,
-        IZoneOverlayRenderer zoneOverlayRenderer,
-        IZoneResizeService zoneResizeService,
-        IInputFallbackService inputFallbackService,
-        IInputInteractionOrchestrator inputInteractionOrchestrator,
-        IInputBackendStatusFormatter inputBackendStatusFormatter,
-        IMainWindowWorkflowCoordinator workflowCoordinator,
-        IMainWindowInputBackendCoordinator inputBackendCoordinator,
-        IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
-        IMainWindowLifecycleCoordinator lifecycleCoordinator,
-        IMainWindowStartupLifecycleService startupLifecycle,
-        IMainWindowWintabInputBridge wintabInputBridge,
-        IMainWindowPadPresentationCoordinator padPresentationCoordinator,
-        IMainWindowToolbarSession toolbarSession,
-        IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator,
-        MainViewModel viewModel,
-        IPadInteractionOutcomeApplier interactionOutcomeApplier)
+    internal MainWindow(MainWindowDependencies d)
     {
-        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
-        _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
-        _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
-        _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
-        _tabletDevicePickerSyncService = tabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(tabletDevicePickerSyncService));
-        _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
-        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
-        _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
-        ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
-        _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
-        ArgumentNullException.ThrowIfNull(inputFallbackService);
-        _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
-        ArgumentNullException.ThrowIfNull(inputInteractionOrchestrator);
-        _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
-        _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
-        _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
-        _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
-        _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
-        ArgumentNullException.ThrowIfNull(wintabInputBridge);
-        ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
-        _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
-        ArgumentNullException.ThrowIfNull(zoneActionWorkflowCoordinator);
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-        _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
+        _configStore = d.ConfigStore ?? throw new ArgumentNullException(nameof(d.ConfigStore));
+        _midiEngine = d.MidiEngine ?? throw new ArgumentNullException(nameof(d.MidiEngine));
+        _wacomServiceController = d.WacomServiceController ?? throw new ArgumentNullException(nameof(d.WacomServiceController));
+        _wintabInputBackend = d.WintabInputBackend ?? throw new ArgumentNullException(nameof(d.WintabInputBackend));
+        _tabletDevicePickerSyncService = d.TabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(d.TabletDevicePickerSyncService));
+        _preferencesDialogService = d.PreferencesDialogService ?? throw new ArgumentNullException(nameof(d.PreferencesDialogService));
+        _zoneConfigurationService = d.ZoneConfigurationService ?? throw new ArgumentNullException(nameof(d.ZoneConfigurationService));
+        _zoneEditorService = d.ZoneEditorService ?? throw new ArgumentNullException(nameof(d.ZoneEditorService));
+        _zoneResizeService = d.ZoneResizeService ?? throw new ArgumentNullException(nameof(d.ZoneResizeService));
+        _inputBackendStatusFormatter = d.InputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(d.InputBackendStatusFormatter));
+        _workflowCoordinator = d.WorkflowCoordinator ?? throw new ArgumentNullException(nameof(d.WorkflowCoordinator));
+        _inputBackendCoordinator = d.InputBackendCoordinator ?? throw new ArgumentNullException(nameof(d.InputBackendCoordinator));
+        _wacomServiceWorkflowCoordinator = d.WacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(d.WacomServiceWorkflowCoordinator));
+        _lifecycleCoordinator = d.LifecycleCoordinator ?? throw new ArgumentNullException(nameof(d.LifecycleCoordinator));
+        _startupLifecycle = d.StartupLifecycle ?? throw new ArgumentNullException(nameof(d.StartupLifecycle));
+        _toolbarSession = d.ToolbarSession ?? throw new ArgumentNullException(nameof(d.ToolbarSession));
+        _viewModel = d.ViewModel ?? throw new ArgumentNullException(nameof(d.ViewModel));
+        _interactionOutcomeApplier = d.InteractionOutcomeApplier ?? throw new ArgumentNullException(nameof(d.InteractionOutcomeApplier));
+        _settingsService = d.SettingsService ?? throw new ArgumentNullException(nameof(d.SettingsService));
         InitializeComponent();
         _toolbarChrome = new MainWindowToolbarChrome(
             this,
@@ -124,9 +119,9 @@ public partial class MainWindow : Window
             _inputBackendCoordinator,
             _lifecycleCoordinator,
             _wintabInputBackend,
-            wintabInputBridge,
-            inputFallbackService,
-            inputInteractionOrchestrator,
+            d.WintabInputBridge,
+            d.InputFallbackService,
+            d.InputInteractionOrchestrator,
             _inputBackendStatusFormatter);
         _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
         _zoneEditorSession = new MainWindowZoneEditorSession(
@@ -146,10 +141,11 @@ public partial class MainWindow : Window
             _zoneConfigurationService,
             _configStore,
             _midiEngine,
-            _padInputSession);
+            _padInputSession,
+            _settingsService);
         _startupHost = new StartupHost(this);
-        _zoneListSession = new MainWindowZoneListSession(new ZoneListHost(this), zoneActionWorkflowCoordinator);
-        PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
+        _zoneListSession = new MainWindowZoneListSession(new ZoneListHost(this), d.ZoneActionWorkflowCoordinator);
+        PadSurface.AttachPresentationServices(d.PadPresentationCoordinator, d.ZoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
         PadSurface.PadStylusMove += Pad_StylusMove;
@@ -269,11 +265,7 @@ public partial class MainWindow : Window
 
     private void MenuAbout()
     {
-        MessageBox.Show(
-            "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
-            "About Tablet MIDI Pad",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        _viewModel.AboutCommand.Execute(null);
     }
 
     private async Task InitializeAppAsync()
@@ -295,7 +287,7 @@ public partial class MainWindow : Window
     private void ReconnectPenCore()
     {
         _zoneEditorSession.CommitCurrentZoneEdits();
-        _padInputSession.RebindInputBackend();
+        _viewModel.ReconnectPenCommand.Execute(null);
         SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
 
@@ -345,7 +337,7 @@ public partial class MainWindow : Window
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         => _zoneEditorSession.OnZoneListSelectionChanged();
 
-    private void SyncToolbar() => _toolbarChrome.SyncAll();
+    public void SyncToolbar() => _toolbarChrome.SyncAll();
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
         => _padInputSession.HandleStylusDown(e);
@@ -415,7 +407,7 @@ public partial class MainWindow : Window
         };
     }
 
-    private void RefreshPadZoneOverlay()
+    public void RefreshPadZoneOverlay()
         => PadSurface.RefreshZoneOverlay(_config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -457,7 +449,7 @@ public partial class MainWindow : Window
         _viewModel.IsWacomServiceStartEnabled = menuState.StartEnabled;
     }
 
-    private void SetSettingsResult(string message, SettingsResultKind kind)
+    internal void SetSettingsResult(string message, SettingsResultKind kind)
     {
         _viewModel.SettingsResultMessage = message;
         _viewModel.SettingsResultKind = kind;

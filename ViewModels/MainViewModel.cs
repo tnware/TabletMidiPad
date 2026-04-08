@@ -8,7 +8,7 @@ namespace TabletMidiPad.ViewModels;
 /// <summary>
 /// View-model surface for MainWindow status and telemetry text.
 /// </summary>
-internal sealed class MainViewModel : ViewModelBase
+internal sealed class MainViewModel : ViewModelBase, Services.IZoneEditorState
 {
     private string _statusText = "Waiting for MIDI port...";
     private string _routingText = string.Empty;
@@ -29,26 +29,6 @@ internal sealed class MainViewModel : ViewModelBase
     private bool _isInputBackendAutoChecked = true;
     private bool _isInputBackendWintabChecked;
     private bool _isInputBackendMouseChecked;
-    private string _zoneSelectionSummaryPrimaryText = "No zone selected";
-    private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
-    private int _selectedZoneIndex = -1;
-    private bool _zoneDetailsEnabled;
-    private string _zoneName = string.Empty;
-    private bool _zoneEnabled;
-    private int _zoneMidiChannel = 1;
-    private string _zoneCcX = string.Empty;
-    private string _zoneCcY = string.Empty;
-    private string _zoneCcPressure = string.Empty;
-    private string _zoneLeft = string.Empty;
-    private string _zoneTop = string.Empty;
-    private string _zoneWidth = string.Empty;
-    private string _zoneHeight = string.Empty;
-    private bool _zoneSendX = true;
-    private bool _zoneSendY = true;
-    private bool _zoneInvertX;
-    private bool _zoneInvertY;
-    private bool _zoneSendPressure = true;
-    private string _zoneReleaseBehavior = string.Empty;
     private string _settingsResultMessage = string.Empty;
     private SettingsResultKind _settingsResultKind = SettingsResultKind.None;
     private string _maxZoneRowsText = string.Empty;
@@ -63,26 +43,56 @@ internal sealed class MainViewModel : ViewModelBase
     private TabletDeviceListItemViewModel? _selectedTabletDevice;
     private bool _isTabletDevicePickerEnabled = true;
 
-    public MainViewModel()
+    public ZoneListViewModel ZoneList { get; }
+    public ZoneEditorViewModel ZoneEditor { get; }
+
+    private readonly Services.ISettingsService _settingsService;
+    private readonly Services.IMainWindowToolbarSession _toolbarSession;
+    private readonly Services.IMainWindowPadInputSession _padInputSession;
+
+    public MainViewModel(
+        ZoneListViewModel zoneList,
+        ZoneEditorViewModel zoneEditor,
+        Services.ISettingsService settingsService,
+        Services.IMainWindowSettingsSession settingsSession,
+        Services.IMainWindowToolbarSession toolbarSession,
+        Services.IMainWindowPadInputSession padInputSession)
     {
-        SaveSettingsCommand = new DelegateCommand(() => { });
-        ResetDefaultsCommand = new DelegateCommand(() => { });
-        OpenPreferencesCommand = new DelegateCommand(() => { });
-        ExitCommand = new DelegateCommand(() => { });
-        RefreshWacomStatusCommand = new DelegateCommand(() => { });
-        ReconnectPenCommand = new DelegateCommand(() => { });
+        ZoneList = zoneList ?? throw new ArgumentNullException(nameof(zoneList));
+        ZoneEditor = zoneEditor ?? throw new ArgumentNullException(nameof(zoneEditor));
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
+        _padInputSession = padInputSession ?? throw new ArgumentNullException(nameof(padInputSession));
+
+        SaveSettingsCommand = new DelegateCommand(settingsSession.ApplySettings);
+        ResetDefaultsCommand = new DelegateCommand(settingsSession.ResetToDefaultsAndApply);
+        OpenPreferencesCommand = new DelegateCommand(settingsSession.RunPreferencesFlow);
+        ExitCommand = new DelegateCommand(() => System.Windows.Application.Current.MainWindow?.Close());
+        RefreshWacomStatusCommand = new DelegateCommand(() => { }); // Action provided via property or event later
+        ReconnectPenCommand = new DelegateCommand(() => _padInputSession.RebindInputBackend());
         StartWacomServiceCommand = new DelegateCommand(() => { });
-        AboutCommand = new DelegateCommand(() => { });
-        AddZoneCommand = new DelegateCommand(() => { });
-        RemoveZoneCommand = new DelegateCommand(() => { });
-        AutoLayoutCommand = new DelegateCommand(() => { });
-        SelectPressureCurveLinearCommand = new DelegateCommand(() => { });
-        SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => { });
-        SelectPressureCurveExponentialCommand = new DelegateCommand(() => { });
-        SelectInputBackendAutoCommand = new DelegateCommand(() => { });
-        SelectInputBackendWintabCommand = new DelegateCommand(() => { });
-        SelectInputBackendMouseCommand = new DelegateCommand(() => { });
-        CycleInputBackendCommand = new DelegateCommand(() => { });
+        AboutCommand = new DelegateCommand(() =>
+        {
+             System.Windows.MessageBox.Show(
+                "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
+                "About Tablet MIDI Pad",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        });
+        AddZoneCommand = ZoneList.AddZoneCommand;
+        RemoveZoneCommand = ZoneList.RemoveZoneCommand;
+        AutoLayoutCommand = ZoneList.AutoLayoutCommand;
+
+        SelectPressureCurveLinearCommand = new DelegateCommand(() => SetPressureCurve("Linear"));
+        SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => SetPressureCurve("Logarithmic"));
+        SelectPressureCurveExponentialCommand = new DelegateCommand(() => SetPressureCurve("Exponential"));
+        SelectInputBackendAutoCommand = new DelegateCommand(() => SetInputBackendMode("Auto"));
+        SelectInputBackendWintabCommand = new DelegateCommand(() => SetInputBackendMode("Wintab Only"));
+        SelectInputBackendMouseCommand = new DelegateCommand(() => SetInputBackendMode("Mouse"));
+        CycleInputBackendCommand = new DelegateCommand(CycleInputBackend);
+
+        _settingsService.SettingsUpdated += HandleSettingsUpdated;
+        HandleSettingsUpdated(null, EventArgs.Empty);
 
         for (int ch = 1; ch <= 16; ch++)
         {
@@ -93,6 +103,30 @@ internal sealed class MainViewModel : ViewModelBase
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.Hold);
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetPressureOnly);
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
+    }
+
+    private void SetPressureCurve(string curve)
+    {
+        _toolbarSession.ApplyPressureCurve(_settingsService.Config, curve);
+        _settingsService.Save();
+    }
+
+    private void SetInputBackendMode(string mode)
+    {
+        var result = _toolbarSession.TryApplyInputBackendMode(_settingsService.Config, mode);
+        if (result.ModeChanged)
+        {
+            if (result.RequiresInputRebind)
+            {
+                _padInputSession.RebindInputBackend();
+            }
+            _settingsService.Save();
+        }
+    }
+
+    private void CycleInputBackend()
+    {
+        SetInputBackendMode(_toolbarSession.GetNextCycledInputBackendModeLabel(_settingsService.Config));
     }
 
     public ObservableCollection<int> MidiChannels { get; } = new();
@@ -218,33 +252,9 @@ internal sealed class MainViewModel : ViewModelBase
         Action removeZone,
         Action autoLayout)
     {
-        SaveSettingsCommand = new DelegateCommand(saveSettings);
-        ResetDefaultsCommand = new DelegateCommand(resetDefaults);
-        OpenPreferencesCommand = new DelegateCommand(openPreferences);
-        ExitCommand = new DelegateCommand(exit);
-        RefreshWacomStatusCommand = new DelegateCommand(refreshWacomStatus);
-        ReconnectPenCommand = new DelegateCommand(reconnectPen);
-        StartWacomServiceCommand = new DelegateCommand(startWacomService);
-        AboutCommand = new DelegateCommand(showAbout);
-        AddZoneCommand = new DelegateCommand(addZone);
-        RemoveZoneCommand = new DelegateCommand(removeZone);
-        AutoLayoutCommand = new DelegateCommand(autoLayout);
-        OnPropertyChanged(nameof(SaveSettingsCommand));
-        OnPropertyChanged(nameof(ResetDefaultsCommand));
-        OnPropertyChanged(nameof(OpenPreferencesCommand));
-        OnPropertyChanged(nameof(ExitCommand));
-        OnPropertyChanged(nameof(RefreshWacomStatusCommand));
-        OnPropertyChanged(nameof(ReconnectPenCommand));
-        OnPropertyChanged(nameof(StartWacomServiceCommand));
-        OnPropertyChanged(nameof(AboutCommand));
-        OnPropertyChanged(nameof(AddZoneCommand));
-        OnPropertyChanged(nameof(RemoveZoneCommand));
-        OnPropertyChanged(nameof(AutoLayoutCommand));
+        // Deprecated, logic moved to constructor
     }
 
-    /// <summary>
-    /// Wires toolbar pressure-curve and input-backend commands (invoked from the view after construction).
-    /// </summary>
     public void ConfigureToolbarCommands(
         Action selectPressureCurveLinear,
         Action selectPressureCurveLogarithmic,
@@ -254,20 +264,16 @@ internal sealed class MainViewModel : ViewModelBase
         Action selectInputBackendMouse,
         Action cycleInputBackend)
     {
-        SelectPressureCurveLinearCommand = new DelegateCommand(selectPressureCurveLinear);
-        SelectPressureCurveLogarithmicCommand = new DelegateCommand(selectPressureCurveLogarithmic);
-        SelectPressureCurveExponentialCommand = new DelegateCommand(selectPressureCurveExponential);
-        SelectInputBackendAutoCommand = new DelegateCommand(selectInputBackendAuto);
-        SelectInputBackendWintabCommand = new DelegateCommand(selectInputBackendWintab);
-        SelectInputBackendMouseCommand = new DelegateCommand(selectInputBackendMouse);
-        CycleInputBackendCommand = new DelegateCommand(cycleInputBackend);
-        OnPropertyChanged(nameof(SelectPressureCurveLinearCommand));
-        OnPropertyChanged(nameof(SelectPressureCurveLogarithmicCommand));
-        OnPropertyChanged(nameof(SelectPressureCurveExponentialCommand));
-        OnPropertyChanged(nameof(SelectInputBackendAutoCommand));
-        OnPropertyChanged(nameof(SelectInputBackendWintabCommand));
-        OnPropertyChanged(nameof(SelectInputBackendMouseCommand));
-        OnPropertyChanged(nameof(CycleInputBackendCommand));
+        // Deprecated, logic moved to constructor
+    }
+
+    private void HandleSettingsUpdated(object? sender, EventArgs e)
+    {
+        var config = _settingsService.Config;
+        SendPressureGlobally = config.SendPressureGlobally;
+        AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
+        MaxZoneRowsText = config.MaxZoneRows.ToString();
+        MaxZonesPerRowText = config.MaxZonesPerRow.ToString();
     }
 
     public string StatusText
@@ -384,25 +390,35 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _isInputBackendMouseChecked, value);
     }
 
-    public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
+    #region Redundant properties being removed/moved
 
-    public string ZoneSelectionSummaryPrimaryText
-    {
-        get => _zoneSelectionSummaryPrimaryText;
-        set => SetProperty(ref _zoneSelectionSummaryPrimaryText, value);
-    }
-
-    public string ZoneSelectionSummarySecondaryText
-    {
-        get => _zoneSelectionSummarySecondaryText;
-        set => SetProperty(ref _zoneSelectionSummarySecondaryText, value);
-    }
+    string Services.IZoneEditorState.ZoneName { get => ZoneEditor.ZoneName; set => ZoneEditor.ZoneName = value; }
+    bool Services.IZoneEditorState.ZoneEnabled { get => ZoneEditor.ZoneEnabled; set => ZoneEditor.ZoneEnabled = value; }
+    int Services.IZoneEditorState.ZoneMidiChannel { get => ZoneEditor.ZoneMidiChannel; set => ZoneEditor.ZoneMidiChannel = value; }
+    string Services.IZoneEditorState.ZoneCcX { get => ZoneEditor.ZoneCcX; set => ZoneEditor.ZoneCcX = value; }
+    string Services.IZoneEditorState.ZoneCcY { get => ZoneEditor.ZoneCcY; set => ZoneEditor.ZoneCcY = value; }
+    string Services.IZoneEditorState.ZoneCcPressure { get => ZoneEditor.ZoneCcPressure; set => ZoneEditor.ZoneCcPressure = value; }
+    string Services.IZoneEditorState.ZoneLeft { get => ZoneEditor.ZoneLeft; set => ZoneEditor.ZoneLeft = value; }
+    string Services.IZoneEditorState.ZoneTop { get => ZoneEditor.ZoneTop; set => ZoneEditor.ZoneTop = value; }
+    string Services.IZoneEditorState.ZoneWidth { get => ZoneEditor.ZoneWidth; set => ZoneEditor.ZoneWidth = value; }
+    string Services.IZoneEditorState.ZoneHeight { get => ZoneEditor.ZoneHeight; set => ZoneEditor.ZoneHeight = value; }
+    bool Services.IZoneEditorState.ZoneSendX { get => ZoneEditor.ZoneSendX; set => ZoneEditor.ZoneSendX = value; }
+    bool Services.IZoneEditorState.ZoneSendY { get => ZoneEditor.ZoneSendY; set => ZoneEditor.ZoneSendY = value; }
+    bool Services.IZoneEditorState.ZoneInvertX { get => ZoneEditor.ZoneInvertX; set => ZoneEditor.ZoneInvertX = value; }
+    bool Services.IZoneEditorState.ZoneInvertY { get => ZoneEditor.ZoneInvertY; set => ZoneEditor.ZoneInvertY = value; }
+    bool Services.IZoneEditorState.ZoneSendPressure { get => ZoneEditor.ZoneSendPressure; set => ZoneEditor.ZoneSendPressure = value; }
+    string Services.IZoneEditorState.ZoneReleaseBehavior { get => ZoneEditor.ZoneReleaseBehavior; set => ZoneEditor.ZoneReleaseBehavior = value; }
+    bool Services.IZoneEditorState.ZoneDetailsEnabled { get => ZoneEditor.ZoneDetailsEnabled; set => ZoneEditor.ZoneDetailsEnabled = value; }
+    string Services.IZoneEditorState.ZoneSelectionSummaryPrimaryText { get => ZoneEditor.ZoneSelectionSummaryPrimaryText; set => ZoneEditor.ZoneSelectionSummaryPrimaryText = value; }
+    string Services.IZoneEditorState.ZoneSelectionSummarySecondaryText { get => ZoneEditor.ZoneSelectionSummarySecondaryText; set => ZoneEditor.ZoneSelectionSummarySecondaryText = value; }
 
     public int SelectedZoneIndex
     {
-        get => _selectedZoneIndex;
-        set => SetProperty(ref _selectedZoneIndex, value);
+        get => ZoneList.SelectedZoneIndex;
+        set => ZoneList.SelectedZoneIndex = value;
     }
+
+    #endregion
 
     /// <summary>
     /// Raises <see cref="SelectedZoneIndex"/> after the zone list collection is replaced so the ListBox binding re-applies.
@@ -410,107 +426,5 @@ internal sealed class MainViewModel : ViewModelBase
     internal void NotifySelectedZoneIndexChanged()
     {
         OnPropertyChanged(nameof(SelectedZoneIndex));
-    }
-
-    public bool ZoneDetailsEnabled
-    {
-        get => _zoneDetailsEnabled;
-        set => SetProperty(ref _zoneDetailsEnabled, value);
-    }
-
-    public string ZoneName
-    {
-        get => _zoneName;
-        set => SetProperty(ref _zoneName, value);
-    }
-
-    public bool ZoneEnabled
-    {
-        get => _zoneEnabled;
-        set => SetProperty(ref _zoneEnabled, value);
-    }
-
-    public int ZoneMidiChannel
-    {
-        get => _zoneMidiChannel;
-        set => SetProperty(ref _zoneMidiChannel, value);
-    }
-
-    public string ZoneCcX
-    {
-        get => _zoneCcX;
-        set => SetProperty(ref _zoneCcX, value);
-    }
-
-    public string ZoneCcY
-    {
-        get => _zoneCcY;
-        set => SetProperty(ref _zoneCcY, value);
-    }
-
-    public string ZoneCcPressure
-    {
-        get => _zoneCcPressure;
-        set => SetProperty(ref _zoneCcPressure, value);
-    }
-
-    public string ZoneLeft
-    {
-        get => _zoneLeft;
-        set => SetProperty(ref _zoneLeft, value);
-    }
-
-    public string ZoneTop
-    {
-        get => _zoneTop;
-        set => SetProperty(ref _zoneTop, value);
-    }
-
-    public string ZoneWidth
-    {
-        get => _zoneWidth;
-        set => SetProperty(ref _zoneWidth, value);
-    }
-
-    public string ZoneHeight
-    {
-        get => _zoneHeight;
-        set => SetProperty(ref _zoneHeight, value);
-    }
-
-    public bool ZoneSendX
-    {
-        get => _zoneSendX;
-        set => SetProperty(ref _zoneSendX, value);
-    }
-
-    public bool ZoneSendY
-    {
-        get => _zoneSendY;
-        set => SetProperty(ref _zoneSendY, value);
-    }
-
-    public bool ZoneInvertX
-    {
-        get => _zoneInvertX;
-        set => SetProperty(ref _zoneInvertX, value);
-    }
-
-    public bool ZoneInvertY
-    {
-        get => _zoneInvertY;
-        set => SetProperty(ref _zoneInvertY, value);
-    }
-
-    public bool ZoneSendPressure
-    {
-        get => _zoneSendPressure;
-        set => SetProperty(ref _zoneSendPressure, value);
-    }
-
-    public string ZoneReleaseBehavior
-    {
-        get => _zoneReleaseBehavior;
-        set => SetProperty(ref _zoneReleaseBehavior, value);
     }
 }
