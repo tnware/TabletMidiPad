@@ -28,7 +28,8 @@ internal static class AppBootstrapper
         container.AddSingleton<IWintabEventAdapter>(_ => new WintabEventAdapter());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
-        container.AddSingleton<IZoneEditorService>(_ => new ZoneEditorService());
+        container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
+        container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(c.GetRequiredService<IConfigValueParser>()));
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IInputFallbackService>(_ => new InputFallbackService());
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
@@ -47,7 +48,6 @@ internal static class AppBootstrapper
         container.AddSingleton<IZoneActionWorkflowCoordinator>(c => new ZoneActionWorkflowCoordinator(
             c.GetRequiredService<IZoneConfigurationService>()));
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
-        container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
 
         // Views (created by DI so they can receive view models/services later).
@@ -60,13 +60,11 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneConfigurationService>(),
             c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
-            c.GetRequiredService<IConfigValueParser>(),
             c.GetRequiredService<IPadInteractionEngine>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IInputFallbackService>(),
             c.GetRequiredService<IInputInteractionOrchestrator>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
-            c.GetRequiredService<IWintabEventAdapter>(),
             c.GetRequiredService<IMainWindowWorkflowCoordinator>(),
             c.GetRequiredService<IMainWindowInputBackendCoordinator>(),
             c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),

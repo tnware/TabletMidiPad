@@ -22,12 +22,12 @@ internal sealed class MainViewModel : ViewModelBase
     private string _toolbarInputBackendLabelText = "Input (Auto)";
     private string _selectedPressureCurve = "Linear";
     private string _selectedInputBackendMode = "Auto";
-    private string? _pressureCurveLinearIcon;
-    private string? _pressureCurveLogarithmicIcon;
-    private string? _pressureCurveExponentialIcon;
-    private string? _inputBackendAutoIcon;
-    private string? _inputBackendWintabIcon;
-    private string? _inputBackendMouseIcon;
+    private bool _isPressureCurveLinearChecked = true;
+    private bool _isPressureCurveLogarithmicChecked;
+    private bool _isPressureCurveExponentialChecked;
+    private bool _isInputBackendAutoChecked = true;
+    private bool _isInputBackendWintabChecked;
+    private bool _isInputBackendMouseChecked;
     private string _zoneSelectionSummaryPrimaryText = "No zone selected";
     private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
     private int _selectedZoneIndex = -1;
@@ -191,40 +191,40 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _selectedInputBackendMode, value);
     }
 
-    public string? PressureCurveLinearIcon
+    public bool IsPressureCurveLinearChecked
     {
-        get => _pressureCurveLinearIcon;
-        set => SetProperty(ref _pressureCurveLinearIcon, value);
+        get => _isPressureCurveLinearChecked;
+        set => SetProperty(ref _isPressureCurveLinearChecked, value);
     }
 
-    public string? PressureCurveLogarithmicIcon
+    public bool IsPressureCurveLogarithmicChecked
     {
-        get => _pressureCurveLogarithmicIcon;
-        set => SetProperty(ref _pressureCurveLogarithmicIcon, value);
+        get => _isPressureCurveLogarithmicChecked;
+        set => SetProperty(ref _isPressureCurveLogarithmicChecked, value);
     }
 
-    public string? PressureCurveExponentialIcon
+    public bool IsPressureCurveExponentialChecked
     {
-        get => _pressureCurveExponentialIcon;
-        set => SetProperty(ref _pressureCurveExponentialIcon, value);
+        get => _isPressureCurveExponentialChecked;
+        set => SetProperty(ref _isPressureCurveExponentialChecked, value);
     }
 
-    public string? InputBackendAutoIcon
+    public bool IsInputBackendAutoChecked
     {
-        get => _inputBackendAutoIcon;
-        set => SetProperty(ref _inputBackendAutoIcon, value);
+        get => _isInputBackendAutoChecked;
+        set => SetProperty(ref _isInputBackendAutoChecked, value);
     }
 
-    public string? InputBackendWintabIcon
+    public bool IsInputBackendWintabChecked
     {
-        get => _inputBackendWintabIcon;
-        set => SetProperty(ref _inputBackendWintabIcon, value);
+        get => _isInputBackendWintabChecked;
+        set => SetProperty(ref _isInputBackendWintabChecked, value);
     }
 
-    public string? InputBackendMouseIcon
+    public bool IsInputBackendMouseChecked
     {
-        get => _inputBackendMouseIcon;
-        set => SetProperty(ref _inputBackendMouseIcon, value);
+        get => _isInputBackendMouseChecked;
+        set => SetProperty(ref _isInputBackendMouseChecked, value);
     }
 
     public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();

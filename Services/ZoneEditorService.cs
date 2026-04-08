@@ -10,6 +10,17 @@ namespace TabletMidiPad.Services;
 /// </summary>
 internal sealed class ZoneEditorService : IZoneEditorService
 {
+    private readonly IConfigValueParser _configValueParser;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ZoneEditorService"/> class.
+    /// </summary>
+    public ZoneEditorService(IConfigValueParser configValueParser)
+    {
+        _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+    }
+
+    /// <inheritdoc />
     public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> target, AppConfig config)
     {
         target.Clear();
@@ -25,6 +36,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
         }
     }
 
+    /// <inheritdoc />
     public void LoadSelectedZoneIntoEditor(MainViewModel viewModel, AppConfig config, int selectedZoneIndex)
     {
         if (selectedZoneIndex < 0 || selectedZoneIndex >= config.Zones.Count)
@@ -68,9 +80,10 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ZoneInvertX = zone.InvertX;
         viewModel.ZoneInvertY = zone.InvertY;
         viewModel.ZoneSendPressure = zone.SendPressure;
-        viewModel.ZoneReleaseBehavior = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        viewModel.ZoneReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(zone.ReleaseBehavior);
     }
 
+    /// <inheritdoc />
     public void CommitCurrentZoneEdits(
         AppConfig config,
         MainViewModel viewModel,
@@ -84,28 +97,29 @@ internal sealed class ZoneEditorService : IZoneEditorService
         }
 
         ZoneConfig zone = config.Zones[selectedZoneIndex];
-        config.MaxZoneRows = ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
-        config.MaxZonesPerRow = ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
-        zone.Name = RequireText(viewModel.ZoneName, "Zone Name");
+        config.MaxZoneRows = _configValueParser.ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
+        config.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
+        zone.Name = _configValueParser.RequireText(viewModel.ZoneName, "Zone Name");
         zone.Enabled = viewModel.ZoneEnabled;
-        zone.MidiChannel = ReadInt(viewModel.ZoneChannel, 1, 16, "Zone MIDI Channel");
-        zone.CcX = ReadInt(viewModel.ZoneCcX, 0, 127, "Zone CC X");
-        zone.CcY = ReadInt(viewModel.ZoneCcY, 0, 127, "Zone CC Y");
-        zone.CcPressure = ReadInt(viewModel.ZoneCcPressure, 0, 127, "Zone Pressure CC");
-        zone.Left = ReadDouble(viewModel.ZoneLeft, 0.0, 1.0, "Zone Left");
-        zone.Top = ReadDouble(viewModel.ZoneTop, 0.0, 1.0, "Zone Top");
-        zone.Width = ReadDouble(viewModel.ZoneWidth, 0.0, 1.0, "Zone Width");
-        zone.Height = ReadDouble(viewModel.ZoneHeight, 0.0, 1.0, "Zone Height");
+        zone.MidiChannel = _configValueParser.ReadInt(viewModel.ZoneChannel, 1, 16, "Zone MIDI Channel");
+        zone.CcX = _configValueParser.ReadInt(viewModel.ZoneCcX, 0, 127, "Zone CC X");
+        zone.CcY = _configValueParser.ReadInt(viewModel.ZoneCcY, 0, 127, "Zone CC Y");
+        zone.CcPressure = _configValueParser.ReadInt(viewModel.ZoneCcPressure, 0, 127, "Zone Pressure CC");
+        zone.Left = _configValueParser.ReadDouble(viewModel.ZoneLeft, 0.0, 1.0, "Zone Left");
+        zone.Top = _configValueParser.ReadDouble(viewModel.ZoneTop, 0.0, 1.0, "Zone Top");
+        zone.Width = _configValueParser.ReadDouble(viewModel.ZoneWidth, 0.0, 1.0, "Zone Width");
+        zone.Height = _configValueParser.ReadDouble(viewModel.ZoneHeight, 0.0, 1.0, "Zone Height");
         zone.SendX = viewModel.ZoneSendX;
         zone.SendY = viewModel.ZoneSendY;
         zone.InvertX = viewModel.ZoneInvertX;
         zone.InvertY = viewModel.ZoneInvertY;
         zone.SendPressure = viewModel.ZoneSendPressure;
-        zone.ReleaseBehavior = NormalizeReleaseBehavior(viewModel.ZoneReleaseBehavior);
+        zone.ReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(viewModel.ZoneReleaseBehavior);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
         SetZoneSelectionSummary(viewModel, zone);
     }
 
+    /// <inheritdoc />
     public void SetZoneSelectionSummary(MainViewModel viewModel, ZoneConfig? zone)
     {
         if (zone is null)
@@ -120,60 +134,6 @@ internal sealed class ZoneEditorService : IZoneEditorService
             $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
         viewModel.ZoneSelectionSummarySecondaryText =
             $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
-            $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
-    }
-
-    private static int ReadInt(string? text, int min, int max, string fieldName)
-    {
-        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
-        {
-            throw new InvalidOperationException($"{fieldName} must be a whole number.");
-        }
-
-        if (value < min || value > max)
-        {
-            throw new InvalidOperationException($"{fieldName} must be between {min} and {max}.");
-        }
-
-        return value;
-    }
-
-    private static double ReadDouble(string? text, double min, double max, string fieldName)
-    {
-        if (!double.TryParse(text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out double value))
-        {
-            throw new InvalidOperationException($"{fieldName} must be a number.");
-        }
-
-        if (value < min || value > max)
-        {
-            throw new InvalidOperationException($"{fieldName} must be between {min:0.###} and {max:0.###}.");
-        }
-
-        return value;
-    }
-
-    private static string RequireText(string? text, string fieldName)
-    {
-        string value = (text ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"{fieldName} is required.");
-        }
-
-        return value;
-    }
-
-    private static string NormalizeReleaseBehavior(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
-            ZoneReleaseBehaviors.Hold => value,
-            ZoneReleaseBehaviors.ResetAll => value,
-            ZoneReleaseBehaviors.NoSendOnRelease => value,
-            _ => ZoneReleaseBehaviors.ResetPressureOnly,
-        };
+            $"Release {_configValueParser.NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
 }

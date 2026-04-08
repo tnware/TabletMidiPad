@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace TabletMidiPad.Services;
 
@@ -10,7 +11,7 @@ internal sealed class ConfigValueParser : IConfigValueParser
     /// <inheritdoc />
     public int ReadInt(string? text, int min, int max, string fieldName)
     {
-        if (!int.TryParse(text, out int value))
+        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
         {
             throw new InvalidOperationException($"{fieldName} must be a whole number.");
         }
@@ -26,7 +27,11 @@ internal sealed class ConfigValueParser : IConfigValueParser
     /// <inheritdoc />
     public double ReadDouble(string? text, double min, double max, string fieldName)
     {
-        if (!double.TryParse(text, out double value))
+        if (!double.TryParse(
+                text,
+                NumberStyles.Float | NumberStyles.AllowThousands,
+                CultureInfo.InvariantCulture,
+                out double value))
         {
             throw new InvalidOperationException($"{fieldName} must be a number.");
         }

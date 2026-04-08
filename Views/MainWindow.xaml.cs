@@ -33,7 +33,6 @@ public partial class MainWindow : Window
     private readonly IZoneResizeService _zoneResizeService;
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
-    private readonly IWintabEventAdapter _wintabEventAdapter;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
@@ -43,7 +42,6 @@ public partial class MainWindow : Window
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
-    private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
@@ -140,15 +138,13 @@ public partial class MainWindow : Window
             new WintabInputBackend(),
             new PreferencesDialogService(),
             new ZoneConfigurationService(),
-            new ZoneEditorService(),
+            new ZoneEditorService(new ConfigValueParser()),
             new ZoneOverlayRenderer(),
-            new ConfigValueParser(),
             new PadInteractionEngine(),
             new ZoneResizeService(),
             new InputFallbackService(),
             new InputInteractionOrchestrator(new PadInteractionEngine()),
             new InputBackendStatusFormatter(),
-            new WintabEventAdapter(),
             new MainWindowWorkflowCoordinator(),
             new MainWindowInputBackendCoordinator(),
             new WacomServiceWorkflowCoordinator(),
@@ -170,13 +166,11 @@ public partial class MainWindow : Window
         IZoneConfigurationService zoneConfigurationService,
         IZoneEditorService zoneEditorService,
         IZoneOverlayRenderer zoneOverlayRenderer,
-        IConfigValueParser configValueParser,
         IPadInteractionEngine padInteractionEngine,
         IZoneResizeService zoneResizeService,
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
-        IWintabEventAdapter wintabEventAdapter,
         IMainWindowWorkflowCoordinator workflowCoordinator,
         IMainWindowInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
@@ -195,12 +189,10 @@ public partial class MainWindow : Window
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
-        _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
-        _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
@@ -689,6 +681,16 @@ public partial class MainWindow : Window
         _viewModel.SelectedPressureCurve = toolbarState.SelectedPressureCurve;
         _viewModel.ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;
         _viewModel.SelectedInputBackendMode = toolbarState.SelectedInputBackendMode;
+
+        string curve = toolbarState.SelectedPressureCurve;
+        _viewModel.IsPressureCurveLinearChecked = string.Equals(curve, "Linear", StringComparison.Ordinal);
+        _viewModel.IsPressureCurveLogarithmicChecked = string.Equals(curve, "Logarithmic", StringComparison.Ordinal);
+        _viewModel.IsPressureCurveExponentialChecked = string.Equals(curve, "Exponential", StringComparison.Ordinal);
+
+        string mode = toolbarState.SelectedInputBackendMode;
+        _viewModel.IsInputBackendAutoChecked = string.Equals(mode, "Auto", StringComparison.Ordinal);
+        _viewModel.IsInputBackendWintabChecked = string.Equals(mode, "Wintab", StringComparison.Ordinal);
+        _viewModel.IsInputBackendMouseChecked = string.Equals(mode, "Mouse", StringComparison.Ordinal);
     }
 
     private void RefreshZoneList()
