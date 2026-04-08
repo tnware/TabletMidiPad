@@ -40,7 +40,6 @@ public sealed class MainWindowViewStateMapperTests
         MainWindowConnectedState state = mapper.BuildConnectedState(config);
 
         Assert.Equal("Connected", state.StatusText);
-        Assert.Equal("RoutingText", nameof(state.RoutingText), ignoreCase: false); // keep explicit check below
         Assert.Equal("Send to 'DAW X' via 'APP X'", state.RoutingText);
         Assert.Contains("lock zone until release", state.ConfigSummaryText);
         Assert.Equal("Active zone: none", state.ActiveZoneText);

@@ -13,11 +13,11 @@ public sealed class InputInteractionOrchestratorTests
     public void ProcessTick_DelegatesToPadInteractionEngine()
     {
         var expected = new InteractionResult(
-            MidiMessages: new List<MidiMessage>(),
             ActiveZoneIndex: 0,
             ActiveZoneLabel: "A",
             ValueLabel: "V",
-            ModifiersLabel: "M");
+            ModifiersLabel: "M",
+            MidiMessages: new List<MidiMessage>());
         var engine = new StubPadInteractionEngine(expected);
         var fallback = new StubInputFallbackService();
         var sut = new InputInteractionOrchestrator(engine, fallback);
@@ -40,11 +40,11 @@ public sealed class InputInteractionOrchestratorTests
     public void ProcessRelease_UsesUnknownBackendAndProvidedButtons()
     {
         var expected = new InteractionResult(
-            MidiMessages: new List<MidiMessage>(),
             ActiveZoneIndex: -1,
             ActiveZoneLabel: "none",
             ValueLabel: "-",
-            ModifiersLabel: "none");
+            ModifiersLabel: "none",
+            MidiMessages: new List<MidiMessage>());
         var engine = new StubPadInteractionEngine(expected);
         var fallback = new StubInputFallbackService();
         var sut = new InputInteractionOrchestrator(engine, fallback);
@@ -66,7 +66,7 @@ public sealed class InputInteractionOrchestratorTests
     public void Constructor_NullDependencies_Throw()
     {
         var fallback = new StubInputFallbackService();
-        var engine = new StubPadInteractionEngine(new InteractionResult(new List<MidiMessage>(), -1, "-", "-", "-"));
+        var engine = new StubPadInteractionEngine(new InteractionResult(-1, "-", "-", "-", new List<MidiMessage>()));
         Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(null!, fallback));
         Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(engine, null!));
     }
