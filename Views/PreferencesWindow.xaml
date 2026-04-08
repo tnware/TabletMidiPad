@@ -279,8 +279,8 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
                                         <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"
-                                                  SelectedItem="{Binding LowerPenButtonMidiChannel}"
-                                                  Text="{Binding LowerPenButtonMidiChannel}"/>
+                                                  SelectedItem="{Binding LowerPenButtonMidiChannelText}"
+                                                  Text="{Binding LowerPenButtonMidiChannelText}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
@@ -350,8 +350,8 @@
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
                                         <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"
-                                                  SelectedItem="{Binding UpperPenButtonMidiChannel}"
-                                                  Text="{Binding UpperPenButtonMidiChannel}"/>
+                                                  SelectedItem="{Binding UpperPenButtonMidiChannelText}"
+                                                  Text="{Binding UpperPenButtonMidiChannelText}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>

@@ -45,6 +45,8 @@ public partial class PreferencesWindow : Window
         PopulatePenButtonActionList();
         PopulateMidiChannelCombo(LowerPenButtonMidiChannelComboBox);
         PopulateMidiChannelCombo(UpperPenButtonMidiChannelComboBox);
+        SetMidiChannelComboSelection(LowerPenButtonMidiChannelComboBox, 1);
+        SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, 1);
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);
         BuildExpressKeyRows();
         ConfigureNumericInputs();
@@ -192,7 +194,8 @@ public partial class PreferencesWindow : Window
         if (int.TryParse(comboBox.Text?.Trim(), out int parsed))
             return ReadInt(parsed.ToString(), 1, 16, fieldName);
 
-        throw new InvalidOperationException($"{fieldName} must be between 1 and 16.");
+        // Treat empty/unset combo text as the default MIDI channel rather than hard-failing.
+        return 1;
     }
 
     private static int ReadMidiChannelText(string? text, string fieldName)
