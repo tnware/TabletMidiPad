@@ -16,6 +16,8 @@
   <ItemGroup>
     <Compile Remove="teVirtualMIDI.cs" />
     <Compile Remove="wacom-device-kit-windows\**\*.cs" />
+    <Compile Remove="TabletMidiPad.Core\**\*.cs" />
+    <Compile Remove="TabletMidiPad.Tests\**\*.cs" />
     <EmbeddedResource Remove="wacom-device-kit-windows\**\*" />
     <None Remove="wacom-device-kit-windows\**\*" />
     <Page Remove="wacom-device-kit-windows\**\*" />
@@ -28,6 +30,10 @@
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="TabletMidiPad.Core\TabletMidiPad.Core.csproj" />
   </ItemGroup>
 
   <!-- If an application icon is added to Assets\app.ico, embed it as the application icon. This is conditional
