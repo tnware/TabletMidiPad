@@ -8,8 +8,9 @@ namespace TabletMidiPad.Services;
 /// Orchestrates main-window cold start (config load hook, MIDI connect presentation) and application exit shutdown.
 /// </summary>
 /// <remarks>
-/// Tablet rebind during the session stays on <see cref="IMainWindowLifecycleCoordinator"/> from the view; only
-/// window close uses <see cref="ShutdownForExit"/> here so exit sequencing lives in one place.
+/// Cold start is orchestrated by <see cref="RunColdStartAsync"/> using an <see cref="IMainWindowStartupHost"/> so the
+/// view only implements host hooks. Tablet rebind during the session stays on the view; window close uses
+/// <see cref="ShutdownForExit"/> so exit sequencing lives in one place.
 /// </remarks>
 internal interface IMainWindowStartupLifecycleService
 {
@@ -17,6 +18,17 @@ internal interface IMainWindowStartupLifecycleService
     /// Loads persisted configuration from disk.
     /// </summary>
     AppConfig LoadPersistedConfig(IConfigStore store);
+
+    /// <summary>
+    /// Full cold start: load config into the host, load UI, run post-config shell (Wacom + tablet), then MIDI sequence.
+    /// </summary>
+    Task RunColdStartAsync(
+        IConfigStore configStore,
+        IMainWindowStartupHost host,
+        IMidiEngine midiEngine,
+        MainViewModel viewModel,
+        Action<Action> marshalToUiThread,
+        Action onMidiRoutingReady);
 
     /// <summary>
     /// Refreshes Wacom service menu state, then either runs full tablet initialization or applies a blocked state when

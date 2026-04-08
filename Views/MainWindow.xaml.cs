@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly IMainWindowPadInputSession _padInputSession;
     private readonly IMainWindowZonePadSession _zonePadSession;
     private readonly IMainWindowSettingsSession _settingsSession;
+    private readonly StartupHost _startupHost;
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
@@ -172,6 +173,7 @@ public partial class MainWindow : Window
             _configStore,
             _midiEngine,
             _padInputSession);
+        _startupHost = new StartupHost(this);
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -340,29 +342,13 @@ public partial class MainWindow : Window
 
     private async Task InitializeAppAsync()
     {
-        _config = _startupLifecycle.LoadPersistedConfig(_configStore);
-        LoadConfigIntoUi(_config);
-        _startupLifecycle.RunPostConfigLoadShellPhase(new MainWindowPostConfigLoadShellContext(
-            GetWacomServiceStatus: () => _wacomServiceController.GetStatus(),
-            ApplyWacomServiceMenuState: RefreshWacomServiceStatus,
-            Config: _config,
-            InitializeTabletWhenReady: () => _padInputSession.InitializeTabletInput(),
-            ApplyTabletBlockedByWacomService: ApplyTabletStackUnavailableAtStartup));
-
-        await _startupLifecycle.RunStartupMidiSequenceAsync(
+        await _startupLifecycle.RunColdStartAsync(
+            _configStore,
+            _startupHost,
             _midiEngine,
-            _config,
             _viewModel,
             a => Dispatcher.Invoke(a),
             UpdateUiForCurrentConfig);
-    }
-
-    private void ApplyTabletStackUnavailableAtStartup(WacomServiceStatus wacom)
-    {
-        _padInputSession.ShutdownWintabBackendOnly();
-        _padInputSession.RefreshTabletDeviceListOnly();
-        InputBackendLifecycleResult blocked = _startupLifecycle.BuildTabletStackBlockedLifecycleResult(_config, wacom);
-        _padInputSession.ApplyTabletLifecycle(blocked, refreshInputBackendStatusText: true);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -756,5 +742,32 @@ public partial class MainWindow : Window
         public void SyncToolbar() => _w.SyncToolbar();
 
         public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
+    }
+
+    private sealed class StartupHost : IMainWindowStartupHost
+    {
+        private readonly MainWindow _w;
+
+        public StartupHost(MainWindow window) => _w = window;
+
+        public AppConfig Config => _w._config;
+
+        public void ReplaceRuntimeConfig(AppConfig config) => _w._config = config;
+
+        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
+
+        public WacomServiceStatus GetWacomServiceStatus() => _w._wacomServiceController.GetStatus();
+
+        public void ApplyWacomServiceMenuState(WacomServiceStatus status) => _w.RefreshWacomServiceStatus(status);
+
+        public void InitializeTabletInput() => _w._padInputSession.InitializeTabletInput();
+
+        public void ApplyTabletStackBlockedAtStartup(WacomServiceStatus wacom)
+        {
+            _w._padInputSession.ShutdownWintabBackendOnly();
+            _w._padInputSession.RefreshTabletDeviceListOnly();
+            InputBackendLifecycleResult blocked = _w._startupLifecycle.BuildTabletStackBlockedLifecycleResult(_w._config, wacom);
+            _w._padInputSession.ApplyTabletLifecycle(blocked, refreshInputBackendStatusText: true);
+        }
     }
 }

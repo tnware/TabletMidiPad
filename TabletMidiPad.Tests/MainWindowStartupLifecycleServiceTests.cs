@@ -22,6 +22,55 @@ public sealed class MainWindowStartupLifecycleServiceTests
     }
 
     [Fact]
+    public async Task RunColdStartAsync_ReplacesConfigLoadsUiShellThenMidi_WhenWacomRunning()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        var store = new FixedConfigStore(new AppConfig { DawPortName = "ColdStart" });
+        var host = new RecordingStartupHost
+        {
+            StatusToReturn = new WacomServiceStatus("running", CanStart: false, IsServiceRunning: true),
+        };
+        var vm = new MainViewModel();
+        var engine = new RecordingMidiEngine { Succeed = true };
+        bool routingReady = false;
+
+        await sut.RunColdStartAsync(store, host, engine, vm, a => a.Invoke(), () => routingReady = true);
+
+        Assert.Equal("ColdStart", host.Config.DawPortName);
+        Assert.Equal(
+            new[]
+            {
+                nameof(RecordingStartupHost.ReplaceRuntimeConfig),
+                nameof(RecordingStartupHost.LoadConfigIntoUi),
+                nameof(RecordingStartupHost.GetWacomServiceStatus),
+                nameof(RecordingStartupHost.ApplyWacomServiceMenuState),
+                nameof(RecordingStartupHost.InitializeTabletInput),
+            },
+            host.CallOrder);
+        Assert.DoesNotContain(nameof(RecordingStartupHost.ApplyTabletStackBlockedAtStartup), host.CallOrder);
+        Assert.True(routingReady);
+        Assert.True(engine.InitializeAsyncCalled);
+    }
+
+    [Fact]
+    public async Task RunColdStartAsync_WhenWacomStoppedAuto_AppliesBlockedNotTabletInit()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        var store = new FixedConfigStore(new AppConfig { InputBackendMode = "Auto" });
+        var host = new RecordingStartupHost
+        {
+            StatusToReturn = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false),
+        };
+        var vm = new MainViewModel();
+        var engine = new RecordingMidiEngine { Succeed = true };
+
+        await sut.RunColdStartAsync(store, host, engine, vm, a => a.Invoke(), () => { });
+
+        Assert.Contains(nameof(RecordingStartupHost.ApplyTabletStackBlockedAtStartup), host.CallOrder);
+        Assert.DoesNotContain(nameof(RecordingStartupHost.InitializeTabletInput), host.CallOrder);
+    }
+
+    [Fact]
     public async Task RunStartupMidiSequenceAsync_OnSuccess_CallsRoutingReadyAndHidesMidiPanel()
     {
         var inner = new MainWindowLifecycleCoordinator();
@@ -170,6 +219,47 @@ public sealed class MainWindowStartupLifecycleServiceTests
 
         Assert.Equal("Stylus/Mouse Fallback", r.LastInputBackend);
         Assert.Contains("not found", r.WintabDiagnostics, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class RecordingStartupHost : IMainWindowStartupHost
+    {
+        public List<string> CallOrder { get; } = new();
+
+        public AppConfig Config { get; private set; } = AppConfig.Default;
+
+        public WacomServiceStatus StatusToReturn { get; init; } = new("running", CanStart: false, IsServiceRunning: true);
+
+        public void ReplaceRuntimeConfig(AppConfig config)
+        {
+            CallOrder.Add(nameof(ReplaceRuntimeConfig));
+            Config = config;
+        }
+
+        public void LoadConfigIntoUi(AppConfig config)
+        {
+            CallOrder.Add(nameof(LoadConfigIntoUi));
+        }
+
+        public WacomServiceStatus GetWacomServiceStatus()
+        {
+            CallOrder.Add(nameof(GetWacomServiceStatus));
+            return StatusToReturn;
+        }
+
+        public void ApplyWacomServiceMenuState(WacomServiceStatus status)
+        {
+            CallOrder.Add(nameof(ApplyWacomServiceMenuState));
+        }
+
+        public void InitializeTabletInput()
+        {
+            CallOrder.Add(nameof(InitializeTabletInput));
+        }
+
+        public void ApplyTabletStackBlockedAtStartup(WacomServiceStatus wacom)
+        {
+            CallOrder.Add(nameof(ApplyTabletStackBlockedAtStartup));
+        }
     }
 
     private sealed class FixedConfigStore : IConfigStore

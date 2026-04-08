@@ -27,6 +27,40 @@ internal sealed class MainWindowStartupLifecycleService : IMainWindowStartupLife
     }
 
     /// <inheritdoc />
+    public async Task RunColdStartAsync(
+        IConfigStore configStore,
+        IMainWindowStartupHost host,
+        IMidiEngine midiEngine,
+        MainViewModel viewModel,
+        Action<Action> marshalToUiThread,
+        Action onMidiRoutingReady)
+    {
+        ArgumentNullException.ThrowIfNull(configStore);
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(midiEngine);
+        ArgumentNullException.ThrowIfNull(viewModel);
+        ArgumentNullException.ThrowIfNull(marshalToUiThread);
+        ArgumentNullException.ThrowIfNull(onMidiRoutingReady);
+
+        AppConfig config = LoadPersistedConfig(configStore);
+        host.ReplaceRuntimeConfig(config);
+        host.LoadConfigIntoUi(host.Config);
+        RunPostConfigLoadShellPhase(new MainWindowPostConfigLoadShellContext(
+            GetWacomServiceStatus: host.GetWacomServiceStatus,
+            ApplyWacomServiceMenuState: host.ApplyWacomServiceMenuState,
+            Config: host.Config,
+            InitializeTabletWhenReady: host.InitializeTabletInput,
+            ApplyTabletBlockedByWacomService: host.ApplyTabletStackBlockedAtStartup));
+
+        await RunStartupMidiSequenceAsync(
+            midiEngine,
+            host.Config,
+            viewModel,
+            marshalToUiThread,
+            onMidiRoutingReady);
+    }
+
+    /// <inheritdoc />
     public void RunPostConfigLoadShellPhase(MainWindowPostConfigLoadShellContext context)
     {
         WacomServiceStatus wacom = context.GetWacomServiceStatus();
