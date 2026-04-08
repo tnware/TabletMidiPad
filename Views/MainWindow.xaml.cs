@@ -1,10 +1,8 @@
 using System;
-using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
@@ -40,6 +38,8 @@ public partial class MainWindow : Window
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowStartupLifecycleService _startupLifecycle;
     private readonly IMainWindowToolbarSession _toolbarSession;
+    private readonly MainWindowToolbarChrome _toolbarChrome;
+    private readonly MainWindowViewModelConfigBinder _vmConfigBinder;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
@@ -110,6 +110,13 @@ public partial class MainWindow : Window
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
+        _toolbarChrome = new MainWindowToolbarChrome(
+            this,
+            PressureSplitBorder,
+            InputBackendSplitBorder,
+            _viewModel,
+            () => _config,
+            _workflowCoordinator);
         _padInputHost = new PadInputHost(this);
         _padInputSession = new MainWindowPadInputSession(
             _padInputHost,
@@ -126,6 +133,12 @@ public partial class MainWindow : Window
             new ZoneEditorHost(this),
             _zoneEditorService,
             _workflowCoordinator);
+        _vmConfigBinder = new MainWindowViewModelConfigBinder(
+            () => _isLoadingUi,
+            () => _config,
+            _viewModel,
+            () => _toolbarChrome.SyncPressureSplitBorder(),
+            () => _zoneEditorSession.UpdateUiForCurrentConfig());
         _settingsSession = new MainWindowSettingsSession(
             new SettingsSessionHost(this),
             _workflowCoordinator,
@@ -146,7 +159,7 @@ public partial class MainWindow : Window
         PadSurface.PadMouseUp += Pad_MouseUp;
         DataContext = _viewModel;
         InitializeCommands();
-        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.PropertyChanged += _vmConfigBinder.OnPropertyChanged;
         _wintabInputBackend.PacketReceived += (_, e) => _padInputSession.HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => _padInputSession.HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) => _padInputSession.HandleProximityChanged(e);
@@ -286,24 +299,6 @@ public partial class MainWindow : Window
         SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
 
-    private Brush ThemeBrush(string key, Brush fallback)
-        => TryFindResource(key) as Brush
-           ?? Application.Current?.TryFindResource(key) as Brush
-           ?? fallback;
-
-    private void SyncPressureSplitBorder()
-    {
-        bool on = _viewModel.SendPressureGlobally;
-        PressureSplitBorder.Background = on ? ThemeBrush("AccentSurfaceBrush", Brushes.Transparent) : Brushes.Transparent;
-        PressureSplitBorder.BorderBrush = on ? ThemeBrush("AccentBrush", Brushes.Transparent) : Brushes.Transparent;
-    }
-
-    private void SyncInputBackendSplitBorder()
-    {
-        InputBackendSplitBorder.Background = ThemeBrush("AccentSurfaceBrush", Brushes.Transparent);
-        InputBackendSplitBorder.BorderBrush = ThemeBrush("AccentBrush", Brushes.Transparent);
-    }
-
     private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.ContextMenu is not null)
@@ -350,24 +345,7 @@ public partial class MainWindow : Window
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         => _zoneEditorSession.OnZoneListSelectionChanged();
 
-    private void SyncToolbar()
-    {
-        _viewModel.SendPressureGlobally = _config.SendPressureGlobally;
-        _viewModel.AllowZoneSwitchWhilePressed = _config.AllowZoneSwitchWhilePressed;
-        SyncPressureSplitBorder();
-        SyncInputBackendSplitBorder();
-        MainWindowToolbarState toolbarState = _workflowCoordinator.BuildToolbarState(_config);
-        _viewModel.ToolbarPressureLabelText = toolbarState.ToolbarPressureLabelText;
-        _viewModel.SelectedPressureCurve = toolbarState.SelectedPressureCurve;
-        _viewModel.ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;
-        _viewModel.SelectedInputBackendMode = toolbarState.SelectedInputBackendMode;
-        _viewModel.IsPressureCurveLinearChecked = toolbarState.IsPressureCurveLinearChecked;
-        _viewModel.IsPressureCurveLogarithmicChecked = toolbarState.IsPressureCurveLogarithmicChecked;
-        _viewModel.IsPressureCurveExponentialChecked = toolbarState.IsPressureCurveExponentialChecked;
-        _viewModel.IsInputBackendAutoChecked = toolbarState.IsInputBackendAutoChecked;
-        _viewModel.IsInputBackendWintabChecked = toolbarState.IsInputBackendWintabChecked;
-        _viewModel.IsInputBackendMouseChecked = toolbarState.IsInputBackendMouseChecked;
-    }
+    private void SyncToolbar() => _toolbarChrome.SyncAll();
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
         => _padInputSession.HandleStylusDown(e);
@@ -439,25 +417,6 @@ public partial class MainWindow : Window
 
     private void RefreshPadZoneOverlay()
         => PadSurface.RefreshZoneOverlay(_config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (_isLoadingUi)
-        {
-            return;
-        }
-
-        if (e.PropertyName == nameof(MainViewModel.SendPressureGlobally))
-        {
-            _config.SendPressureGlobally = _viewModel.SendPressureGlobally;
-            SyncPressureSplitBorder();
-        }
-        else if (e.PropertyName == nameof(MainViewModel.AllowZoneSwitchWhilePressed))
-        {
-            _config.AllowZoneSwitchWhilePressed = _viewModel.AllowZoneSwitchWhilePressed;
-            _zoneEditorSession.UpdateUiForCurrentConfig();
-        }
-    }
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
