@@ -1,4 +1,6 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -46,6 +48,70 @@ internal sealed class MainViewModel : ViewModelBase
     private bool _zoneInvertY;
     private bool _zoneSendPressure = true;
     private string _zoneReleaseBehavior = string.Empty;
+
+    public MainViewModel()
+    {
+        SaveSettingsCommand = new DelegateCommand(() => { });
+        ResetDefaultsCommand = new DelegateCommand(() => { });
+        OpenPreferencesCommand = new DelegateCommand(() => { });
+        ExitCommand = new DelegateCommand(() => { });
+        RefreshWacomStatusCommand = new DelegateCommand(() => { });
+        ReconnectPenCommand = new DelegateCommand(() => { });
+        StartWacomServiceCommand = new DelegateCommand(() => { });
+        AboutCommand = new DelegateCommand(() => { });
+        AddZoneCommand = new DelegateCommand(() => { });
+        RemoveZoneCommand = new DelegateCommand(() => { });
+        AutoLayoutCommand = new DelegateCommand(() => { });
+    }
+
+    public ICommand SaveSettingsCommand { get; private set; }
+    public ICommand ResetDefaultsCommand { get; private set; }
+    public ICommand OpenPreferencesCommand { get; private set; }
+    public ICommand ExitCommand { get; private set; }
+    public ICommand RefreshWacomStatusCommand { get; private set; }
+    public ICommand ReconnectPenCommand { get; private set; }
+    public ICommand StartWacomServiceCommand { get; private set; }
+    public ICommand AboutCommand { get; private set; }
+    public ICommand AddZoneCommand { get; private set; }
+    public ICommand RemoveZoneCommand { get; private set; }
+    public ICommand AutoLayoutCommand { get; private set; }
+
+    public void ConfigureCommands(
+        Action saveSettings,
+        Action resetDefaults,
+        Action openPreferences,
+        Action exit,
+        Action refreshWacomStatus,
+        Action reconnectPen,
+        Action startWacomService,
+        Action showAbout,
+        Action addZone,
+        Action removeZone,
+        Action autoLayout)
+    {
+        SaveSettingsCommand = new DelegateCommand(saveSettings);
+        ResetDefaultsCommand = new DelegateCommand(resetDefaults);
+        OpenPreferencesCommand = new DelegateCommand(openPreferences);
+        ExitCommand = new DelegateCommand(exit);
+        RefreshWacomStatusCommand = new DelegateCommand(refreshWacomStatus);
+        ReconnectPenCommand = new DelegateCommand(reconnectPen);
+        StartWacomServiceCommand = new DelegateCommand(startWacomService);
+        AboutCommand = new DelegateCommand(showAbout);
+        AddZoneCommand = new DelegateCommand(addZone);
+        RemoveZoneCommand = new DelegateCommand(removeZone);
+        AutoLayoutCommand = new DelegateCommand(autoLayout);
+        OnPropertyChanged(nameof(SaveSettingsCommand));
+        OnPropertyChanged(nameof(ResetDefaultsCommand));
+        OnPropertyChanged(nameof(OpenPreferencesCommand));
+        OnPropertyChanged(nameof(ExitCommand));
+        OnPropertyChanged(nameof(RefreshWacomStatusCommand));
+        OnPropertyChanged(nameof(ReconnectPenCommand));
+        OnPropertyChanged(nameof(StartWacomServiceCommand));
+        OnPropertyChanged(nameof(AboutCommand));
+        OnPropertyChanged(nameof(AddZoneCommand));
+        OnPropertyChanged(nameof(RemoveZoneCommand));
+        OnPropertyChanged(nameof(AutoLayoutCommand));
+    }
 
     public string StatusText
     {

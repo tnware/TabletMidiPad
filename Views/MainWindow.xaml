@@ -132,27 +132,27 @@
             <MenuItem Header="_File"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Save Settings"
-                          Click="MenuSaveSettings_Click"
+                          Command="{Binding SaveSettingsCommand}"
                           InputGestureText="Ctrl+S"/>
                 <MenuItem Header="_Reset to Defaults"
-                          Click="MenuResetDefaults_Click"/>
+                          Command="{Binding ResetDefaultsCommand}"/>
                 <Separator/>
                 <MenuItem Header="_Preferences..."
-                          Click="MenuPreferences_Click"/>
+                          Command="{Binding OpenPreferencesCommand}"/>
                 <Separator/>
                 <MenuItem Header="E_xit"
-                          Click="MenuExit_Click"/>
+                          Command="{Binding ExitCommand}"/>
             </MenuItem>
             <MenuItem Header="_Device"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Refresh Wacom Status"
                           Name="MenuRefreshWacom"
-                          Click="MenuRefreshWacom_Click"/>
+                          Command="{Binding RefreshWacomStatusCommand}"/>
                 <MenuItem Header="Reconnect _Pen Input"
-                          Click="MenuReconnectPen_Click"/>
+                          Command="{Binding ReconnectPenInputCommand}"/>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
-                          Click="MenuStartWacomService_Click"/>
+                          Command="{Binding StartWacomServiceCommand}"/>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
                           Header="Service: checking..."
@@ -161,7 +161,7 @@
             <MenuItem Header="_Help"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_About"
-                          Click="MenuAbout_Click"/>
+                          Command="{Binding AboutCommand}"/>
             </MenuItem>
         </Menu>
 
@@ -245,14 +245,14 @@
                         DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Save"
-                        Click="MenuSaveSettings_Click"/>
+                        Command="{Binding SaveSettingsCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Add Zone"
-                        Click="AddZoneButton_Click"/>
+                        Command="{Binding AddZoneCommand}"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Auto Tile"
-                        Click="AutoLayoutButton_Click"/>
+                        Command="{Binding AutoLayoutCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <!-- Pressure split button: toggle + curve dropdown -->
                 <Border x:Name="PressureSplitBorder"
@@ -261,8 +261,8 @@
                         BorderBrush="Transparent"
                         Background="Transparent">
                     <StackPanel Orientation="Horizontal">
-                        <ToggleButton Name="ToolbarPressureToggle"
-                                      Click="ToolbarPressureToggle_Click">
+                <ToggleButton Name="ToolbarPressureToggle"
+                              Command="{Binding TogglePressureCommand}">
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton">
                                     <Setter Property="Background" Value="Transparent"/>
@@ -301,7 +301,7 @@
                                 Background="{StaticResource PanelBorderBrush}"
                                 Margin="0,3"/>
                         <Button Name="ToolbarPressureCurveDropdown"
-                                Click="ToolbarPressureCurveDropdown_Click">
+                                Command="{Binding OpenPressureCurveMenuCommand}">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Background" Value="Transparent"/>
@@ -392,13 +392,13 @@
                                 </ContextMenu.Resources>
                                 <MenuItem Header="Linear"
                                           Icon="{Binding IsPressureCurveLinearChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveLinear_Click"/>
+                                          Command="{Binding SetPressureCurveLinearCommand}"/>
                                 <MenuItem Header="Logarithmic"
                                           Icon="{Binding IsPressureCurveLogarithmicChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveLogarithmic_Click"/>
+                                          Command="{Binding SetPressureCurveLogarithmicCommand}"/>
                                 <MenuItem Header="Exponential"
                                           Icon="{Binding IsPressureCurveExponentialChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveExponential_Click"/>
+                                          Command="{Binding SetPressureCurveExponentialCommand}"/>
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
@@ -413,7 +413,7 @@
                         <Button Name="ToolbarInputBackendButton"
                                 Style="{StaticResource ToolbarButton}"
                                 Padding="8,4"
-                                Click="ToolbarInputBackendCycle_Click">
+                                Command="{Binding CycleInputBackendCommand}">
                             <TextBlock Name="ToolbarInputBackendLabel"
                                        Text="{Binding ToolbarInputBackendLabelText}"
                                        FontSize="11"/>
@@ -423,7 +423,7 @@
                                 Background="{StaticResource PanelBorderBrush}"/>
                         <Button Style="{StaticResource ToolbarButton}"
                                 Padding="6,4"
-                                Click="ToolbarInputBackendDropdown_Click">
+                                Command="{Binding OpenInputBackendMenuCommand}">
                     <TextBlock Text="▾"
                                         FontSize="11"
                                         Foreground="{StaticResource TextMutedBrush}"/>
@@ -487,13 +487,13 @@
                                     </ContextMenu.Resources>
                                     <MenuItem Header="Auto"
                                               Icon="{Binding IsInputBackendAutoChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendAuto_Click"/>
+                                              Command="{Binding SetInputBackendAutoCommand}"/>
                                     <MenuItem Header="Wintab"
                                               Icon="{Binding IsInputBackendWintabChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendWintab_Click"/>
+                                              Command="{Binding SetInputBackendWintabCommand}"/>
                                     <MenuItem Header="Mouse"
                                               Icon="{Binding IsInputBackendMouseChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendStylus_Click"/>
+                                              Command="{Binding SetInputBackendMouseCommand}"/>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -502,7 +502,7 @@
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
                               Content="Latch On Enter"
-                              Click="ToolbarZoneSwitchToggle_Click"/>
+                              Command="{Binding ToggleZoneSwitchCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <ComboBox Name="TabletDeviceComboBox"
                           MinWidth="120"
@@ -510,7 +510,7 @@
                           SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
-                        Click="MenuReconnectPen_Click"/>
+                        Command="{Binding ReconnectPenInputCommand}"/>
 
             </StackPanel>
 
@@ -685,21 +685,21 @@
                                     Grid.Column="0"
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Add zone"
-                                    Click="AddZoneButton_Click"
+                                    Command="{Binding AddZoneCommand}"
                                     Content="+"/>
 
                             <Button Name="RemoveZoneButton"
                                     Grid.Column="2"
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Remove selected zone"
-                                    Click="RemoveZoneButton_Click"
+                                    Command="{Binding RemoveZoneCommand}"
                                     Content="−"/>
 
                             <Button Name="AutoLayoutButton"
                                     Grid.Column="4"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     MinWidth="86"
-                                    Click="AutoLayoutButton_Click"
+                                    Command="{Binding AutoLayoutCommand}"
                                     Content="Auto Tile"/>
                         </Grid>
 
@@ -892,7 +892,7 @@
 
                         <Button Margin="0,14,0,0"
                                 Padding="10,7"
-                                Click="MenuSaveSettings_Click"
+                                Command="{Binding SaveSettingsCommand}"
                                 Content="Apply Settings"/>
 
                         <TextBlock Name="SettingsResultText"
