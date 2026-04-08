@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IPreferencesDialogService _preferencesDialogService;
+    private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -84,7 +85,8 @@ public partial class MainWindow : Window
             new JsonConfigStore(AppConfig.GetConfigPath()),
             new WinMmMidiEngine(),
             new WacomServiceController(),
-            new PreferencesDialogService())
+            new PreferencesDialogService(),
+            new ZoneConfigurationService())
     {
     }
 
@@ -92,12 +94,14 @@ public partial class MainWindow : Window
         IConfigStore configStore,
         IMidiEngine midiEngine,
         IWacomServiceController wacomServiceController,
-        IPreferencesDialogService preferencesDialogService)
+        IPreferencesDialogService preferencesDialogService,
+        IZoneConfigurationService zoneConfigurationService)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
+        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
@@ -203,7 +207,7 @@ public partial class MainWindow : Window
     private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
     {
         _config = AppConfig.Default;
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         LoadConfigIntoUi(_config);
         ApplySettings();
     }
@@ -508,7 +512,7 @@ public partial class MainWindow : Window
     {
         CommitCurrentZoneEdits();
 
-        int nextCcStart = GetNextAvailableCcStart();
+        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(_config);
 
         var zone = new ZoneConfig
         {
@@ -531,42 +535,13 @@ public partial class MainWindow : Window
         };
 
         _config.Zones.Add(zone);
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
-    }
-
-    private int GetNextAvailableCcStart()
-    {
-        var used = new HashSet<int>(
-            _config.Zones.SelectMany(zone => new[] { zone.CcX, zone.CcY, zone.CcPressure })
-        );
-
-        int preferredStart = _config.Zones.Count == 0
-            ? 16
-            : _config.Zones.Max(zone => Math.Max(zone.CcX, Math.Max(zone.CcY, zone.CcPressure))) + 1;
-
-        for (int start = preferredStart; start <= 125; start++)
-        {
-            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
-            {
-                return start;
-            }
-        }
-
-        for (int start = 16; start <= 125; start++)
-        {
-            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
-            {
-                return start;
-            }
-        }
-
-        throw new InvalidOperationException("No free 3-CC block is available for a new zone.");
     }
 
     private void RemoveZoneButton_Click(object sender, RoutedEventArgs e)
@@ -582,7 +557,7 @@ public partial class MainWindow : Window
             _config.Zones.Add(ZoneConfig.CreateDefault());
         }
 
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -613,7 +588,7 @@ public partial class MainWindow : Window
         try
         {
             CommitCurrentZoneEdits();
-            ValidateConfig(_config);
+            _zoneConfigurationService.ValidateConfig(_config);
             _configStore.Save(_config);
 
             _lastSentValues.Clear();
