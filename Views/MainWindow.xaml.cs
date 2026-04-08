@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private readonly IZoneEditorService _zoneEditorService;
     private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
     private readonly IZoneResizeService _zoneResizeService;
+    private readonly IInputFallbackService _inputFallbackService;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -150,7 +151,8 @@ public partial class MainWindow : Window
             new ZoneOverlayRenderer(),
             new ConfigValueParser(),
             new PadInteractionEngine(),
-            new ZoneResizeService())
+            new ZoneResizeService(),
+            new InputFallbackService())
     {
     }
 
@@ -165,7 +167,8 @@ public partial class MainWindow : Window
         IZoneOverlayRenderer zoneOverlayRenderer,
         IConfigValueParser configValueParser,
         IPadInteractionEngine padInteractionEngine,
-        IZoneResizeService zoneResizeService)
+        IZoneResizeService zoneResizeService,
+        IInputFallbackService inputFallbackService)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -178,6 +181,7 @@ public partial class MainWindow : Window
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
+        _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -1079,31 +1083,23 @@ public partial class MainWindow : Window
     {
         MarkInputBackend("Stylus");
         _viewModel.PenButtonsText = "Pen buttons: stylus fallback";
-        var point = e.GetPosition(Pad);
-        if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
+        if (!_inputFallbackService.TryBuildStylusSample(
+            e,
+            Pad,
+            Pad.ActualWidth,
+            Pad.ActualHeight,
+            _config.MousePressureValue,
+            out InputFallbackSample sample))
         {
             return;
         }
 
-        int pressure = _config.MousePressureValue;
-        var stylusPoints = e.GetStylusPoints(Pad);
-        if (stylusPoints.Count > 0)
-        {
-            var sp = stylusPoints[0];
-            if (sp.HasProperty(StylusPointProperties.NormalPressure))
-            {
-                int raw = sp.GetPropertyValue(StylusPointProperties.NormalPressure);
-                int max = sp.Description.GetPropertyInfo(StylusPointProperties.NormalPressure).Maximum;
-                pressure = max > 0 ? (int)Math.Round(raw * 127.0 / max) : _config.MousePressureValue;
-            }
-        }
-
         ProcessInteractionTick(
-            xPx: point.X,
-            yPx: point.Y,
-            xNorm: xNorm,
-            yNorm: yNorm,
-            pressure: pressure,
+            xPx: sample.PixelPosition.X,
+            yPx: sample.PixelPosition.Y,
+            xNorm: sample.XNorm,
+            yNorm: sample.YNorm,
+            pressure: sample.Pressure127,
             isDown: true,
             isHovering: false,
             penButtons: 0,
@@ -1114,18 +1110,23 @@ public partial class MainWindow : Window
     {
         MarkInputBackend("Mouse");
         _viewModel.PenButtonsText = "Pen buttons: mouse fallback";
-        var point = e.GetPosition(Pad);
-        if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
+        if (!_inputFallbackService.TryBuildMouseSample(
+            e,
+            Pad,
+            Pad.ActualWidth,
+            Pad.ActualHeight,
+            _config.MousePressureValue,
+            out InputFallbackSample sample))
         {
             return;
         }
 
         ProcessInteractionTick(
-            xPx: point.X,
-            yPx: point.Y,
-            xNorm: xNorm,
-            yNorm: yNorm,
-            pressure: _config.MousePressureValue,
+            xPx: sample.PixelPosition.X,
+            yPx: sample.PixelPosition.Y,
+            xNorm: sample.XNorm,
+            yNorm: sample.YNorm,
+            pressure: sample.Pressure127,
             isDown: true,
             isHovering: false,
             penButtons: 0,
@@ -1189,21 +1190,6 @@ public partial class MainWindow : Window
 
         CursorDot.Visibility = Visibility.Collapsed;
         CursorDot.Opacity = 0.85;
-    }
-
-    private bool TryGetPadCoordinates(Point point, out double xNorm, out double yNorm)
-    {
-        xNorm = 0;
-        yNorm = 0;
-
-        if (Pad.ActualWidth <= 0 || Pad.ActualHeight <= 0)
-        {
-            return false;
-        }
-
-        xNorm = point.X / Pad.ActualWidth;
-        yNorm = point.Y / Pad.ActualHeight;
-        return true;
     }
 
     private void DrawZoneOverlay()
