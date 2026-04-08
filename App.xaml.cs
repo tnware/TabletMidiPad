@@ -20,11 +20,10 @@ public partial class App : Application
     {
         try
         {
-            _container = AppBootstrapper.BuildContainer();
+            (SimpleContainer container, MainWindow mainWindow) = AppBootstrapper.CreateApplicationShell();
+            _container = container;
             RegisterApplicationWindowIcon();
             base.OnStartup(e);
-
-            var mainWindow = _container.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
             mainWindow.Show();
         }

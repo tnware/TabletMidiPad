@@ -7,9 +7,12 @@ namespace TabletMidiPad.Services;
 
 /// <summary>
 /// Wintab backend implementation that owns context/message lifecycle and exposes packet events.
+/// Initialization outcomes and failures are mirrored to <see cref="DiagnosticsChanged"/> for the status bar and to <see cref="IAppTrace"/> for developer diagnostics (e.g. Debug output).
 /// </summary>
 internal sealed class WintabInputBackend : IWintabInputBackend
 {
+    private readonly IAppTrace _trace;
+
     private HwndSource? _messageSource;
     private readonly Dictionary<uint, WintabContextInfo> _contexts = new();
     private int _packetMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
@@ -20,6 +23,16 @@ internal sealed class WintabInputBackend : IWintabInputBackend
     private int _selectedDeviceIndex = -1;
     private uint _expressKeysMask;
     private int _expressKeyCount;
+
+    public WintabInputBackend()
+        : this(NullAppTrace.Instance)
+    {
+    }
+
+    internal WintabInputBackend(IAppTrace trace)
+    {
+        _trace = trace ?? throw new ArgumentNullException(nameof(trace));
+    }
 
     public event EventHandler<WintabPacketEventArgs>? PacketReceived;
     public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
@@ -57,6 +70,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
 
         if (!WintabInterop.IsAvailable())
         {
+            _trace.Warn("WintabInputBackend", "Wintab32.dll not available");
             DiagnosticsChanged?.Invoke(this, "Wintab32.dll not available");
             return;
         }
@@ -66,10 +80,21 @@ internal sealed class WintabInputBackend : IWintabInputBackend
             _messageSource = CreateMessageWindow();
             _messageSource.AddHook(WndProc);
             int opened = OpenContexts();
-            DiagnosticsChanged?.Invoke(this, opened > 0 ? $"Opened {opened} Wintab context(s)" : "No Wintab contexts opened");
+            string status = opened > 0 ? $"Opened {opened} Wintab context(s)" : "No Wintab contexts opened";
+            if (opened == 0)
+            {
+                _trace.Warn("WintabInputBackend", status);
+            }
+            else
+            {
+                _trace.Info("WintabInputBackend", status);
+            }
+
+            DiagnosticsChanged?.Invoke(this, status);
         }
         catch (Exception ex)
         {
+            _trace.Warn("WintabInputBackend", ex.ToString());
             DiagnosticsChanged?.Invoke(this, ex.Message);
             Shutdown();
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using TabletMidiPad;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -22,19 +23,19 @@ internal sealed class MainViewModel : ViewModelBase
     private string _toolbarInputBackendLabelText = "Input (Auto)";
     private string _selectedPressureCurve = "Linear";
     private string _selectedInputBackendMode = "Auto";
-    private string? _pressureCurveLinearIcon;
-    private string? _pressureCurveLogarithmicIcon;
-    private string? _pressureCurveExponentialIcon;
-    private string? _inputBackendAutoIcon;
-    private string? _inputBackendWintabIcon;
-    private string? _inputBackendMouseIcon;
+    private bool _isPressureCurveLinearChecked = true;
+    private bool _isPressureCurveLogarithmicChecked;
+    private bool _isPressureCurveExponentialChecked;
+    private bool _isInputBackendAutoChecked = true;
+    private bool _isInputBackendWintabChecked;
+    private bool _isInputBackendMouseChecked;
     private string _zoneSelectionSummaryPrimaryText = "No zone selected";
     private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
     private int _selectedZoneIndex = -1;
     private bool _zoneDetailsEnabled;
     private string _zoneName = string.Empty;
     private bool _zoneEnabled;
-    private string _zoneChannel = string.Empty;
+    private int _zoneMidiChannel = 1;
     private string _zoneCcX = string.Empty;
     private string _zoneCcY = string.Empty;
     private string _zoneCcPressure = string.Empty;
@@ -48,6 +49,19 @@ internal sealed class MainViewModel : ViewModelBase
     private bool _zoneInvertY;
     private bool _zoneSendPressure = true;
     private string _zoneReleaseBehavior = string.Empty;
+    private string _settingsResultMessage = string.Empty;
+    private SettingsResultKind _settingsResultKind = SettingsResultKind.None;
+    private string _maxZoneRowsText = string.Empty;
+    private string _maxZonesPerRowText = string.Empty;
+    private bool _isMidiStatusPanelVisible;
+    private bool _isMidiProgressVisible = true;
+    private MidiStatusSeverity _midiStatusSeverity = MidiStatusSeverity.Normal;
+    private bool _sendPressureGlobally = true;
+    private bool _allowZoneSwitchWhilePressed = true;
+    private string _wacomServiceStatusHeader = "Service: checking...";
+    private bool _isWacomServiceStartEnabled = true;
+    private TabletDeviceListItemViewModel? _selectedTabletDevice;
+    private bool _isTabletDevicePickerEnabled = true;
 
     public MainViewModel()
     {
@@ -62,6 +76,107 @@ internal sealed class MainViewModel : ViewModelBase
         AddZoneCommand = new DelegateCommand(() => { });
         RemoveZoneCommand = new DelegateCommand(() => { });
         AutoLayoutCommand = new DelegateCommand(() => { });
+        SelectPressureCurveLinearCommand = new DelegateCommand(() => { });
+        SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => { });
+        SelectPressureCurveExponentialCommand = new DelegateCommand(() => { });
+        SelectInputBackendAutoCommand = new DelegateCommand(() => { });
+        SelectInputBackendWintabCommand = new DelegateCommand(() => { });
+        SelectInputBackendMouseCommand = new DelegateCommand(() => { });
+        CycleInputBackendCommand = new DelegateCommand(() => { });
+
+        for (int ch = 1; ch <= 16; ch++)
+        {
+            MidiChannels.Add(ch);
+        }
+
+        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.NoSendOnRelease);
+        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.Hold);
+        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetPressureOnly);
+        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
+    }
+
+    public ObservableCollection<int> MidiChannels { get; } = new();
+
+    public ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
+
+    public ObservableCollection<TabletDeviceListItemViewModel> TabletDevices { get; } = new();
+
+    public string SettingsResultMessage
+    {
+        get => _settingsResultMessage;
+        set => SetProperty(ref _settingsResultMessage, value);
+    }
+
+    public SettingsResultKind SettingsResultKind
+    {
+        get => _settingsResultKind;
+        set => SetProperty(ref _settingsResultKind, value);
+    }
+
+    public string MaxZoneRowsText
+    {
+        get => _maxZoneRowsText;
+        set => SetProperty(ref _maxZoneRowsText, value);
+    }
+
+    public string MaxZonesPerRowText
+    {
+        get => _maxZonesPerRowText;
+        set => SetProperty(ref _maxZonesPerRowText, value);
+    }
+
+    public bool IsMidiStatusPanelVisible
+    {
+        get => _isMidiStatusPanelVisible;
+        set => SetProperty(ref _isMidiStatusPanelVisible, value);
+    }
+
+    public bool IsMidiProgressVisible
+    {
+        get => _isMidiProgressVisible;
+        set => SetProperty(ref _isMidiProgressVisible, value);
+    }
+
+    public MidiStatusSeverity MidiStatusSeverity
+    {
+        get => _midiStatusSeverity;
+        set => SetProperty(ref _midiStatusSeverity, value);
+    }
+
+    public bool SendPressureGlobally
+    {
+        get => _sendPressureGlobally;
+        set => SetProperty(ref _sendPressureGlobally, value);
+    }
+
+    public bool AllowZoneSwitchWhilePressed
+    {
+        get => _allowZoneSwitchWhilePressed;
+        set => SetProperty(ref _allowZoneSwitchWhilePressed, value);
+    }
+
+    public string WacomServiceStatusHeader
+    {
+        get => _wacomServiceStatusHeader;
+        set => SetProperty(ref _wacomServiceStatusHeader, value);
+    }
+
+    public bool IsWacomServiceStartEnabled
+    {
+        get => _isWacomServiceStartEnabled;
+        set => SetProperty(ref _isWacomServiceStartEnabled, value);
+    }
+
+    public TabletDeviceListItemViewModel? SelectedTabletDevice
+    {
+        get => _selectedTabletDevice;
+        set => SetProperty(ref _selectedTabletDevice, value);
+    }
+
+    public bool IsTabletDevicePickerEnabled
+    {
+        get => _isTabletDevicePickerEnabled;
+        set => SetProperty(ref _isTabletDevicePickerEnabled, value);
     }
 
     public ICommand SaveSettingsCommand { get; private set; }
@@ -75,6 +190,20 @@ internal sealed class MainViewModel : ViewModelBase
     public ICommand AddZoneCommand { get; private set; }
     public ICommand RemoveZoneCommand { get; private set; }
     public ICommand AutoLayoutCommand { get; private set; }
+
+    public ICommand SelectPressureCurveLinearCommand { get; private set; }
+
+    public ICommand SelectPressureCurveLogarithmicCommand { get; private set; }
+
+    public ICommand SelectPressureCurveExponentialCommand { get; private set; }
+
+    public ICommand SelectInputBackendAutoCommand { get; private set; }
+
+    public ICommand SelectInputBackendWintabCommand { get; private set; }
+
+    public ICommand SelectInputBackendMouseCommand { get; private set; }
+
+    public ICommand CycleInputBackendCommand { get; private set; }
 
     public void ConfigureCommands(
         Action saveSettings,
@@ -111,6 +240,34 @@ internal sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(AddZoneCommand));
         OnPropertyChanged(nameof(RemoveZoneCommand));
         OnPropertyChanged(nameof(AutoLayoutCommand));
+    }
+
+    /// <summary>
+    /// Wires toolbar pressure-curve and input-backend commands (invoked from the view after construction).
+    /// </summary>
+    public void ConfigureToolbarCommands(
+        Action selectPressureCurveLinear,
+        Action selectPressureCurveLogarithmic,
+        Action selectPressureCurveExponential,
+        Action selectInputBackendAuto,
+        Action selectInputBackendWintab,
+        Action selectInputBackendMouse,
+        Action cycleInputBackend)
+    {
+        SelectPressureCurveLinearCommand = new DelegateCommand(selectPressureCurveLinear);
+        SelectPressureCurveLogarithmicCommand = new DelegateCommand(selectPressureCurveLogarithmic);
+        SelectPressureCurveExponentialCommand = new DelegateCommand(selectPressureCurveExponential);
+        SelectInputBackendAutoCommand = new DelegateCommand(selectInputBackendAuto);
+        SelectInputBackendWintabCommand = new DelegateCommand(selectInputBackendWintab);
+        SelectInputBackendMouseCommand = new DelegateCommand(selectInputBackendMouse);
+        CycleInputBackendCommand = new DelegateCommand(cycleInputBackend);
+        OnPropertyChanged(nameof(SelectPressureCurveLinearCommand));
+        OnPropertyChanged(nameof(SelectPressureCurveLogarithmicCommand));
+        OnPropertyChanged(nameof(SelectPressureCurveExponentialCommand));
+        OnPropertyChanged(nameof(SelectInputBackendAutoCommand));
+        OnPropertyChanged(nameof(SelectInputBackendWintabCommand));
+        OnPropertyChanged(nameof(SelectInputBackendMouseCommand));
+        OnPropertyChanged(nameof(CycleInputBackendCommand));
     }
 
     public string StatusText
@@ -191,40 +348,40 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _selectedInputBackendMode, value);
     }
 
-    public string? PressureCurveLinearIcon
+    public bool IsPressureCurveLinearChecked
     {
-        get => _pressureCurveLinearIcon;
-        set => SetProperty(ref _pressureCurveLinearIcon, value);
+        get => _isPressureCurveLinearChecked;
+        set => SetProperty(ref _isPressureCurveLinearChecked, value);
     }
 
-    public string? PressureCurveLogarithmicIcon
+    public bool IsPressureCurveLogarithmicChecked
     {
-        get => _pressureCurveLogarithmicIcon;
-        set => SetProperty(ref _pressureCurveLogarithmicIcon, value);
+        get => _isPressureCurveLogarithmicChecked;
+        set => SetProperty(ref _isPressureCurveLogarithmicChecked, value);
     }
 
-    public string? PressureCurveExponentialIcon
+    public bool IsPressureCurveExponentialChecked
     {
-        get => _pressureCurveExponentialIcon;
-        set => SetProperty(ref _pressureCurveExponentialIcon, value);
+        get => _isPressureCurveExponentialChecked;
+        set => SetProperty(ref _isPressureCurveExponentialChecked, value);
     }
 
-    public string? InputBackendAutoIcon
+    public bool IsInputBackendAutoChecked
     {
-        get => _inputBackendAutoIcon;
-        set => SetProperty(ref _inputBackendAutoIcon, value);
+        get => _isInputBackendAutoChecked;
+        set => SetProperty(ref _isInputBackendAutoChecked, value);
     }
 
-    public string? InputBackendWintabIcon
+    public bool IsInputBackendWintabChecked
     {
-        get => _inputBackendWintabIcon;
-        set => SetProperty(ref _inputBackendWintabIcon, value);
+        get => _isInputBackendWintabChecked;
+        set => SetProperty(ref _isInputBackendWintabChecked, value);
     }
 
-    public string? InputBackendMouseIcon
+    public bool IsInputBackendMouseChecked
     {
-        get => _inputBackendMouseIcon;
-        set => SetProperty(ref _inputBackendMouseIcon, value);
+        get => _isInputBackendMouseChecked;
+        set => SetProperty(ref _isInputBackendMouseChecked, value);
     }
 
     public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
@@ -247,6 +404,14 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _selectedZoneIndex, value);
     }
 
+    /// <summary>
+    /// Raises <see cref="SelectedZoneIndex"/> after the zone list collection is replaced so the ListBox binding re-applies.
+    /// </summary>
+    internal void NotifySelectedZoneIndexChanged()
+    {
+        OnPropertyChanged(nameof(SelectedZoneIndex));
+    }
+
     public bool ZoneDetailsEnabled
     {
         get => _zoneDetailsEnabled;
@@ -265,10 +430,10 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _zoneEnabled, value);
     }
 
-    public string ZoneChannel
+    public int ZoneMidiChannel
     {
-        get => _zoneChannel;
-        set => SetProperty(ref _zoneChannel, value);
+        get => _zoneMidiChannel;
+        set => SetProperty(ref _zoneMidiChannel, value);
     }
 
     public string ZoneCcX

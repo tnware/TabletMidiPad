@@ -21,15 +21,15 @@ internal sealed class WacomServiceController : IWacomServiceController
             string text = running
                 ? $"Service: {displayName} running"
                 : $"Service: {displayName} {service.Status}";
-            return new WacomServiceStatus(text, CanStart: !running);
+            return new WacomServiceStatus(text, CanStart: !running, IsServiceRunning: running);
         }
         catch (InvalidOperationException)
         {
-            return new WacomServiceStatus("Service: not found", CanStart: false);
+            return new WacomServiceStatus("Service: not found", CanStart: false, IsServiceRunning: false);
         }
         catch (Exception ex)
         {
-            return new WacomServiceStatus($"Service: {ex.Message}", CanStart: false);
+            return new WacomServiceStatus($"Service: {ex.Message}", CanStart: false, IsServiceRunning: false);
         }
     }
 

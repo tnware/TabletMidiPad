@@ -26,9 +26,9 @@ internal interface IConfigValueParser
     string RequireGuidText(string? text, string fieldName);
 
     /// <summary>
-    /// Normalizes input-backend mode aliases to canonical values.
+    /// Ensures pressure curve is one of the supported names.
     /// </summary>
-    string NormalizeInputBackendMode(string? text);
+    string RequirePressureCurve(string? text);
 
     /// <summary>
     /// Normalizes release-behavior aliases to canonical values.

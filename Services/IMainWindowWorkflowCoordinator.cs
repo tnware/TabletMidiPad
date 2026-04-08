@@ -18,12 +18,37 @@ internal interface IMainWindowWorkflowCoordinator
     WorkflowSaveResult ValidateAndSave(AppConfig config);
 
     /// <summary>
+    /// Validates the current in-memory config and persists it to disk (Apply Settings flow).
+    /// </summary>
+    WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store);
+
+    /// <summary>
+    /// Persists the current config to disk after in-memory mutations (e.g. preferences apply).
+    /// </summary>
+    WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store);
+
+    /// <summary>
     /// Applies preferences result values into config and returns follow-up action decisions.
     /// </summary>
     PreferencesWorkflowResult ApplyPreferences(
         AppConfig config,
         PreferencesDialogResult result,
         IntPtr midiOutHandle);
+
+    /// <summary>
+    /// Builds Wacom service status menu state for current service status.
+    /// </summary>
+    WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status);
+
+    /// <summary>
+    /// Builds toolbar labels and selected mode values from configuration.
+    /// </summary>
+    MainWindowToolbarState BuildToolbarState(AppConfig config);
+
+    /// <summary>
+    /// Builds base connected-state text payload for the main view-model.
+    /// </summary>
+    MainWindowConnectedState BuildConnectedState(AppConfig config);
 }
 
 /// <summary>
@@ -39,3 +64,37 @@ internal readonly record struct PreferencesWorkflowResult(
     string? ErrorMessage,
     bool ShouldRestartMidi,
     bool ShouldRebindInputBackend);
+
+/// <summary>
+/// Wacom service menu state projected for MainWindow controls.
+/// </summary>
+internal readonly record struct WacomServiceMenuState(
+    string Header,
+    bool StartEnabled);
+
+/// <summary>
+/// Toolbar label + selection state mapped from configuration.
+/// </summary>
+internal readonly record struct MainWindowToolbarState(
+    string ToolbarPressureLabelText,
+    string SelectedPressureCurve,
+    string ToolbarInputBackendLabelText,
+    string SelectedInputBackendMode,
+    bool IsPressureCurveLinearChecked,
+    bool IsPressureCurveLogarithmicChecked,
+    bool IsPressureCurveExponentialChecked,
+    bool IsInputBackendAutoChecked,
+    bool IsInputBackendWintabChecked,
+    bool IsInputBackendMouseChecked);
+
+/// <summary>
+/// Main connected-state status labels mapped from configuration.
+/// </summary>
+internal readonly record struct MainWindowConnectedState(
+    string StatusText,
+    string RoutingText,
+    string ActiveZoneText,
+    string ConfigSummaryText,
+    string ValueText,
+    string PenButtonsText,
+    string ModifiersText);

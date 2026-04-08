@@ -1,95 +1,72 @@
+using System;
 using System.Collections.Generic;
-using System.Windows;
-using System.Windows.Input;
+using System.Linq;
 using TabletMidiPad.Core.Interaction;
 
 namespace TabletMidiPad.Services;
 
 /// <summary>
-/// Orchestrates interaction-engine invocation for stylus/mouse/wintab inputs.
+/// Orchestrates interaction-engine invocation for pad input samples.
 /// </summary>
 internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrator
 {
     private readonly IPadInteractionEngine _padInteractionEngine;
-    private readonly IInputFallbackService _inputFallbackService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InputInteractionOrchestrator"/> class.
     /// </summary>
-    public InputInteractionOrchestrator(
-        IPadInteractionEngine padInteractionEngine,
-        IInputFallbackService inputFallbackService)
+    public InputInteractionOrchestrator(IPadInteractionEngine padInteractionEngine)
     {
-        _padInteractionEngine = padInteractionEngine ?? throw new System.ArgumentNullException(nameof(padInteractionEngine));
-        _inputFallbackService = inputFallbackService ?? throw new System.ArgumentNullException(nameof(inputFallbackService));
+        _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
     }
 
     /// <inheritdoc />
-    public bool TryBuildStylusInteraction(
-        StylusEventArgs e,
-        IInputElement relativeTo,
-        double padWidth,
-        double padHeight,
-        int mousePressureFallback,
-        out InteractionTickSample sample)
+    public PadInteractionConfig BuildPadInteractionConfig(AppConfig config)
     {
-        if (!_inputFallbackService.TryBuildStylusSample(
-            e,
-            relativeTo,
-            padWidth,
-            padHeight,
-            mousePressureFallback,
-            out InputFallbackSample fallbackSample))
-        {
-            sample = default;
-            return false;
-        }
-
-        sample = new InteractionTickSample(
-            PixelPosition: fallbackSample.PixelPosition,
-            Input: new InteractionInput(
-                XNorm: fallbackSample.XNorm,
-                YNorm: fallbackSample.YNorm,
-                Pressure: fallbackSample.Pressure127,
-                IsDown: true,
-                IsHovering: false,
-                PenButtons: 0,
-                Backend: InteractionBackend.StylusFallback));
-        return true;
+        ArgumentNullException.ThrowIfNull(config);
+        return new PadInteractionConfig(
+            SendPressureGlobally: config.SendPressureGlobally,
+            AllowZoneSwitchWhilePressed: config.AllowZoneSwitchWhilePressed,
+            MousePressureValue: config.MousePressureValue,
+            PositionDeadZone: config.PositionDeadZone,
+            PositionSmoothing: config.PositionSmoothing,
+            PressureCurve: config.PressureCurve,
+            LowerPenButtonAction: config.LowerPenButtonAction,
+            LowerPenButtonMidiChannel: config.LowerPenButtonMidiChannel,
+            LowerPenButtonCc: config.LowerPenButtonCc,
+            LowerPenButtonNote: config.LowerPenButtonNote,
+            UpperPenButtonAction: config.UpperPenButtonAction,
+            UpperPenButtonMidiChannel: config.UpperPenButtonMidiChannel,
+            UpperPenButtonCc: config.UpperPenButtonCc,
+            UpperPenButtonNote: config.UpperPenButtonNote,
+            ExpressKeys: config.ExpressKeys
+                .Select(k => new ExpressKeyConfigSnapshot(k.Action, k.MidiChannel, k.Cc, k.Note))
+                .ToList());
     }
 
     /// <inheritdoc />
-    public bool TryBuildMouseInteraction(
-        MouseEventArgs e,
-        IInputElement relativeTo,
-        double padWidth,
-        double padHeight,
-        int mousePressureFallback,
-        out InteractionTickSample sample)
+    public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config)
     {
-        if (!_inputFallbackService.TryBuildMouseSample(
-            e,
-            relativeTo,
-            padWidth,
-            padHeight,
-            mousePressureFallback,
-            out InputFallbackSample fallbackSample))
-        {
-            sample = default;
-            return false;
-        }
-
-        sample = new InteractionTickSample(
-            PixelPosition: fallbackSample.PixelPosition,
-            Input: new InteractionInput(
-                XNorm: fallbackSample.XNorm,
-                YNorm: fallbackSample.YNorm,
-                Pressure: fallbackSample.Pressure127,
-                IsDown: true,
-                IsHovering: false,
-                PenButtons: 0,
-                Backend: InteractionBackend.MouseFallback));
-        return true;
+        ArgumentNullException.ThrowIfNull(config);
+        return config.Zones
+            .Select(z => new ZoneSnapshot(
+                Name: z.Name,
+                Enabled: z.Enabled,
+                MidiChannel: z.MidiChannel,
+                CcX: z.CcX,
+                CcY: z.CcY,
+                CcPressure: z.CcPressure,
+                SendX: z.SendX,
+                SendY: z.SendY,
+                InvertX: z.InvertX,
+                InvertY: z.InvertY,
+                SendPressure: z.SendPressure,
+                ReleaseBehavior: z.ReleaseBehavior,
+                Left: z.Left,
+                Top: z.Top,
+                Width: z.Width,
+                Height: z.Height))
+            .ToList();
     }
 
     /// <inheritdoc />

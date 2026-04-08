@@ -49,7 +49,7 @@ The app expects the Windows MIDI Services console here:
 
 `C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe`
 
-If your install is elsewhere, update `MidiConsolePath` in [MainWindow.xaml.cs](C:\Users\Owner\Projects\wacom-midi\TabletMidiPad\MainWindow.xaml.cs).
+If your install is elsewhere, update `MidiConsolePath` in `WinMmMidiEngine` inside [Services/IMidiEngine.cs](Services/IMidiEngine.cs).
 
 ## Runtime configuration
 
