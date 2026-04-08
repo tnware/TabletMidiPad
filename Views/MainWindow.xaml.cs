@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,11 +14,12 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
+    /// <summary>Shared MIDI engine for the parameterless designer ctor so <see cref="IPadInteractionOutcomeApplier"/> uses the same instance.</summary>
+    private static readonly IMidiEngine DesignerMidiEngine = new WinMmMidiEngine();
+
     private bool _isActive;
     private bool _isLoadingUi;
     private bool _useWintab;
-    private int _selectedDeviceIndex = -1;
     private int _expressKeyCount;
     private string _expressKeyDiagnostics = "";
 
@@ -40,6 +42,7 @@ public partial class MainWindow : Window
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
+    private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private string _lastInputBackend = "Idle";
@@ -56,37 +59,7 @@ public partial class MainWindow : Window
     }
 
     private void ApplyInteractionResult(InteractionResult result)
-    {
-        foreach (MidiMessage message in result.MidiMessages)
-        {
-            if (message.Kind == MidiMessageKind.ControlChange)
-            {
-                SendCcIfChanged(message.Channel, message.Number, message.Value, force: message.Force);
-            }
-            else
-            {
-                // For notes, Value encodes velocity for "on" and 0 for "off".
-                bool on = message.Value > 0;
-                SendNoteIfChanged(message.Channel, message.Number, on, message.Value, force: message.Force);
-            }
-        }
-
-        _viewModel.ActiveZoneText = result.ActiveZoneLabel;
-        _viewModel.ValueText = result.ValueLabel;
-        _viewModel.ModifiersText = result.ModifiersLabel;
-
-        // Mirror engine state back into overlay marker map so overlay rendering can remain unchanged for now.
-        _lastZonePoints.Clear();
-        foreach ((int zoneIndex, (double x, double y) local) in _interactionState.LastLocalByZone)
-        {
-            if (zoneIndex < 0 || zoneIndex >= _config.Zones.Count)
-            {
-                continue;
-            }
-
-            _lastZonePoints[_config.Zones[zoneIndex]] = new Point(local.x, local.y);
-        }
-    }
+        => _interactionOutcomeApplier.Apply(result, _interactionState, _config, _viewModel);
 
     // Zone resize drag state
     private bool _isResizingZone;
@@ -95,7 +68,7 @@ public partial class MainWindow : Window
     public MainWindow()
         : this(
             new JsonConfigStore(AppConfig.GetConfigPath()),
-            new WinMmMidiEngine(),
+            DesignerMidiEngine,
             new WacomServiceController(),
             new WintabInputBackend(),
             new PreferencesDialogService(new ConfigValueParser()),
@@ -114,7 +87,9 @@ public partial class MainWindow : Window
             new MainWindowWintabInputBridge(new WintabEventAdapter(), new MainWindowInputEventFlowCoordinator()),
             new MainWindowPadPresentationCoordinator(),
             new MainWindowViewStateMapper(),
-            new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()))
+            new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()),
+            new MainViewModel(),
+            new PadInteractionOutcomeApplier(DesignerMidiEngine))
     {
     }
 
@@ -139,7 +114,9 @@ public partial class MainWindow : Window
         IMainWindowWintabInputBridge wintabInputBridge,
         IMainWindowPadPresentationCoordinator padPresentationCoordinator,
         IMainWindowViewStateMapper viewStateMapper,
-        IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator)
+        IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator,
+        MainViewModel viewModel,
+        IPadInteractionOutcomeApplier interactionOutcomeApplier)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -162,6 +139,8 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
+        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
@@ -171,9 +150,9 @@ public partial class MainWindow : Window
         PadSurface.PadMouseDown += Pad_MouseDown;
         PadSurface.PadMouseMove += Pad_MouseMove;
         PadSurface.PadMouseUp += Pad_MouseUp;
-        _viewModel = new MainViewModel();
         DataContext = _viewModel;
         InitializeCommands();
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -282,16 +261,14 @@ public partial class MainWindow : Window
         PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_config, result, IntPtr.Zero);
         if (!applyResult.SaveSucceeded)
         {
-            SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = applyResult.ErrorMessage ?? "Preferences could not be applied.";
+            SetSettingsResult(applyResult.ErrorMessage ?? "Preferences could not be applied.", SettingsResultKind.Error);
             return;
         }
 
         WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_config, _configStore);
         if (!persistResult.Success)
         {
-            SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = persistResult.ErrorMessage ?? "Preferences could not be saved.";
+            SetSettingsResult(persistResult.ErrorMessage ?? "Preferences could not be saved.", SettingsResultKind.Error);
             return;
         }
 
@@ -311,15 +288,14 @@ public partial class MainWindow : Window
         }
 
         SyncToolbar();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Preferences applied and saved.";
+        SetSettingsResult("Preferences applied and saved.", SettingsResultKind.Success);
     }
 
     private async Task StartWacomServiceAsync()
     {
         WacomServiceWorkflowState startingState = _wacomServiceWorkflowCoordinator.BuildStartingState();
-        MenuStartWacomService.IsEnabled = startingState.StartEnabled;
-        MenuWacomServiceStatus.Header = startingState.StatusHeader;
+        _viewModel.IsWacomServiceStartEnabled = startingState.StartEnabled;
+        _viewModel.WacomServiceStatusHeader = startingState.StatusHeader;
 
         WacomServiceStartResult result = await Task.Run(() => _wacomServiceWorkflowCoordinator.Start(_wacomServiceController));
         if (result.Started)
@@ -334,7 +310,7 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrWhiteSpace(result.FailureStatusHeader))
         {
-            MenuWacomServiceStatus.Header = result.FailureStatusHeader;
+            _viewModel.WacomServiceStatusHeader = result.FailureStatusHeader;
         }
 
         RefreshWacomServiceStatus(result.RefreshedStatus);
@@ -358,8 +334,7 @@ public partial class MainWindow : Window
         _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = result.StatusMessage;
+        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
     }
 
     private void AddZone()
@@ -371,8 +346,7 @@ public partial class MainWindow : Window
         _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = result.StatusMessage;
+        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
     }
 
     private void RemoveZone()
@@ -388,21 +362,20 @@ public partial class MainWindow : Window
         _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = result.StatusMessage;
+        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
     }
 
     private async Task InitializeAppAsync()
     {
-        PopulateChannelList(ZoneChannelComboBox);
-        PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
         _config = _lifecycleCoordinator.LoadStartupConfig(_configStore);
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
         InitializeWintab();
 
-        MidiStatusPanel.Visibility = Visibility.Visible;
+        _viewModel.IsMidiStatusPanelVisible = true;
+        _viewModel.IsMidiProgressVisible = true;
+        _viewModel.MidiStatusSeverity = MidiStatusSeverity.Normal;
         _viewModel.MidiStatusText = "Connecting MIDI...";
         await Task.Yield();
 
@@ -414,34 +387,16 @@ public partial class MainWindow : Window
         if (midiResult.Succeeded)
         {
             UpdateUiForCurrentConfig();
-            MidiStatusPanel.Visibility = Visibility.Collapsed;
+            _viewModel.IsMidiStatusPanelVisible = false;
         }
         else
         {
-            MidiProgressBar.Visibility = Visibility.Collapsed;
-            MidiStatusText.Foreground = FindResource("DangerBrush") as Brush ?? Brushes.IndianRed;
+            _viewModel.IsMidiProgressVisible = false;
+            _viewModel.MidiStatusSeverity = MidiStatusSeverity.Error;
             _viewModel.MidiStatusText = "MIDI init failed";
             _viewModel.StatusText = "MIDI init failed";
             _viewModel.ValueText = midiResult.ErrorMessage ?? string.Empty;
         }
-    }
-
-    private static void PopulateChannelList(ComboBox comboBox)
-    {
-        comboBox.Items.Clear();
-        for (int channel = 1; channel <= 16; channel++)
-        {
-            comboBox.Items.Add(channel);
-        }
-    }
-
-    private static void PopulateReleaseBehaviorList(ComboBox comboBox)
-    {
-        comboBox.Items.Clear();
-        comboBox.Items.Add(ZoneReleaseBehaviors.NoSendOnRelease);
-        comboBox.Items.Add(ZoneReleaseBehaviors.Hold);
-        comboBox.Items.Add(ZoneReleaseBehaviors.ResetPressureOnly);
-        comboBox.Items.Add(ZoneReleaseBehaviors.ResetAll);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -453,14 +408,7 @@ public partial class MainWindow : Window
     {
         CommitCurrentZoneEdits();
         RebindInputBackend();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Input backend reconnected.";
-    }
-
-    private void ToolbarPressureToggle_Click(object sender, RoutedEventArgs e)
-    {
-        _config.SendPressureGlobally = ToolbarPressureToggle.IsChecked == true;
-        SyncPressureSplitBorder();
+        SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
 
     private Brush ThemeBrush(string key, Brush fallback)
@@ -470,7 +418,7 @@ public partial class MainWindow : Window
 
     private void SyncPressureSplitBorder()
     {
-        bool on = ToolbarPressureToggle.IsChecked == true;
+        bool on = _viewModel.SendPressureGlobally;
         PressureSplitBorder.Background = on ? ThemeBrush("AccentSurfaceBrush", Brushes.Transparent) : Brushes.Transparent;
         PressureSplitBorder.BorderBrush = on ? ThemeBrush("AccentBrush", Brushes.Transparent) : Brushes.Transparent;
     }
@@ -479,12 +427,6 @@ public partial class MainWindow : Window
     {
         InputBackendSplitBorder.Background = ThemeBrush("AccentSurfaceBrush", Brushes.Transparent);
         InputBackendSplitBorder.BorderBrush = ThemeBrush("AccentBrush", Brushes.Transparent);
-    }
-
-    private void ToolbarZoneSwitchToggle_Click(object sender, RoutedEventArgs e)
-    {
-        _config.AllowZoneSwitchWhilePressed = ToolbarZoneSwitchToggle.IsChecked == true;
-        UpdateUiForCurrentConfig();
     }
 
     private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)
@@ -588,21 +530,18 @@ public partial class MainWindow : Window
             WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_config, _configStore);
             if (!persistResult.Success)
             {
-                SettingsResultText.Foreground = Brushes.IndianRed;
-                SettingsResultText.Text = persistResult.ErrorMessage ?? "Settings could not be applied.";
+                SetSettingsResult(persistResult.ErrorMessage ?? "Settings could not be applied.", SettingsResultKind.Error);
                 return;
             }
 
             UpdateUiForCurrentConfig();
             RefreshPadZoneOverlay();
 
-            SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-            SettingsResultText.Text = "Settings applied and saved.";
+            SetSettingsResult("Settings applied and saved.", SettingsResultKind.Success);
         }
         catch (Exception ex)
         {
-            SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = ex.Message;
+            SetSettingsResult(ex.Message, SettingsResultKind.Error);
         }
     }
 
@@ -618,8 +557,8 @@ public partial class MainWindow : Window
     {
         _isLoadingUi = true;
 
-        MaxZoneRowsTextBox.Text = config.MaxZoneRows.ToString();
-        MaxZonesPerRowTextBox.Text = config.MaxZonesPerRow.ToString();
+        _viewModel.MaxZoneRowsText = config.MaxZoneRows.ToString();
+        _viewModel.MaxZonesPerRowText = config.MaxZonesPerRow.ToString();
         RefreshZoneList();
         SelectedZoneIndex = config.Zones.Count > 0 ? 0 : -1;
         _viewModel.NotifySelectedZoneIndexChanged();
@@ -632,8 +571,8 @@ public partial class MainWindow : Window
 
     private void SyncToolbar()
     {
-        ToolbarPressureToggle.IsChecked = _config.SendPressureGlobally;
-        ToolbarZoneSwitchToggle.IsChecked = _config.AllowZoneSwitchWhilePressed;
+        _viewModel.SendPressureGlobally = _config.SendPressureGlobally;
+        _viewModel.AllowZoneSwitchWhilePressed = _config.AllowZoneSwitchWhilePressed;
         SyncPressureSplitBorder();
         SyncInputBackendSplitBorder();
         MainWindowToolbarState toolbarState = _viewStateMapper.BuildToolbarState(_config);
@@ -659,10 +598,6 @@ public partial class MainWindow : Window
         _isLoadingUi = true;
 
         _zoneEditorService.LoadSelectedZoneIntoEditor(_viewModel, _config, SelectedZoneIndex);
-        ZoneChannelComboBox.SelectedItem = SelectedZoneIndex >= 0 && SelectedZoneIndex < _config.Zones.Count
-            ? _config.Zones[SelectedZoneIndex].MidiChannel
-            : null;
-        ZoneReleaseBehaviorComboBox.SelectedItem = _viewModel.ZoneReleaseBehavior;
 
         _isLoadingUi = false;
     }
@@ -673,8 +608,8 @@ public partial class MainWindow : Window
             _config,
             _viewModel,
             SelectedZoneIndex,
-            MaxZoneRowsTextBox.Text,
-            MaxZonesPerRowTextBox.Text);
+            _viewModel.MaxZoneRowsText,
+            _viewModel.MaxZonesPerRowText);
 
         RefreshZoneList();
         _viewModel.NotifySelectedZoneIndexChanged();
@@ -870,8 +805,7 @@ public partial class MainWindow : Window
         _isResizingZone = false;
         _zoneResizeSession = null;
         Pad.Cursor = null;
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone resized. Click Apply Settings to save.";
+        SetSettingsResult("Zone resized. Click Apply Settings to save.", SettingsResultKind.Success);
     }
 
     private void HandleStylus(StylusEventArgs e)
@@ -961,21 +895,37 @@ public partial class MainWindow : Window
     }
 
     private void RefreshPadZoneOverlay()
-        => PadSurface.RefreshZoneOverlay(_config.Zones, _lastZonePoints, SelectedZoneIndex);
+        => PadSurface.RefreshZoneOverlay(_config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
 
-    private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
-        => _midiEngine.SendCcIfChanged(channel, cc, value, force);
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isLoadingUi)
+        {
+            return;
+        }
 
-    private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
-        => _midiEngine.SendNoteIfChanged(channel, note, on, velocity, force);
+        if (e.PropertyName == nameof(MainViewModel.SendPressureGlobally))
+        {
+            _config.SendPressureGlobally = _viewModel.SendPressureGlobally;
+            SyncPressureSplitBorder();
+        }
+        else if (e.PropertyName == nameof(MainViewModel.AllowZoneSwitchWhilePressed))
+        {
+            _config.AllowZoneSwitchWhilePressed = _viewModel.AllowZoneSwitchWhilePressed;
+            UpdateUiForCurrentConfig();
+        }
+    }
 
     private void InitializeWintab()
     {
         PopulateTabletDeviceList();
+        int tabletDeviceIndex = _viewModel.SelectedTabletDevice?.DeviceIndex >= 0
+            ? _viewModel.SelectedTabletDevice!.DeviceIndex
+            : -1;
         InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Initialize(
             _config.InputBackendMode,
             _wintabInputBackend,
-            _selectedDeviceIndex,
+            tabletDeviceIndex,
             _expressKeyCount);
         ApplyInputBackendLifecycleState(lifecycle, refreshInputBackendStatusText: true);
     }
@@ -995,62 +945,50 @@ public partial class MainWindow : Window
     private void PopulateTabletDeviceList()
     {
         TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
-        TabletDeviceComboBox.Items.Clear();
 
+        int previousDeviceIndex = _viewModel.SelectedTabletDevice?.DeviceIndex ?? -1;
+
+        _viewModel.TabletDevices.Clear();
         IReadOnlyList<WintabTabletDevice> devices = _wintabInputBackend.GetAvailableDevices();
         if (devices.Count <= 0)
         {
-            TabletDeviceComboBox.Items.Add("No tablets");
-            TabletDeviceComboBox.SelectedIndex = 0;
-            TabletDeviceComboBox.IsEnabled = false;
+            var placeholder = new TabletDeviceListItemViewModel(-1, "No tablets");
+            _viewModel.TabletDevices.Add(placeholder);
+            _viewModel.SelectedTabletDevice = placeholder;
+            _viewModel.IsTabletDevicePickerEnabled = false;
             TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
             return;
         }
 
-        TabletDeviceComboBox.IsEnabled = true;
-        int validCount = 0;
+        _viewModel.IsTabletDevicePickerEnabled = true;
         int selectIndex = 0;
-
-        foreach (WintabTabletDevice device in devices)
+        for (int i = 0; i < devices.Count; i++)
         {
-            TabletDeviceComboBox.Items.Add(new TabletDeviceItem(device.DeviceIndex, device.Label));
-
-            if (_selectedDeviceIndex >= 0 && device.DeviceIndex == _selectedDeviceIndex)
+            WintabTabletDevice device = devices[i];
+            _viewModel.TabletDevices.Add(new TabletDeviceListItemViewModel(device.DeviceIndex, device.Label));
+            if (previousDeviceIndex >= 0 && device.DeviceIndex == previousDeviceIndex)
             {
-                selectIndex = validCount;
+                selectIndex = i;
             }
-
-            validCount++;
         }
 
-        if (validCount > 0)
-        {
-            TabletDeviceComboBox.SelectedIndex = selectIndex;
-            _selectedDeviceIndex = ((TabletDeviceItem)TabletDeviceComboBox.Items[selectIndex]!).DeviceIndex;
-        }
-
+        _viewModel.SelectedTabletDevice = _viewModel.TabletDevices[selectIndex];
         TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
     }
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (TabletDeviceComboBox.SelectedItem is not TabletDeviceItem item)
+        if (_isLoadingUi)
         {
             return;
         }
 
-        if (item.DeviceIndex == _selectedDeviceIndex)
+        if (_viewModel.SelectedTabletDevice is not TabletDeviceListItemViewModel item || item.DeviceIndex < 0)
         {
             return;
         }
 
-        _selectedDeviceIndex = item.DeviceIndex;
         RebindInputBackend();
-    }
-
-    private sealed record TabletDeviceItem(int DeviceIndex, string Label)
-    {
-        public override string ToString() => Label;
     }
 
     private void ShutdownWintab()
@@ -1166,8 +1104,14 @@ public partial class MainWindow : Window
     private void RefreshWacomServiceStatus(WacomServiceStatus status)
     {
         WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
-        MenuWacomServiceStatus.Header = menuState.Header;
-        MenuStartWacomService.IsEnabled = menuState.StartEnabled;
+        _viewModel.WacomServiceStatusHeader = menuState.Header;
+        _viewModel.IsWacomServiceStartEnabled = menuState.StartEnabled;
+    }
+
+    private void SetSettingsResult(string message, SettingsResultKind kind)
+    {
+        _viewModel.SettingsResultMessage = message;
+        _viewModel.SettingsResultKind = kind;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)

@@ -3,6 +3,7 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib"
                     xmlns:converters="clr-namespace:TabletMidiPad.Converters">
     <converters:BoolToCheckmarkConverter x:Key="BoolToCheckmarkConverter"/>
+    <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
     <Color x:Key="ColorWindow">#FF060A07</Color>
     <Color x:Key="ColorSurface">#FF0B120E</Color>
     <Color x:Key="ColorSurfaceRaised">#FF101813</Color>

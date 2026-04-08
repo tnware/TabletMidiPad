@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:TabletMidiPad.Views"
+        xmlns:vm="clr-namespace:TabletMidiPad.ViewModels"
         Title="Tablet MIDI Pad"
         Width="1280"
         Height="780"
@@ -153,10 +154,11 @@
                           Command="{Binding ReconnectPenCommand}"/>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
-                          Command="{Binding StartWacomServiceCommand}"/>
+                          Command="{Binding StartWacomServiceCommand}"
+                          IsEnabled="{Binding IsWacomServiceStartEnabled}"/>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
-                          Header="Service: checking..."
+                          Header="{Binding WacomServiceStatusHeader}"
                           IsEnabled="False"/>
             </MenuItem>
             <MenuItem Header="_Help"
@@ -263,7 +265,7 @@
                         Background="Transparent">
                     <StackPanel Orientation="Horizontal">
                 <ToggleButton Name="ToolbarPressureToggle"
-                              Click="ToolbarPressureToggle_Click">
+                              IsChecked="{Binding SendPressureGlobally, Mode=TwoWay}">
                             <ToggleButton.Style>
                                 <Style TargetType="ToggleButton">
                                     <Setter Property="Background" Value="Transparent"/>
@@ -503,11 +505,15 @@
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
                               Content="Latch On Enter"
-                              Click="ToolbarZoneSwitchToggle_Click"/>
+                              IsChecked="{Binding AllowZoneSwitchWhilePressed, Mode=TwoWay}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <ComboBox Name="TabletDeviceComboBox"
                           MinWidth="120"
                           VerticalAlignment="Center"
+                          DisplayMemberPath="Label"
+                          ItemsSource="{Binding TabletDevices}"
+                          SelectedItem="{Binding SelectedTabletDevice, Mode=TwoWay}"
+                          IsEnabled="{Binding IsTabletDevicePickerEnabled}"
                           SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
@@ -521,7 +527,8 @@
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Right"
-                        Margin="12,0,4,0">
+                        Margin="12,0,4,0"
+                        Visibility="{Binding IsMidiStatusPanelVisible, Converter={StaticResource BoolToVis}}">
                 <ProgressBar Name="MidiProgressBar"
                              Width="60"
                              Height="3"
@@ -529,12 +536,23 @@
                              VerticalAlignment="Center"
                              IsIndeterminate="True"
                              Foreground="{StaticResource AccentBrush}"
-                             Background="{StaticResource SurfaceMutedBrush}"/>
+                             Background="{StaticResource SurfaceMutedBrush}"
+                             Visibility="{Binding IsMidiProgressVisible, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Name="MidiStatusText"
-                           Foreground="{StaticResource TextMutedBrush}"
                            FontSize="11"
                            VerticalAlignment="Center"
-                           Text="{Binding MidiStatusText}"/>
+                           Text="{Binding MidiStatusText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding MidiStatusSeverity}" Value="{x:Static vm:MidiStatusSeverity.Error}">
+                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
             </DockPanel>
         </Border>
@@ -655,14 +673,16 @@
                                            Foreground="{StaticResource TextMutedBrush}"
                                            FontSize="11"/>
                                 <TextBox Name="MaxZoneRowsTextBox"
-                                         Margin="0,4,0,0"/>
+                                         Margin="0,4,0,0"
+                                         Text="{Binding MaxZoneRowsText, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Max Per Row"
                                            Foreground="{StaticResource TextMutedBrush}"
                                            FontSize="11"/>
                                 <TextBox Name="MaxZonesPerRowTextBox"
-                                         Margin="0,4,0,0"/>
+                                         Margin="0,4,0,0"
+                                         Text="{Binding MaxZonesPerRowText, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                         </Grid>
 
@@ -726,7 +746,8 @@
                                              Text="{Binding ZoneName, UpdateSourceTrigger=PropertyChanged}"/>
                                     <ComboBox Name="ZoneChannelComboBox"
                                               Grid.Column="2"
-                                              Text="{Binding ZoneChannel, UpdateSourceTrigger=PropertyChanged}"/>
+                                              ItemsSource="{Binding MidiChannels}"
+                                              SelectedItem="{Binding ZoneMidiChannel, Mode=TwoWay}"/>
                                     <CheckBox Name="ZoneEnabledCheckBox"
                                               Grid.Column="3"
                                               Margin="10,0,0,0"
@@ -884,7 +905,8 @@
                                                    FontSize="11"
                                                    Margin="0,10,0,0"/>
                                         <ComboBox Name="ZoneReleaseBehaviorComboBox"
-                                                  Text="{Binding ZoneReleaseBehavior, UpdateSourceTrigger=PropertyChanged}"
+                                                  ItemsSource="{Binding ReleaseBehaviorOptions}"
+                                                  SelectedItem="{Binding ZoneReleaseBehavior, Mode=TwoWay}"
                                                   Margin="0,6,0,0"/>
                                     </StackPanel>
                                 </Expander>
@@ -897,10 +919,24 @@
                                 Content="Apply Settings"/>
 
                         <TextBlock Name="SettingsResultText"
-                                   Foreground="{StaticResource SuccessBrush}"
                                    Margin="0,8,0,0"
                                    FontSize="11"
-                                   TextWrapping="Wrap"/>
+                                   TextWrapping="Wrap"
+                                   Text="{Binding SettingsResultMessage}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Success}">
+                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Error}">
+                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
                         <TextBlock Name="ConfigSummaryText"
                                    Foreground="{StaticResource TextFaintBrush}"

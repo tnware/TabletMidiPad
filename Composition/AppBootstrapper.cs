@@ -1,6 +1,7 @@
 using System;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;
 
 namespace TabletMidiPad.Composition;
@@ -49,6 +50,10 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneConfigurationService>()));
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
+        container.AddSingleton<IPadInteractionOutcomeApplier>(c => new PadInteractionOutcomeApplier(
+            c.GetRequiredService<IMidiEngine>()));
+
+        container.AddTransient<MainViewModel>(_ => new MainViewModel());
 
         // Views (created by DI so they can receive view models/services later).
         container.AddTransient(c => new MainWindow(
@@ -72,7 +77,9 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMainWindowWintabInputBridge>(),
             c.GetRequiredService<IMainWindowPadPresentationCoordinator>(),
             c.GetRequiredService<IMainWindowViewStateMapper>(),
-            c.GetRequiredService<IZoneActionWorkflowCoordinator>()));
+            c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
+            c.GetRequiredService<MainViewModel>(),
+            c.GetRequiredService<IPadInteractionOutcomeApplier>()));
 
         return container;
     }

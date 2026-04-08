@@ -18,7 +18,7 @@ public sealed class ZoneEditorServiceTests
         {
             ZoneName = "Z1",
             ZoneEnabled = true,
-            ZoneChannel = "2",
+            ZoneMidiChannel = 2,
             ZoneCcX = "10",
             ZoneCcY = "11",
             ZoneCcPressure = "12",

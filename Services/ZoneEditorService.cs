@@ -43,7 +43,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
         {
             viewModel.ZoneName = string.Empty;
             viewModel.ZoneEnabled = false;
-            viewModel.ZoneChannel = string.Empty;
+            viewModel.ZoneMidiChannel = 1;
             SetZoneSelectionSummary(viewModel, null);
             viewModel.ZoneDetailsEnabled = false;
             viewModel.ZoneCcX = string.Empty;
@@ -66,7 +66,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ZoneDetailsEnabled = true;
         viewModel.ZoneName = zone.Name;
         viewModel.ZoneEnabled = zone.Enabled;
-        viewModel.ZoneChannel = zone.MidiChannel.ToString(CultureInfo.InvariantCulture);
+        viewModel.ZoneMidiChannel = zone.MidiChannel;
         SetZoneSelectionSummary(viewModel, zone);
         viewModel.ZoneCcX = zone.CcX.ToString(CultureInfo.InvariantCulture);
         viewModel.ZoneCcY = zone.CcY.ToString(CultureInfo.InvariantCulture);
@@ -101,7 +101,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
         config.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
         zone.Name = _configValueParser.RequireText(viewModel.ZoneName, "Zone Name");
         zone.Enabled = viewModel.ZoneEnabled;
-        zone.MidiChannel = _configValueParser.ReadInt(viewModel.ZoneChannel, 1, 16, "Zone MIDI Channel");
+        zone.MidiChannel = Math.Clamp(viewModel.ZoneMidiChannel, 1, 16);
         zone.CcX = _configValueParser.ReadInt(viewModel.ZoneCcX, 0, 127, "Zone CC X");
         zone.CcY = _configValueParser.ReadInt(viewModel.ZoneCcY, 0, 127, "Zone CC Y");
         zone.CcPressure = _configValueParser.ReadInt(viewModel.ZoneCcPressure, 0, 127, "Zone Pressure CC");
