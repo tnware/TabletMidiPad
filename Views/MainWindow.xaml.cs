@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
 
@@ -24,7 +25,6 @@ public partial class MainWindow : Window
 
     private IntPtr _midiOutHandle;
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
-    private readonly Dictionary<ZoneConfig, Point> _smoothedZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
     private int _selectedZoneIndex = -1;
@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IConfigValueParser _configValueParser;
+    private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -61,6 +62,81 @@ public partial class MainWindow : Window
     private Point _lockedLocalPosition;
     private readonly Dictionary<int, bool> _expressKeyHeld = new();
     private readonly Dictionary<int, bool> _expressKeyToggleState = new();
+    private readonly InteractionState _interactionState = new();
+
+    private PadInteractionConfig BuildInteractionConfig()
+    {
+        return new PadInteractionConfig(
+            SendPressureGlobally: _config.SendPressureGlobally,
+            AllowZoneSwitchWhilePressed: _config.AllowZoneSwitchWhilePressed,
+            MousePressureValue: _config.MousePressureValue,
+            PositionDeadZone: _config.PositionDeadZone,
+            PositionSmoothing: _config.PositionSmoothing,
+            PressureCurve: _config.PressureCurve,
+            LowerPenButtonAction: _config.LowerPenButtonAction,
+            LowerPenButtonMidiChannel: _config.LowerPenButtonMidiChannel,
+            LowerPenButtonCc: _config.LowerPenButtonCc,
+            LowerPenButtonNote: _config.LowerPenButtonNote,
+            UpperPenButtonAction: _config.UpperPenButtonAction,
+            UpperPenButtonMidiChannel: _config.UpperPenButtonMidiChannel,
+            UpperPenButtonCc: _config.UpperPenButtonCc,
+            UpperPenButtonNote: _config.UpperPenButtonNote,
+            ExpressKeys: _config.ExpressKeys.Select(k => new ExpressKeyConfigSnapshot(k.Action, k.MidiChannel, k.Cc, k.Note)).ToList());
+    }
+
+    private IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots()
+    {
+        return _config.Zones.Select(z => new ZoneSnapshot(
+            Name: z.Name,
+            Enabled: z.Enabled,
+            MidiChannel: z.MidiChannel,
+            CcX: z.CcX,
+            CcY: z.CcY,
+            CcPressure: z.CcPressure,
+            SendX: z.SendX,
+            SendY: z.SendY,
+            InvertX: z.InvertX,
+            InvertY: z.InvertY,
+            SendPressure: z.SendPressure,
+            ReleaseBehavior: z.ReleaseBehavior,
+            Left: z.Left,
+            Top: z.Top,
+            Width: z.Width,
+            Height: z.Height)).ToList();
+    }
+
+    private void ApplyInteractionResult(InteractionResult result)
+    {
+        foreach (MidiMessage message in result.MidiMessages)
+        {
+            if (message.Kind == MidiMessageKind.ControlChange)
+            {
+                SendCcIfChanged(message.Channel, message.Number, message.Value, force: message.Force);
+            }
+            else
+            {
+                // For notes, Value encodes velocity for "on" and 0 for "off".
+                bool on = message.Value > 0;
+                SendNoteIfChanged(message.Channel, message.Number, on, message.Value, force: message.Force);
+            }
+        }
+
+        _viewModel.ActiveZoneText = result.ActiveZoneLabel;
+        _viewModel.ValueText = result.ValueLabel;
+        _viewModel.ModifiersText = result.ModifiersLabel;
+
+        // Mirror engine state back into overlay marker map so overlay rendering can remain unchanged for now.
+        _lastZonePoints.Clear();
+        foreach ((int zoneIndex, (double x, double y) local) in _interactionState.LastLocalByZone)
+        {
+            if (zoneIndex < 0 || zoneIndex >= _config.Zones.Count)
+            {
+                continue;
+            }
+
+            _lastZonePoints[_config.Zones[zoneIndex]] = new Point(local.x, local.y);
+        }
+    }
 
     // Zone resize drag state
     private const double ResizeHitMargin = 8.0;
@@ -88,7 +164,8 @@ public partial class MainWindow : Window
             new WacomServiceController(),
             new PreferencesDialogService(),
             new ZoneConfigurationService(),
-            new ConfigValueParser())
+            new ConfigValueParser(),
+            new PadInteractionEngine())
     {
     }
 
@@ -98,7 +175,8 @@ public partial class MainWindow : Window
         IWacomServiceController wacomServiceController,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
-        IConfigValueParser configValueParser)
+        IConfigValueParser configValueParser,
+        IPadInteractionEngine padInteractionEngine)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -106,6 +184,7 @@ public partial class MainWindow : Window
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+        _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
@@ -1467,7 +1546,16 @@ public partial class MainWindow : Window
             }
         }
 
-        HandlePoint(point.X, point.Y, xNorm, yNorm, pressure);
+        ProcessInteractionTick(
+            xPx: point.X,
+            yPx: point.Y,
+            xNorm: xNorm,
+            yNorm: yNorm,
+            pressure: pressure,
+            isDown: true,
+            isHovering: false,
+            penButtons: 0,
+            backend: InteractionBackend.StylusFallback);
     }
 
     private void HandleMouse(MouseEventArgs e)
@@ -1480,115 +1568,75 @@ public partial class MainWindow : Window
             return;
         }
 
-        HandlePoint(point.X, point.Y, xNorm, yNorm, _config.MousePressureValue);
+        ProcessInteractionTick(
+            xPx: point.X,
+            yPx: point.Y,
+            xNorm: xNorm,
+            yNorm: yNorm,
+            pressure: _config.MousePressureValue,
+            isDown: true,
+            isHovering: false,
+            penButtons: 0,
+            backend: InteractionBackend.MouseFallback);
     }
 
-    private void HandlePoint(double xPx, double yPx, double xNorm, double yNorm, int pressure)
+    private void ProcessInteractionTick(
+        double xPx,
+        double yPx,
+        double xNorm,
+        double yNorm,
+        int pressure,
+        bool isDown,
+        bool isHovering,
+        uint penButtons,
+        InteractionBackend backend)
     {
-        var zone = ResolveZoneForCurrentInteraction(xNorm, yNorm);
-        if (!ReferenceEquals(zone, _activeZone))
+        // Cursor is purely UI; keep it here for now.
+        if (isHovering || isDown)
         {
-            SendZoneRelease(_activeZone);
-            _activeZone = zone;
+            CursorDot.Visibility = Visibility.Visible;
+            Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
+            Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
         }
 
-        CursorDot.Visibility = Visibility.Visible;
-        Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
-        Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
+        InteractionResult result = _padInteractionEngine.Process(
+            BuildInteractionConfig(),
+            BuildZoneSnapshots(),
+            _interactionState,
+            new InteractionInput(
+                XNorm: xNorm,
+                YNorm: yNorm,
+                Pressure: pressure,
+                IsDown: isDown,
+                IsHovering: isHovering,
+                PenButtons: penButtons,
+                Backend: backend));
 
-        if (zone is null)
-        {
-            _viewModel.ActiveZoneText = "Active zone: none";
-            _viewModel.ValueText = "Outside configured zones";
-            return;
-        }
+        ApplyInteractionResult(result);
 
-        var local = NormalizeWithinZone(zone, xNorm, yNorm);
-        local = ApplyPositionConditioning(zone, local.x, local.y);
-        string lowerAction = NormalizePenButtonAction(_config.LowerPenButtonAction);
-        string upperAction = NormalizePenButtonAction(_config.UpperPenButtonAction);
-        bool lockXY =
-            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockXY, StringComparison.Ordinal)) ||
-            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockXY, StringComparison.Ordinal));
-        bool lockX =
-            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockX, StringComparison.Ordinal)) ||
-            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockX, StringComparison.Ordinal));
-        bool lockY =
-            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.LockY, StringComparison.Ordinal)) ||
-            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.LockY, StringComparison.Ordinal));
+        _activeZone = result.ActiveZoneIndex >= 0 && result.ActiveZoneIndex < _config.Zones.Count
+            ? _config.Zones[result.ActiveZoneIndex]
+            : null;
 
-        if (lockXY || lockX || lockY)
-        {
-            if (!_hasLockedPosition)
-            {
-                _lockedLocalPosition = new Point(local.x, local.y);
-                _hasLockedPosition = true;
-            }
-
-            local = (
-                lockXY || lockX ? _lockedLocalPosition.X : local.x,
-                lockXY || lockY ? _lockedLocalPosition.Y : local.y
-            );
-        }
-        else
-        {
-            _hasLockedPosition = false;
-        }
-        _lastZonePoints[zone] = new Point(local.x, local.y);
         DrawZoneOverlay();
-        int x = ToCc(local.x, zone.InvertX);
-        int y = ToCc(local.y, zone.InvertY);
-        int curvedPressure = ApplyPressureCurve(pressure);
-
-        _viewModel.ActiveZoneText = $"Active zone: {zone.Name}";
-        bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
-        if ((_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
-            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
-        {
-            sendPressure = false;
-        }
-
-        bool pressureEnabledByButton =
-            (_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
-            (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
-        bool anyEnablePressureAction =
-            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
-            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
-        if (anyEnablePressureAction)
-        {
-            sendPressure = sendPressure && pressureEnabledByButton;
-        }
-
-        string xText = zone.SendX ? x.ToString() : "off";
-        string yText = zone.SendY ? y.ToString() : "off";
-        string pressureText = sendPressure ? curvedPressure.ToString() : "off";
-        _viewModel.ValueText = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
-
-        if (zone.SendX)
-        {
-            SendCcIfChanged(zone.MidiChannel, zone.CcX, x);
-        }
-
-        if (zone.SendY)
-        {
-            SendCcIfChanged(zone.MidiChannel, zone.CcY, y);
-        }
-
-        if (sendPressure)
-        {
-            SendCcIfChanged(zone.MidiChannel, zone.CcPressure, curvedPressure);
-        }
     }
 
     private void HandleRelease()
     {
-        SendZoneRelease(_activeZone);
-        _activeZone = null;
-        _viewModel.ActiveZoneText = "Active zone: none";
-        _hasLockedPosition = false;
-        _lowerPenButtonHeld = false;
-        _upperPenButtonHeld = false;
-        UpdateModifiersText();
+        // Release tick goes through engine so release behavior stays centralized.
+        ProcessInteractionTick(
+            xPx: 0,
+            yPx: 0,
+            xNorm: 0,
+            yNorm: 0,
+            pressure: 0,
+            isDown: false,
+            isHovering: false,
+            penButtons: _lastWintabButtons,
+            backend: InteractionBackend.Unknown);
+
+        CursorDot.Visibility = Visibility.Collapsed;
+        CursorDot.Opacity = 0.85;
     }
 
     private void SendZoneRelease(ZoneConfig? zone)
@@ -2367,52 +2415,24 @@ public partial class MainWindow : Window
         int control = pktExt.ExpKey.Control;
         bool isPressed = pktExt.ExpKey.State != 0;
 
-        _expressKeyHeld.TryGetValue(control, out bool wasHeld);
-        _expressKeyToggleState.TryGetValue(control, out bool toggleState);
+        // Engine expects (lower 16 bits = key index, upper 16 bits = pressed flag).
+        uint encoded = (uint)(control & 0xFFFF) | (isPressed ? 0x0001_0000u : 0u);
+        ApplyInteractionResult(_padInteractionEngine.Process(
+            BuildInteractionConfig(),
+            BuildZoneSnapshots(),
+            _interactionState,
+            new InteractionInput(
+                XNorm: 0,
+                YNorm: 0,
+                Pressure: 0,
+                IsDown: false,
+                IsHovering: false,
+                PenButtons: encoded,
+                Backend: InteractionBackend.ExpressKey)));
 
-        bool justPressed = isPressed && !wasHeld;
-        bool justReleased = !isPressed && wasHeld;
-
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, control + 1);
-        var keyConfig = _config.ExpressKeys[control];
-        string action = NormalizePenButtonAction(keyConfig.Action);
-        int channel = keyConfig.MidiChannel;
-        int cc = Math.Clamp(keyConfig.Cc, 0, 127);
-        int note = Math.Clamp(keyConfig.Note, 0, 127);
-
-        if (string.Equals(action, PenButtonActions.CcMomentary, StringComparison.Ordinal))
-        {
-            if (justPressed)
-                SendCcIfChanged(channel, cc, 127, force: true);
-            else if (justReleased)
-                SendCcIfChanged(channel, cc, 0, force: true);
-        }
-        else if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal))
-        {
-            if (justPressed)
-            {
-                toggleState = !toggleState;
-                SendCcIfChanged(channel, cc, toggleState ? 127 : 0, force: true);
-            }
-        }
-        else if (string.Equals(action, PenButtonActions.NoteMomentary, StringComparison.Ordinal))
-        {
-            if (justPressed)
-                SendNoteIfChanged(channel, note, true, 127, force: true);
-            else if (justReleased)
-                SendNoteIfChanged(channel, note, false, 0, force: true);
-        }
-        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal))
-        {
-            if (justPressed)
-            {
-                toggleState = !toggleState;
-                SendNoteIfChanged(channel, note, toggleState, toggleState ? 127 : 0, force: true);
-            }
-        }
-
-        _expressKeyHeld[control] = isPressed;
-        _expressKeyToggleState[control] = toggleState;
+        string action = control >= 0 && control < _config.ExpressKeys.Count
+            ? NormalizePenButtonAction(_config.ExpressKeys[control].Action)
+            : "Unknown";
 
         _expressKeyDiagnostics = $"EK{control}: {(isPressed ? "pressed" : "released")} [{action}]";
         MarkInputBackend($"Wintab EK{control}");
@@ -2437,7 +2457,6 @@ public partial class MainWindow : Window
         double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
         MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
         UpdatePenButtonsDebug(packet.Buttons);
-        UpdatePenButtonActionState(packet.Buttons);
         double xPx = xNorm * width;
         double yPx = yNorm * height;
         int pressure = context.PressureMax > 0
@@ -2457,20 +2476,31 @@ public partial class MainWindow : Window
             }
 
             CursorDot.Opacity = 0.35;
-            CursorDot.Visibility = Visibility.Visible;
-            Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
-            Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
-
-            var hoverZone = FindMatchingZone(xNorm, yNorm);
-            _viewModel.ActiveZoneText = hoverZone is not null
-                ? $"Hovering: {hoverZone.Name}"
-                : "Hovering: outside zones";
+            ProcessInteractionTick(
+                xPx: xPx,
+                yPx: yPx,
+                xNorm: xNorm,
+                yNorm: yNorm,
+                pressure: 0,
+                isDown: false,
+                isHovering: true,
+                penButtons: packet.Buttons,
+                backend: InteractionBackend.Wintab);
             return;
         }
 
         CursorDot.Opacity = 0.85;
         _isActive = true;
-        HandlePoint(xPx, yPx, xNorm, yNorm, pressure);
+        ProcessInteractionTick(
+            xPx: xPx,
+            yPx: yPx,
+            xNorm: xNorm,
+            yNorm: yNorm,
+            pressure: pressure,
+            isDown: true,
+            isHovering: false,
+            penButtons: packet.Buttons,
+            backend: InteractionBackend.Wintab);
     }
 
     private static double NormalizeWintabCoordinate(int value, int min, int max)
@@ -2492,42 +2522,6 @@ public partial class MainWindow : Window
     private bool AllowsStylusMouseFallback()
     {
         return !string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
-    }
-
-    private (double x, double y) ApplyPositionConditioning(ZoneConfig zone, double x, double y)
-    {
-        if (!_smoothedZonePoints.TryGetValue(zone, out Point lastPoint))
-        {
-            var initial = new Point(x, y);
-            _smoothedZonePoints[zone] = initial;
-            return (initial.X, initial.Y);
-        }
-
-        double deadZone = Math.Clamp(_config.PositionDeadZone, 0.0, 0.1);
-        double smoothing = Math.Clamp(_config.PositionSmoothing, 0.0, 0.95);
-        double alpha = 1.0 - smoothing;
-
-        double targetX = Math.Abs(x - lastPoint.X) < deadZone ? lastPoint.X : x;
-        double targetY = Math.Abs(y - lastPoint.Y) < deadZone ? lastPoint.Y : y;
-
-        double filteredX = lastPoint.X + ((targetX - lastPoint.X) * alpha);
-        double filteredY = lastPoint.Y + ((targetY - lastPoint.Y) * alpha);
-        var filtered = new Point(Math.Clamp(filteredX, 0.0, 1.0), Math.Clamp(filteredY, 0.0, 1.0));
-        _smoothedZonePoints[zone] = filtered;
-        return (filtered.X, filtered.Y);
-    }
-
-    private int ApplyPressureCurve(int pressure)
-    {
-        double normalized = Math.Clamp(pressure / 127.0, 0.0, 1.0);
-        double curved = _config.PressureCurve switch
-        {
-            "Logarithmic" => Math.Sqrt(normalized),
-            "Exponential" => Math.Pow(normalized, 2.0),
-            _ => normalized
-        };
-
-        return Math.Clamp((int)Math.Round(curved * 127.0), 0, 127);
     }
 
     private static double Snap(double value, double increment)

@@ -1,4 +1,5 @@
 using System;
+using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using TabletMidiPad.Views;
 
@@ -26,6 +27,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
+        container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
 
         // Views (created by DI so they can receive view models/services later).
         container.AddTransient(c => new MainWindow(
@@ -34,7 +36,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IWacomServiceController>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
-            c.GetRequiredService<IConfigValueParser>()));
+            c.GetRequiredService<IConfigValueParser>(),
+            c.GetRequiredService<IPadInteractionEngine>()));
 
         return container;
     }

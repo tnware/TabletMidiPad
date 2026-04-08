@@ -25,6 +25,8 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         string lowerAction = NormalizePenButtonAction(config.LowerPenButtonAction);
         string upperAction = NormalizePenButtonAction(config.UpperPenButtonAction);
 
+        List<MidiMessage>? penButtonMessages = null;
+
         // Express key input is a separate path; it does not affect active zone / XY.
         if (input.Backend == InteractionBackend.ExpressKey)
         {
@@ -39,7 +41,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
                 MidiMessages: ek);
         }
 
-        UpdatePenButtonActionState(config, input.PenButtons, state, lowerAction, upperAction);
+        penButtonMessages = UpdatePenButtonActionState(config, input.PenButtons, state, lowerAction, upperAction);
 
         if (input.IsHovering)
         {
@@ -50,7 +52,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
                 ActiveZoneLabel: hoverText,
                 ValueLabel: hoverIndex >= 0 ? hoverText : "Outside configured zones",
                 ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
-                MidiMessages: Array.Empty<MidiMessage>());
+                MidiMessages: penButtonMessages is null ? Array.Empty<MidiMessage>() : penButtonMessages);
         }
 
         if (!input.IsDown)
@@ -66,6 +68,11 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             state.HasLockedPosition = false;
             state.LowerPenButtonHeld = false;
             state.UpperPenButtonHeld = false;
+
+            if (penButtonMessages is not null && penButtonMessages.Count > 0)
+            {
+                messages.AddRange(penButtonMessages);
+            }
 
             return new InteractionResult(
                 ActiveZoneIndex: -1,
@@ -89,16 +96,39 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             InteractionResult switched = ProcessActiveZone(config, zones, input, state, lowerAction, upperAction);
             if (switchMessages.Count == 0)
             {
-                return switched;
+                if (penButtonMessages is null || penButtonMessages.Count == 0)
+                {
+                    return switched;
+                }
+
+                var combined2 = new List<MidiMessage>(penButtonMessages.Count + switched.MidiMessages.Count);
+                combined2.AddRange(penButtonMessages);
+                combined2.AddRange(switched.MidiMessages);
+                return switched with { MidiMessages = combined2 };
             }
 
             var combined = new List<MidiMessage>(switchMessages.Count + switched.MidiMessages.Count);
             combined.AddRange(switchMessages);
             combined.AddRange(switched.MidiMessages);
+
+            if (penButtonMessages is not null && penButtonMessages.Count > 0)
+            {
+                combined.InsertRange(0, penButtonMessages);
+            }
+
             return switched with { MidiMessages = combined };
         }
 
-        return ProcessActiveZone(config, zones, input, state, lowerAction, upperAction);
+        InteractionResult result = ProcessActiveZone(config, zones, input, state, lowerAction, upperAction);
+        if (penButtonMessages is null || penButtonMessages.Count == 0)
+        {
+            return result;
+        }
+
+        var combined3 = new List<MidiMessage>(penButtonMessages.Count + result.MidiMessages.Count);
+        combined3.AddRange(penButtonMessages);
+        combined3.AddRange(result.MidiMessages);
+        return result with { MidiMessages = combined3 };
     }
 
     private static InteractionResult ProcessActiveZone(
@@ -267,13 +297,15 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         return messages;
     }
 
-    private static void UpdatePenButtonActionState(
+    private static List<MidiMessage>? UpdatePenButtonActionState(
         PadInteractionConfig config,
         uint buttons,
         InteractionState state,
         string lowerAction,
         string upperAction)
     {
+        List<MidiMessage>? messages = null;
+
         HandlePenButtonAction(
             isHeld: (buttons & 0x0002) != 0,
             state: state,
@@ -281,7 +313,8 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             action: lowerAction,
             midiChannel: config.LowerPenButtonMidiChannel,
             cc: config.LowerPenButtonCc,
-            note: config.LowerPenButtonNote);
+            note: config.LowerPenButtonNote,
+            messages: ref messages);
 
         HandlePenButtonAction(
             isHeld: (buttons & 0x0004) != 0,
@@ -290,7 +323,10 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             action: upperAction,
             midiChannel: config.UpperPenButtonMidiChannel,
             cc: config.UpperPenButtonCc,
-            note: config.UpperPenButtonNote);
+            note: config.UpperPenButtonNote,
+            messages: ref messages);
+
+        return messages;
     }
 
     private static void HandlePenButtonAction(
@@ -300,7 +336,8 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         string action,
         int midiChannel,
         int cc,
-        int note)
+        int note,
+        ref List<MidiMessage>? messages)
     {
         bool heldState = isLower ? state.LowerPenButtonHeld : state.UpperPenButtonHeld;
         bool toggleState = isLower ? state.LowerPenButtonToggle : state.UpperPenButtonToggle;
@@ -313,20 +350,43 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             state.HasLockedPosition = false;
         }
 
-        // Note/CC actions are emitted via normal engine output only for express keys,
-        // matching the current app behavior where pen button MIDI actions are sent immediately.
-        // For now, we keep state transitions only; message emission can be moved here later if desired.
-        _ = midiChannel;
-        _ = cc;
-        _ = note;
-
-        if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal) && justPressed)
+        if (string.Equals(action, PenButtonActions.CcMomentary, StringComparison.Ordinal))
         {
-            toggleState = !toggleState;
+            if (justPressed)
+            {
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Cc(midiChannel, cc, 127, force: true));
+            }
+            else if (justReleased)
+            {
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Cc(midiChannel, cc, 0, force: true));
+            }
         }
-        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal) && justPressed)
+        else if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal))
         {
-            toggleState = !toggleState;
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Cc(midiChannel, cc, toggleState ? 127 : 0, force: true));
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.NoteMomentary, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Note(midiChannel, note, on: true, velocity: 127, force: true));
+            }
+            else if (justReleased)
+            {
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Note(midiChannel, note, on: false, velocity: 0, force: true));
+            }
+        }
+        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal))
+        {
+            if (justPressed)
+            {
+                toggleState = !toggleState;
+                (messages ??= new List<MidiMessage>(capacity: 1)).Add(MidiMessage.Note(midiChannel, note, on: toggleState, velocity: toggleState ? 127 : 0, force: true));
+            }
         }
 
         if (justReleased)

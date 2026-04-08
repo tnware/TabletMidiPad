@@ -146,5 +146,92 @@ public sealed class PadInteractionEngineTests
         Assert.Contains(released.MidiMessages, m => m.Kind == MidiMessageKind.ControlChange && m.Channel == 2 && m.Number == 21 && m.Value == 0 && m.Force);
         Assert.Contains(released.MidiMessages, m => m.Kind == MidiMessageKind.ControlChange && m.Channel == 2 && m.Number == 22 && m.Value == 0 && m.Force);
     }
+
+    [Fact]
+    public void PenButton_CcMomentary_EmitsOnPressAndOffOnRelease()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: false,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.CcMomentary,
+            LowerPenButtonMidiChannel: 3,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        var zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "Z",
+                Enabled: true,
+                MidiChannel: 1,
+                CcX: 10,
+                CcY: 11,
+                CcPressure: 12,
+                SendX: false,
+                SendY: false,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: false,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0),
+        };
+
+        var state = new InteractionState();
+
+        // Press lower pen button: bit 1 (0x0002).
+        InteractionResult pressed = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(
+                XNorm: 0.5,
+                YNorm: 0.5,
+                Pressure: 0,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0x0002,
+                Backend: InteractionBackend.Wintab));
+
+        Assert.Contains(pressed.MidiMessages, m =>
+            m.Kind == MidiMessageKind.ControlChange &&
+            m.Channel == 3 &&
+            m.Number == 64 &&
+            m.Value == 127 &&
+            m.Force);
+
+        // Release lower pen button while still down.
+        InteractionResult released = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(
+                XNorm: 0.5,
+                YNorm: 0.5,
+                Pressure: 0,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0x0000,
+                Backend: InteractionBackend.Wintab));
+
+        Assert.Contains(released.MidiMessages, m =>
+            m.Kind == MidiMessageKind.ControlChange &&
+            m.Channel == 3 &&
+            m.Number == 64 &&
+            m.Value == 0 &&
+            m.Force);
+    }
 }
 
