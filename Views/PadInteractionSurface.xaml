@@ -1,0 +1,32 @@
+<UserControl x:Class="TabletMidiPad.Views.PadInteractionSurface"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource PanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="14">
+        <Grid>
+            <Canvas x:Name="Pad"
+                    Background="Transparent"
+                    SizeChanged="Pad_SizeChanged"
+                    StylusDown="Pad_StylusDown"
+                    StylusMove="Pad_StylusMove"
+                    StylusUp="Pad_StylusUp"
+                    MouseDown="Pad_MouseDown"
+                    MouseMove="Pad_MouseMove"
+                    MouseUp="Pad_MouseUp"/>
+
+            <Canvas x:Name="ZoneOverlayCanvas"
+                    IsHitTestVisible="False"/>
+
+            <Canvas IsHitTestVisible="False">
+                <Ellipse x:Name="CursorDot"
+                         Width="14"
+                         Height="14"
+                         Fill="{StaticResource AccentBrushHover}"
+                         Opacity="0.85"
+                         Visibility="Collapsed"/>
+            </Canvas>
+        </Grid>
+    </Border>
+</UserControl>

@@ -53,7 +53,7 @@ public sealed record MainWindowPadOverlayTheme(
 /// <summary>
 /// Cursor dot layout for one application step.
 /// </summary>
-internal readonly record struct CursorTickChrome(
+public readonly record struct CursorTickChrome(
     bool ShouldApply,
     Visibility Visibility,
     double Left,

@@ -7,7 +7,7 @@ using TabletMidiPad.Core.Interaction;
 namespace TabletMidiPad.Services;
 
 /// <summary>
-/// Default pad presentation coordinator for <see cref="Views.MainWindow"/>.
+/// Default pad presentation coordinator for <see cref="Views.PadInteractionSurface"/> (invoked by the main window).
 /// </summary>
 internal sealed class MainWindowPadPresentationCoordinator : IMainWindowPadPresentationCoordinator
 {

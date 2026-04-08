@@ -30,7 +30,6 @@ public partial class MainWindow : Window
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IZoneEditorService _zoneEditorService;
-    private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
     private readonly IZoneResizeService _zoneResizeService;
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
@@ -42,7 +41,6 @@ public partial class MainWindow : Window
     private readonly IMainWindowInputEventFlowCoordinator _inputEventFlowCoordinator;
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
-    private readonly IMainWindowPadPresentationCoordinator _padPresentationCoordinator;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IConfigValueParser _configValueParser;
@@ -53,6 +51,8 @@ public partial class MainWindow : Window
     private string _wintabDiagnostics = "Wintab not initialized yet";
     private uint _lastWintabButtons;
     private readonly InteractionState _interactionState = new();
+
+    private Canvas Pad => PadSurface.PadInputElement;
 
     private PadInteractionConfig BuildInteractionConfig()
     {
@@ -194,7 +194,7 @@ public partial class MainWindow : Window
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
-        _zoneOverlayRenderer = zoneOverlayRenderer ?? throw new ArgumentNullException(nameof(zoneOverlayRenderer));
+        ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
@@ -208,9 +208,21 @@ public partial class MainWindow : Window
         _inputEventFlowCoordinator = inputEventFlowCoordinator ?? throw new ArgumentNullException(nameof(inputEventFlowCoordinator));
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
-        _padPresentationCoordinator = padPresentationCoordinator ?? throw new ArgumentNullException(nameof(padPresentationCoordinator));
+        ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
+        InitializeComponent();
+        PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
+        PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
+        PadSurface.PadStylusDown += Pad_StylusDown;
+        PadSurface.PadStylusMove += Pad_StylusMove;
+        PadSurface.PadStylusUp += Pad_StylusUp;
+        PadSurface.PadMouseDown += Pad_MouseDown;
+        PadSurface.PadMouseMove += Pad_MouseMove;
+        PadSurface.PadMouseUp += Pad_MouseUp;
+        _viewModel = new MainViewModel();
+        DataContext = _viewModel;
+        InitializeCommands();
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -225,7 +237,7 @@ public partial class MainWindow : Window
                     HandleRelease();
                 }
 
-                ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
+                PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
                 _viewModel.ActiveZoneText = "Active zone: none";
             }
         };
@@ -234,10 +246,6 @@ public partial class MainWindow : Window
             _wintabDiagnostics = diagnostics;
             UpdateInputBackendStatus();
         };
-        InitializeComponent();
-        _viewModel = new MainViewModel();
-        DataContext = _viewModel;
-        InitializeCommands();
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
@@ -343,7 +351,7 @@ public partial class MainWindow : Window
         else
         {
             UpdateUiForCurrentConfig();
-            DrawZoneOverlay();
+            RefreshPadZoneOverlay();
         }
 
         if (applyResult.ShouldRebindInputBackend)
@@ -398,7 +406,7 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
         _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = result.StatusMessage;
     }
@@ -411,7 +419,7 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
         _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = result.StatusMessage;
     }
@@ -428,7 +436,7 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
         _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = result.StatusMessage;
     }
@@ -504,36 +512,8 @@ public partial class MainWindow : Window
         SyncPressureSplitBorder();
     }
 
-    private static readonly string[] ZonePaletteColorKeys =
-    {
-        "ZonePalette1Color",
-        "ZonePalette2Color",
-        "ZonePalette3Color",
-        "ZonePalette4Color",
-        "ZonePalette5Color",
-        "ZonePalette6Color"
-    };
-
     private static Brush ThemeBrush(string key, Brush fallback)
         => Application.Current?.Resources[key] as Brush ?? fallback;
-
-    private static Color ThemeColor(string key, Color fallback)
-    {
-        if (Application.Current?.Resources[key] is Color color)
-        {
-            return color;
-        }
-
-        if (Application.Current?.Resources[key] is SolidColorBrush brush)
-        {
-            return brush.Color;
-        }
-
-        return fallback;
-    }
-
-    private static Color GetZonePaletteColor(int index)
-        => ThemeColor(ZonePaletteColorKeys[index % ZonePaletteColorKeys.Length], Color.FromRgb(0x67, 0xD6, 0x8A));
 
     private void SyncPressureSplitBorder()
     {
@@ -645,12 +625,7 @@ public partial class MainWindow : Window
 
         _selectedZoneIndex = ZoneListBox.SelectedIndex;
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
-    }
-
-    private void Pad_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void ApplySettings()
@@ -667,7 +642,7 @@ public partial class MainWindow : Window
             }
 
             UpdateUiForCurrentConfig();
-            DrawZoneOverlay();
+            RefreshPadZoneOverlay();
 
             SettingsResultText.Foreground = Brushes.DarkSeaGreen;
             SettingsResultText.Text = "Settings applied and saved.";
@@ -684,7 +659,7 @@ public partial class MainWindow : Window
         _midiEngine.Restart(_config);
         _midiEngine.ClearCachedValues();
         UpdateUiForCurrentConfig();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void LoadConfigIntoUi(AppConfig config)
@@ -700,7 +675,7 @@ public partial class MainWindow : Window
         SyncToolbar();
 
         _isLoadingUi = false;
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void SyncToolbar()
@@ -787,7 +762,7 @@ public partial class MainWindow : Window
         HandleStylus(e);
         _isActive = false;
         Pad.ReleaseStylusCapture();
-        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
+        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
         HandleRelease();
     }
 
@@ -852,7 +827,7 @@ public partial class MainWindow : Window
         HandleMouse(e);
         _isActive = false;
         Pad.ReleaseMouseCapture();
-        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
+        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
         HandleRelease();
     }
 
@@ -903,7 +878,7 @@ public partial class MainWindow : Window
         _selectedZoneIndex = zoneIndex;
         ZoneListBox.SelectedIndex = zoneIndex;
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void UpdateZoneResize(Point pos)
@@ -931,7 +906,7 @@ public partial class MainWindow : Window
         zone.Height = update.Height;
 
         LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void FinishZoneResize()
@@ -999,11 +974,9 @@ public partial class MainWindow : Window
 
     private void ProcessInteractionTick(InteractionInput input, Point pixelPosition, double? cursorOpacityOverride = null)
     {
-        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorForInteractionTick(
+        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorForInteractionTick(
             input,
             pixelPosition,
-            CursorDot.Width,
-            CursorDot.Height,
             cursorOpacityOverride));
 
         InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
@@ -1014,7 +987,7 @@ public partial class MainWindow : Window
 
         ApplyInteractionResult(result);
 
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
     }
 
     private void HandleRelease()
@@ -1026,49 +999,13 @@ public partial class MainWindow : Window
             _interactionState,
             _lastWintabButtons);
         ApplyInteractionResult(releaseResult);
-        DrawZoneOverlay();
+        RefreshPadZoneOverlay();
 
-        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
+        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
     }
 
-    private void DrawZoneOverlay()
-    {
-        var theme = new MainWindowPadOverlayTheme(
-            ZonePalette: Enumerable.Range(0, _config.Zones.Count).Select(GetZonePaletteColor).ToList(),
-            ColorWindow: ThemeColor("ColorWindow", Colors.Black),
-            TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),
-            TextMutedBrush: ThemeBrush("TextMutedBrush", Brushes.Gainsboro),
-            TextSoftBrush: ThemeBrush("TextSoftBrush", Brushes.Gray),
-            DangerBrush: ThemeBrush("DangerBrush", Brushes.IndianRed),
-            AccentBrushHover: ThemeBrush("AccentBrushHover", Brushes.White),
-            SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black));
-
-        ZoneOverlayRenderRequest request = _padPresentationCoordinator.BuildZoneOverlayRequest(
-            _config.Zones,
-            _lastZonePoints,
-            _selectedZoneIndex,
-            Pad.ActualWidth,
-            Pad.ActualHeight,
-            theme);
-
-        _zoneOverlayRenderer.Render(ZoneOverlayCanvas, request);
-    }
-
-    private void ApplyCursorChrome(CursorTickChrome chrome)
-    {
-        if (!chrome.ShouldApply)
-        {
-            return;
-        }
-
-        CursorDot.Visibility = chrome.Visibility;
-        Canvas.SetLeft(CursorDot, chrome.Left);
-        Canvas.SetTop(CursorDot, chrome.Top);
-        if (chrome.Opacity.HasValue)
-        {
-            CursorDot.Opacity = chrome.Opacity.Value;
-        }
-    }
+    private void RefreshPadZoneOverlay()
+        => PadSurface.RefreshZoneOverlay(_config.Zones, _lastZonePoints, _selectedZoneIndex);
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
         => _midiEngine.SendCcIfChanged(channel, cc, value, force);
@@ -1189,7 +1126,7 @@ public partial class MainWindow : Window
     {
         InputBackendResetResult resetState = _inputBackendCoordinator.BuildResetState();
         _isActive = resetState.IsActive;
-        CursorDot.Visibility = Visibility.Collapsed;
+        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
         _viewModel.ActiveZoneText = resetState.ActiveZoneText;
         _viewModel.ValueText = resetState.ValueText;
         _viewModel.PenButtonsText = resetState.PenButtonsText;
