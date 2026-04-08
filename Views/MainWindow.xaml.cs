@@ -532,158 +532,12 @@ public partial class MainWindow : Window
         ApplySettings();
     }
 
-    private void MenuSaveSettings_Click(object sender, RoutedEventArgs e)
-    {
-        ApplySettings();
-    }
-
-    private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
-    {
-        _config = AppConfig.Default;
-        _zoneConfigurationService.AutoTileZones(_config);
-        LoadConfigIntoUi(_config);
-        ApplySettings();
-    }
-
-    private void MenuPreferences_Click(object sender, RoutedEventArgs e)
-    {
-        int effectiveExpressKeyCount = Math.Max(_expressKeyCount, _config.ExpressKeys.Count);
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
-        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
-        if (result is null)
-        {
-            return;
-        }
-
-        string previousAppPortName = _config.AppPortName;
-        string previousDawPortName = _config.DawPortName;
-        string previousAssociationId = _config.LoopbackAssociationId;
-        string previousInputBackendMode = _config.InputBackendMode;
-
-        _config.DawPortName = result.DawPortName;
-        _config.AppPortName = result.AppPortName;
-        _config.LoopbackAssociationId = result.AssociationId;
-        _config.MousePressureValue = result.MousePressureValue;
-        _config.PositionDeadZone = result.PositionDeadZone;
-        _config.PositionSmoothing = result.PositionSmoothing;
-        _config.PressureCurve = result.PressureCurve;
-        _config.InputBackendMode = result.InputBackendMode;
-        _config.LowerPenButtonAction = result.LowerPenButtonAction;
-        _config.LowerPenButtonMidiChannel = result.LowerPenButtonMidiChannel;
-        _config.LowerPenButtonCc = result.LowerPenButtonCc;
-        _config.LowerPenButtonNote = result.LowerPenButtonNote;
-        _config.UpperPenButtonAction = result.UpperPenButtonAction;
-        _config.UpperPenButtonMidiChannel = result.UpperPenButtonMidiChannel;
-        _config.UpperPenButtonCc = result.UpperPenButtonCc;
-        _config.UpperPenButtonNote = result.UpperPenButtonNote;
-        _config.SendPressureGlobally = result.SendPressureGlobally;
-        _config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
-        _config.ExpressKeys = result.ExpressKeys;
-
-        CommitCurrentZoneEdits();
-
-        try
-        {
-            ValidateConfig(_config);
-            _configStore.Save(_config);
-        }
-        catch (Exception ex)
-        {
-            SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = ex.Message;
-            return;
-        }
-
-        bool routingChanged =
-            !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
-            !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
-            !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
-        bool inputBackendChanged =
-            !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
-
-        if (routingChanged || _midiOutHandle == IntPtr.Zero)
-        {
-            RestartMidi();
-        }
-        else
-        {
-            _lastSentValues.Clear();
-            _activeZone = null;
-            UpdateUiForCurrentConfig();
-            DrawZoneOverlay();
-        }
-
-        if (inputBackendChanged)
-        {
-            RebindInputBackend();
-        }
-
-        SyncToolbar();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Preferences applied and saved.";
-    }
-
-    private void MenuExit_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
-    private void MenuRefreshWacom_Click(object sender, RoutedEventArgs e)
-    {
-        RefreshWacomServiceStatus();
-    }
-
-    private void MenuReconnectPen_Click(object sender, RoutedEventArgs e)
-    {
-        ReconnectPenCore();
-    }
-
     private void ReconnectPenCore()
     {
         CommitCurrentZoneEdits();
         RebindInputBackend();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Input backend reconnected.";
-    }
-
-    private async void MenuStartWacomService_Click(object sender, RoutedEventArgs e)
-    {
-        MenuStartWacomService.IsEnabled = false;
-        MenuWacomServiceStatus.Header = "Service: starting...";
-        bool started = false;
-        string? failureText = null;
-
-        try
-        {
-            await Task.Run(() => _wacomServiceController.Start());
-            started = true;
-        }
-        catch (Win32Exception ex)
-        {
-            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
-        }
-        catch (InvalidOperationException ex)
-        {
-            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
-        }
-        catch (Exception ex)
-        {
-            failureText = $"Could not start Wacom Professional Service: {ex.Message}";
-        }
-        finally
-        {
-            if (started)
-            {
-                RefreshWacomServiceStatus();
-                RebindInputBackend();
-            }
-            else
-            {
-                MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
-
-                RefreshWacomServiceStatus();
-            }
-        }
     }
 
     private void ToolbarPressureToggle_Click(object sender, RoutedEventArgs e)
@@ -826,85 +680,6 @@ public partial class MainWindow : Window
         SyncToolbar();
     }
 
-    private void MenuAbout_Click(object sender, RoutedEventArgs e)
-    {
-        MessageBox.Show(
-            "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
-            "About Tablet MIDI Pad",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
-    }
-
-    private void AutoLayoutButton_Click(object sender, RoutedEventArgs e)
-    {
-        CommitCurrentZoneEdits();
-        AutoTileZones(_config);
-        RefreshZoneList();
-        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
-        LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zones re-tiled across the pad. Click Apply Settings to save.";
-    }
-
-    private void AddZoneButton_Click(object sender, RoutedEventArgs e)
-    {
-        CommitCurrentZoneEdits();
-
-        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(_config);
-
-        var zone = new ZoneConfig
-        {
-            Name = $"Zone {_config.Zones.Count + 1}",
-            Enabled = true,
-            MidiChannel = 1,
-            CcX = nextCcStart,
-            CcY = nextCcStart + 1,
-            CcPressure = nextCcStart + 2,
-            SendX = true,
-            SendY = true,
-            InvertY = true,
-            SendPressure = true,
-            ReleaseBehavior = ZoneReleaseBehaviors.NoSendOnRelease,
-            ResetPressureOnRelease = false,
-            Left = 0.0,
-            Top = 0.0,
-            Width = 0.5,
-            Height = 0.5
-        };
-
-        _config.Zones.Add(zone);
-        _zoneConfigurationService.AutoTileZones(_config);
-        RefreshZoneList();
-        ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
-        LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
-    }
-
-    private void RemoveZoneButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
-        {
-            return;
-        }
-
-        _config.Zones.RemoveAt(_selectedZoneIndex);
-        if (_config.Zones.Count == 0)
-        {
-            _config.Zones.Add(ZoneConfig.CreateDefault());
-        }
-
-        _zoneConfigurationService.AutoTileZones(_config);
-        RefreshZoneList();
-        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
-        LoadSelectedZoneIntoEditor();
-        DrawZoneOverlay();
-        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone removed. Click Apply Settings to save.";
-    }
-
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_isLoadingUi)
@@ -1031,11 +806,6 @@ public partial class MainWindow : Window
 
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
-    }
-
-    private void SetZoneSelectionSummary(ZoneConfig? zone)
-    {
-        _zoneEditorService.SetZoneSelectionSummary(_viewModel, zone);
     }
 
     private static void ValidateConfig(AppConfig config)
