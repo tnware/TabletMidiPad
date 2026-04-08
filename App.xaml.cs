@@ -18,13 +18,25 @@ public partial class App : Application
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
-        _container = AppBootstrapper.BuildContainer();
-        RegisterApplicationWindowIcon();
-        base.OnStartup(e);
+        try
+        {
+            _container = AppBootstrapper.BuildContainer();
+            RegisterApplicationWindowIcon();
+            base.OnStartup(e);
 
-        var mainWindow = _container.GetRequiredService<MainWindow>();
-        MainWindow = mainWindow;
-        mainWindow.Show();
+            var mainWindow = _container.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                ex.ToString(),
+                "TabletMidiPad startup failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(-1);
+        }
     }
 
     /// <summary>
