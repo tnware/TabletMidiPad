@@ -721,13 +721,16 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBox Name="ZoneNameTextBox"
-                                             Grid.Column="0"/>
+                                             Grid.Column="0"
+                                             Text="{Binding SelectedZoneName, UpdateSourceTrigger=PropertyChanged}"/>
                                     <ComboBox Name="ZoneChannelComboBox"
-                                              Grid.Column="2"/>
+                                              Grid.Column="2"
+                                              Text="{Binding SelectedZoneMidiChannelText, UpdateSourceTrigger=PropertyChanged}"/>
                                     <CheckBox Name="ZoneEnabledCheckBox"
                                               Grid.Column="3"
                                               Margin="10,0,0,0"
                                               VerticalAlignment="Center"
+                                              IsChecked="{Binding SelectedZoneEnabled}"
                                               Content="On"/>
                                 </Grid>
                                 <Border Margin="0,8,0,0"
@@ -754,6 +757,7 @@
 
                                 <Expander Name="ZoneDetailsExpander"
                                           Margin="0,12,0,0"
+                                          IsEnabled="{Binding IsZoneSelected}"
                                           IsExpanded="False">
                                     <Expander.Header>
                                         <TextBlock Text="Zone configuration"
@@ -780,21 +784,24 @@
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneCcXTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneCcXText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="CC Y"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneCcYTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneCcYText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="4">
                                                 <TextBlock Text="CC P"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneCcPressureTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneCcPressureText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                         </Grid>
 
@@ -818,28 +825,32 @@
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneLeftTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneLeftText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="Top"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneTopTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneTopText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="4">
                                                 <TextBlock Text="W"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneWidthTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneWidthText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="6">
                                                 <TextBlock Text="H"
                                                            Foreground="{StaticResource TextMutedBrush}"
                                                            FontSize="11"/>
                                                 <TextBox Name="ZoneHeightTextBox"
-                                                         Margin="0,4,0,0"/>
+                                                         Margin="0,4,0,0"
+                                                         Text="{Binding SelectedZoneHeightText, UpdateSourceTrigger=PropertyChanged}"/>
                                             </StackPanel>
                                         </Grid>
 
@@ -849,24 +860,30 @@
                                                    FontWeight="SemiBold"
                                                    Margin="0,14,0,6"/>
                                         <CheckBox Name="ZoneSendXCheckBox"
+                                                  IsChecked="{Binding SelectedZoneSendX}"
                                                   Content="Send X"/>
                                         <CheckBox Name="ZoneSendYCheckBox"
                                                   Margin="0,6,0,0"
+                                                  IsChecked="{Binding SelectedZoneSendY}"
                                                   Content="Send Y"/>
                                         <CheckBox Name="ZoneInvertXCheckBox"
                                                   Margin="0,6,0,0"
+                                                  IsChecked="{Binding SelectedZoneInvertX}"
                                                   Content="Invert X"/>
                                         <CheckBox Name="ZoneInvertYCheckBox"
                                                   Margin="0,6,0,0"
+                                                  IsChecked="{Binding SelectedZoneInvertY}"
                                                   Content="Invert Y"/>
                                         <CheckBox Name="ZoneSendPressureCheckBox"
                                                   Margin="0,6,0,0"
+                                                  IsChecked="{Binding SelectedZoneSendPressure}"
                                                   Content="Send pressure"/>
                                         <TextBlock Text="Release Behavior"
                                                    Foreground="{StaticResource TextMutedBrush}"
                                                    FontSize="11"
                                                    Margin="0,10,0,0"/>
                                         <ComboBox Name="ZoneReleaseBehaviorComboBox"
+                                                  Text="{Binding SelectedZoneReleaseBehavior, UpdateSourceTrigger=PropertyChanged}"
                                                   Margin="0,6,0,0"/>
                                     </StackPanel>
                                 </Expander>

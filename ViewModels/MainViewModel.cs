@@ -29,6 +29,23 @@ internal sealed class MainViewModel : ViewModelBase
     private string _zoneSelectionSummaryPrimaryText = "No zone selected";
     private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
     private int _selectedZoneIndex = -1;
+    private bool _zoneDetailsEnabled;
+    private string _zoneName = string.Empty;
+    private bool _zoneEnabled;
+    private string _zoneChannel = string.Empty;
+    private string _zoneCcX = string.Empty;
+    private string _zoneCcY = string.Empty;
+    private string _zoneCcPressure = string.Empty;
+    private string _zoneLeft = string.Empty;
+    private string _zoneTop = string.Empty;
+    private string _zoneWidth = string.Empty;
+    private string _zoneHeight = string.Empty;
+    private bool _zoneSendX = true;
+    private bool _zoneSendY = true;
+    private bool _zoneInvertX;
+    private bool _zoneInvertY;
+    private bool _zoneSendPressure = true;
+    private string _zoneReleaseBehavior = string.Empty;
 
     public string StatusText
     {
@@ -162,5 +179,107 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _selectedZoneIndex;
         set => SetProperty(ref _selectedZoneIndex, value);
+    }
+
+    public bool ZoneDetailsEnabled
+    {
+        get => _zoneDetailsEnabled;
+        set => SetProperty(ref _zoneDetailsEnabled, value);
+    }
+
+    public string ZoneName
+    {
+        get => _zoneName;
+        set => SetProperty(ref _zoneName, value);
+    }
+
+    public bool ZoneEnabled
+    {
+        get => _zoneEnabled;
+        set => SetProperty(ref _zoneEnabled, value);
+    }
+
+    public string ZoneChannel
+    {
+        get => _zoneChannel;
+        set => SetProperty(ref _zoneChannel, value);
+    }
+
+    public string ZoneCcX
+    {
+        get => _zoneCcX;
+        set => SetProperty(ref _zoneCcX, value);
+    }
+
+    public string ZoneCcY
+    {
+        get => _zoneCcY;
+        set => SetProperty(ref _zoneCcY, value);
+    }
+
+    public string ZoneCcPressure
+    {
+        get => _zoneCcPressure;
+        set => SetProperty(ref _zoneCcPressure, value);
+    }
+
+    public string ZoneLeft
+    {
+        get => _zoneLeft;
+        set => SetProperty(ref _zoneLeft, value);
+    }
+
+    public string ZoneTop
+    {
+        get => _zoneTop;
+        set => SetProperty(ref _zoneTop, value);
+    }
+
+    public string ZoneWidth
+    {
+        get => _zoneWidth;
+        set => SetProperty(ref _zoneWidth, value);
+    }
+
+    public string ZoneHeight
+    {
+        get => _zoneHeight;
+        set => SetProperty(ref _zoneHeight, value);
+    }
+
+    public bool ZoneSendX
+    {
+        get => _zoneSendX;
+        set => SetProperty(ref _zoneSendX, value);
+    }
+
+    public bool ZoneSendY
+    {
+        get => _zoneSendY;
+        set => SetProperty(ref _zoneSendY, value);
+    }
+
+    public bool ZoneInvertX
+    {
+        get => _zoneInvertX;
+        set => SetProperty(ref _zoneInvertX, value);
+    }
+
+    public bool ZoneInvertY
+    {
+        get => _zoneInvertY;
+        set => SetProperty(ref _zoneInvertY, value);
+    }
+
+    public bool ZoneSendPressure
+    {
+        get => _zoneSendPressure;
+        set => SetProperty(ref _zoneSendPressure, value);
+    }
+
+    public string ZoneReleaseBehavior
+    {
+        get => _zoneReleaseBehavior;
+        set => SetProperty(ref _zoneReleaseBehavior, value);
     }
 }
