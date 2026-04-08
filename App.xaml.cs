@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using TabletMidiPad.Composition;
+using TabletMidiPad.Views;
 
 namespace TabletMidiPad;
 

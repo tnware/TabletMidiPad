@@ -15,7 +15,7 @@ using System.Windows.Shapes;
 using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {

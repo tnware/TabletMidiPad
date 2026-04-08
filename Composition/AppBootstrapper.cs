@@ -1,5 +1,6 @@
 using System;
 using TabletMidiPad.Services;
+using TabletMidiPad.Views;
 
 namespace TabletMidiPad.Composition;
 

@@ -6,7 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class PreferencesWindow : Window
 {
