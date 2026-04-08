@@ -24,6 +24,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IConfigStore>(_ => new JsonConfigStore(AppConfig.GetConfigPath()));
         container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
+        container.AddSingleton<IWintabInputBackend>(_ => new WintabInputBackend());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
@@ -35,6 +36,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IConfigStore>(),
             c.GetRequiredService<IMidiEngine>(),
             c.GetRequiredService<IWacomServiceController>(),
+            c.GetRequiredService<IWintabInputBackend>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),

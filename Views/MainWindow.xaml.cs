@@ -30,20 +30,13 @@ public partial class MainWindow : Window
     private int _selectedZoneIndex = -1;
     private bool _useWintab;
     private int _selectedDeviceIndex = -1;
-    private HwndSource? _wintabMessageSource;
-    private readonly Dictionary<uint, WintabContextInfo> _wintabContexts = new();
-    private int _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
-    private int _wintabPacketExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
-    private int _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
-    private int _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
-    private int _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
-    private uint _expressKeysMask;
     private int _expressKeyCount;
     private string _expressKeyDiagnostics = "";
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
+    private readonly IWintabInputBackend _wintabInputBackend;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
@@ -163,6 +156,7 @@ public partial class MainWindow : Window
             new JsonConfigStore(AppConfig.GetConfigPath()),
             new WinMmMidiEngine(),
             new WacomServiceController(),
+            new WintabInputBackend(),
             new PreferencesDialogService(),
             new ZoneConfigurationService(),
             new ZoneOverlayRenderer(),
@@ -175,6 +169,7 @@ public partial class MainWindow : Window
         IConfigStore configStore,
         IMidiEngine midiEngine,
         IWacomServiceController wacomServiceController,
+        IWintabInputBackend wintabInputBackend,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
         IZoneOverlayRenderer zoneOverlayRenderer,
@@ -184,11 +179,36 @@ public partial class MainWindow : Window
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
+        _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _zoneOverlayRenderer = zoneOverlayRenderer ?? throw new ArgumentNullException(nameof(zoneOverlayRenderer));
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
+        _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
+        _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
+        _wintabInputBackend.ProximityChanged += (_, e) =>
+        {
+            _wintabDiagnostics = e.Diagnostics;
+            UpdateInputBackendStatus();
+            if (!e.Entering)
+            {
+                if (_isActive)
+                {
+                    _isActive = false;
+                    HandleRelease();
+                }
+
+                CursorDot.Visibility = Visibility.Collapsed;
+                CursorDot.Opacity = 0.85;
+                _viewModel.ActiveZoneText = "Active zone: none";
+            }
+        };
+        _wintabInputBackend.DiagnosticsChanged += (_, diagnostics) =>
+        {
+            _wintabDiagnostics = diagnostics;
+            UpdateInputBackendStatus();
+        };
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
@@ -200,6 +220,7 @@ public partial class MainWindow : Window
         {
             ShutdownMidi();
             ShutdownWintab();
+            _wintabInputBackend.Dispose();
         };
     }
 
@@ -1779,6 +1800,8 @@ public partial class MainWindow : Window
     private void InitializeWintab()
     {
         string backendMode = NormalizeInputBackendMode(_config.InputBackendMode);
+        PopulateTabletDeviceList();
+
         if (string.Equals(backendMode, "Stylus/Mouse Only", StringComparison.Ordinal))
         {
             ShutdownWintab();
@@ -1788,51 +1811,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        PopulateTabletDeviceList();
-
-        if (!WintabInterop.IsAvailable())
-        {
-            _useWintab = false;
-            _wintabDiagnostics = "Wintab32.dll not available";
-            _lastInputBackend = string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
+        _wintabInputBackend.Initialize(_selectedDeviceIndex);
+        _useWintab = _wintabInputBackend.IsActive;
+        _wintabDiagnostics = _useWintab ? "Wintab initialized" : "Wintab32.dll not available";
+        _lastInputBackend = _useWintab
+            ? "Wintab"
+            : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
                 ? "Wintab unavailable"
                 : "Stylus/Mouse Fallback";
-            UpdateInputBackendStatus();
-            return;
-        }
-
-        try
-        {
-            _wintabMessageSource = CreateWintabMessageWindow();
-            if (_wintabMessageSource is null)
-            {
-                return;
-            }
-
-            _wintabMessageSource.AddHook(WndProc);
-            int openedContexts = OpenWintabContexts();
-            _useWintab = openedContexts > 0;
-            _lastInputBackend = _useWintab
-                ? "Wintab"
-                : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                    ? "Wintab unavailable"
-                    : "Stylus/Mouse Fallback";
-            if (_useWintab)
-            {
-                _wintabDiagnostics = $"Opened {openedContexts} Wintab context(s)";
-            }
-
-            UpdateInputBackendStatus();
-        }
-        catch (Exception ex)
-        {
-            _useWintab = false;
-            _lastInputBackend = string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                ? "Wintab unavailable"
-                : "Stylus/Mouse Fallback";
-            _wintabDiagnostics = ex.Message;
-            UpdateInputBackendStatus();
-        }
+        UpdateInputBackendStatus();
     }
 
     private void PopulateTabletDeviceList()
@@ -1840,17 +1827,8 @@ public partial class MainWindow : Window
         TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
         TabletDeviceComboBox.Items.Clear();
 
-        if (!WintabInterop.IsAvailable())
-        {
-            TabletDeviceComboBox.Items.Add("No Wintab");
-            TabletDeviceComboBox.SelectedIndex = 0;
-            TabletDeviceComboBox.IsEnabled = false;
-            TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
-            return;
-        }
-
-        int deviceCount = WintabInterop.GetAttachedDeviceCount();
-        if (deviceCount <= 0)
+        IReadOnlyList<WintabTabletDevice> devices = _wintabInputBackend.GetAvailableDevices();
+        if (devices.Count <= 0)
         {
             TabletDeviceComboBox.Items.Add("No tablets");
             TabletDeviceComboBox.SelectedIndex = 0;
@@ -1863,14 +1841,11 @@ public partial class MainWindow : Window
         int validCount = 0;
         int selectIndex = 0;
 
-        for (int i = 0; i < deviceCount; i++)
+        foreach (WintabTabletDevice device in devices)
         {
-            string name = WintabInterop.GetDeviceName(i);
-            bool integrated = WintabInterop.IsIntegratedTablet(i);
-            string label = integrated ? $"{name} (built-in)" : name;
-            TabletDeviceComboBox.Items.Add(new TabletDeviceItem(i, label));
+            TabletDeviceComboBox.Items.Add(new TabletDeviceItem(device.DeviceIndex, device.Label));
 
-            if (_selectedDeviceIndex >= 0 && i == _selectedDeviceIndex)
+            if (_selectedDeviceIndex >= 0 && device.DeviceIndex == _selectedDeviceIndex)
             {
                 selectIndex = validCount;
             }
@@ -1910,247 +1885,21 @@ public partial class MainWindow : Window
 
     private void ShutdownWintab()
     {
-        if (_wintabMessageSource is not null)
-        {
-            _wintabMessageSource.RemoveHook(WndProc);
-            _wintabMessageSource.Dispose();
-            _wintabMessageSource = null;
-        }
-
-        foreach (uint contextHandle in _wintabContexts.Keys.ToArray())
-        {
-            try
-            {
-                WintabInterop.WTClose(contextHandle);
-            }
-            catch
-            {
-            }
-        }
-
-        _wintabContexts.Clear();
+        _wintabInputBackend.Shutdown();
         _useWintab = false;
         _lastInputBackend = "Stylus/Mouse Fallback";
         _wintabDiagnostics = "Wintab shut down";
-        _wintabPacketMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
-        _wintabPacketExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
-        _wintabContextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
-        _wintabProximityMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PROXIMITY;
-        _wintabInfoChangeMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_INFOCHANGE;
-        _expressKeysMask = 0;
-        _expressKeyHeld.Clear();
-        _expressKeyToggleState.Clear();
     }
 
-    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        if (msg == _wintabPacketMessage)
-        {
-            uint packetId = unchecked((uint)wParam.ToInt32());
-            uint context = unchecked((uint)lParam.ToInt32());
+    // WndProc and context plumbing have been extracted to IWintabInputBackend.
 
-            if (_wintabContexts.ContainsKey(context) && WintabInterop.WTPacket(context, packetId, out var packet))
-            {
-                HandleWintabPacket(context, packet);
-                handled = true;
-            }
-        }
-        else if (msg == _wintabPacketExtMessage)
-        {
-            uint packetId = unchecked((uint)wParam.ToInt32());
-            uint context = unchecked((uint)lParam.ToInt32());
+    // Message window creation moved to IWintabInputBackend.
 
-            if (WintabInterop.GetPacketExt(context, packetId, out var pktExt))
-            {
-                HandleExpressKeyPacket(pktExt);
-            }
-            else
-            {
-                _expressKeyDiagnostics = $"EK: GetPacketExt failed (ctx=0x{context:X}, pkt={packetId})";
-                UpdateInputBackendStatus();
-            }
-            handled = true;
-        }
-        else if (msg == _wintabContextOverlapMessage)
-        {
-            uint context = unchecked((uint)wParam.ToInt32());
-            if (_wintabContexts.ContainsKey(context))
-            {
-                _ = WintabInterop.WTOverlap(context, true);
-                _ = WintabInterop.WTEnable(context, true);
-                _wintabDiagnostics = $"WT_CTXOVERLAP recovered for context 0x{context:X}";
-                UpdateInputBackendStatus();
-                handled = true;
-            }
-        }
-        else if (msg == _wintabProximityMessage)
-        {
-            bool entering = unchecked((uint)lParam.ToInt32()) != 0;
-            _wintabDiagnostics = $"WT_PROXIMITY: wParam=0x{wParam.ToInt32():X} lParam=0x{lParam.ToInt32():X} entering={entering}";
-            UpdateInputBackendStatus();
+    // Context open/close moved to IWintabInputBackend.
 
-            if (!entering)
-            {
-                if (_isActive)
-                {
-                    _isActive = false;
-                    HandleRelease();
-                }
+    // Context open for device moved to IWintabInputBackend.
 
-                CursorDot.Visibility = Visibility.Collapsed;
-                CursorDot.Opacity = 0.85;
-                _viewModel.ActiveZoneText = "Active zone: none";
-            }
-
-            handled = true;
-        }
-        else if (msg == _wintabInfoChangeMessage)
-        {
-            ReinitializeWintabContexts();
-            handled = true;
-        }
-
-        return IntPtr.Zero;
-    }
-
-    private static HwndSource CreateWintabMessageWindow()
-    {
-        var parameters = new HwndSourceParameters("TabletMidiPadWintabSink")
-        {
-            Width = 1,
-            Height = 1,
-            WindowStyle = unchecked((int)0x80000000), // WS_POPUP
-            ExtendedWindowStyle = 0x08000000 // WS_EX_NOACTIVATE
-        };
-
-        return new HwndSource(parameters);
-    }
-
-    private int OpenWintabContexts()
-    {
-        _wintabContexts.Clear();
-        _expressKeyHeld.Clear();
-        _expressKeyToggleState.Clear();
-
-        _expressKeysMask = WintabInterop.GetExtensionMask(WintabInterop.WTX_EXPKEYS2);
-
-        int deviceIndex = _selectedDeviceIndex;
-        if (deviceIndex < 0)
-        {
-            try
-            {
-                var defaultCtx = WintabInterop.GetDefaultDigitizingContext();
-                deviceIndex = (int)defaultCtx.Device;
-            }
-            catch
-            {
-                deviceIndex = 0;
-            }
-        }
-
-        return OpenWintabContextForDevice(deviceIndex);
-    }
-
-    private int OpenWintabContextForDevice(int deviceIndex)
-    {
-        WintabInterop.LogContext context;
-        try
-        {
-            context = WintabInterop.GetDigitizerContext(deviceIndex);
-        }
-        catch (Exception ex)
-        {
-            _wintabDiagnostics = $"WTI_DDCTXS {deviceIndex} failed: {ex.Message}";
-            return 0;
-        }
-
-        var xAxis = WintabInterop.GetXAxis(deviceIndex);
-        var yAxis = WintabInterop.GetYAxis(deviceIndex);
-        var pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
-
-        if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
-        {
-            _wintabDiagnostics = $"Device {deviceIndex} axes invalid: X {xAxis.Min}-{xAxis.Max}, Y {yAxis.Min}-{yAxis.Max}";
-            return 0;
-        }
-
-        string name = WintabInterop.GetDeviceName(deviceIndex);
-        context.Name = $"TabletMidiPad {name}";
-        context.Options |= WintabInterop.CXO_MESSAGES;
-        context.Options &= ~WintabInterop.CXO_SYSTEM;
-        context.Locks =
-            WintabInterop.CXL_INSIZE |
-            WintabInterop.CXL_INASPECT |
-            WintabInterop.CXL_SENSITIVITY |
-            WintabInterop.CXL_MARGIN |
-            WintabInterop.CXL_SYSOUT;
-        context.PktData = WintabInterop.PK_STATUS | WintabInterop.PK_X | WintabInterop.PK_Y | WintabInterop.PK_NORMAL_PRESSURE | WintabInterop.PK_BUTTONS;
-        if (_expressKeysMask > 0)
-            context.PktData |= _expressKeysMask;
-        context.PktMode = 0;
-        context.MoveMask = context.PktData;
-        context.BtnUpMask = context.BtnDnMask;
-        context.OutOrgX = 0;
-        context.OutOrgY = 0;
-        context.OutExtX = xAxis.Max - xAxis.Min + 1;
-        context.OutExtY = -(yAxis.Max - yAxis.Min + 1);
-        context.SysMode = false;
-
-        _wintabPacketMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKET);
-        _wintabPacketExtMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PACKETEXT);
-        _wintabContextOverlapMessage = unchecked((int)context.MsgBase + WintabInterop.WT_CTXOVERLAP);
-        _wintabProximityMessage = unchecked((int)context.MsgBase + WintabInterop.WT_PROXIMITY);
-        _wintabInfoChangeMessage = unchecked((int)context.MsgBase + WintabInterop.WT_INFOCHANGE);
-
-        uint handle = WintabInterop.WTOpenA(_wintabMessageSource!.Handle, ref context, true);
-        if (handle == 0)
-        {
-            _wintabDiagnostics = $"WTOpenA failed for {name} (device {deviceIndex})";
-            return 0;
-        }
-
-        SetupExpressKeyOverrides(handle, (byte)deviceIndex);
-        _wintabDiagnostics = $"{name} (device {deviceIndex}) opened";
-        _wintabContexts[handle] = new WintabContextInfo(
-            DeviceIndex: deviceIndex,
-            OutputMinX: 0,
-            OutputMaxX: Math.Max(1, context.OutExtX - 1),
-            OutputMinY: 0,
-            OutputMaxY: Math.Max(1, Math.Abs(context.OutExtY) - 1),
-            PressureMax: Math.Max(1, pressureAxis.Max),
-            IsIntegrated: WintabInterop.IsIntegratedTablet(deviceIndex)
-        );
-
-        return _wintabContexts.Count;
-    }
-
-    private void ReinitializeWintabContexts()
-    {
-        if (_wintabMessageSource is null)
-        {
-            return;
-        }
-
-        foreach (uint contextHandle in _wintabContexts.Keys.ToArray())
-        {
-            try
-            {
-                WintabInterop.WTClose(contextHandle);
-            }
-            catch
-            {
-            }
-        }
-
-        int openedContexts = OpenWintabContexts();
-        _useWintab = openedContexts > 0;
-        _lastInputBackend = _useWintab
-            ? "Wintab"
-            : string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal)
-                ? "Wintab unavailable"
-                : "Stylus/Mouse Fallback";
-        UpdateInputBackendStatus();
-    }
+    // Reinitialize moved to IWintabInputBackend.
 
     private void RebindInputBackend()
     {
@@ -2177,70 +1926,12 @@ public partial class MainWindow : Window
         Pad.ReleaseStylusCapture();
     }
 
-    private void SetupExpressKeyOverrides(uint contextHandle, byte tabletIndex)
+    // Express key override setup moved to IWintabInputBackend.
+
+    private void HandleExpressKeyPacket(WintabExpressKeyEventArgs expressKey)
     {
-        if (_expressKeysMask == 0)
-        {
-            _expressKeyDiagnostics = "EK: mask=0, not supported";
-            return;
-        }
-
-        // WTExtGet/WTExtSet take the extension TAG value, not the WTI_EXTENSIONS index.
-        uint extTag = WintabInterop.WTX_EXPKEYS2;
-
-        if (!WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
-            0, 0, WintabInterop.TABLET_PROPERTY_CONTROLCOUNT, out uint numControls))
-        {
-            _expressKeyDiagnostics = $"EK: CONTROLCOUNT failed (ctx=0x{contextHandle:X}, tag={extTag}, tablet={tabletIndex})";
-            return;
-        }
-
-        if (numControls == 0)
-        {
-            _expressKeyDiagnostics = $"EK: 0 controls on tablet {tabletIndex}";
-            return;
-        }
-
-        int overrideCount = 0;
-        int failCount = 0;
-
-        for (byte controlIndex = 0; controlIndex < numControls; controlIndex++)
-        {
-            if (!WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
-                controlIndex, 0, WintabInterop.TABLET_PROPERTY_FUNCCOUNT, out uint numFuncs))
-                continue;
-
-            for (byte funcIndex = 0; funcIndex < numFuncs; funcIndex++)
-            {
-                WintabInterop.GetExtensionProperty(contextHandle, extTag, tabletIndex,
-                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_AVAILABLE, out uint available);
-
-                if (available == 0)
-                    continue;
-
-                bool overrideOk = WintabInterop.SetExtensionProperty(contextHandle, extTag, tabletIndex,
-                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE, 1);
-
-                WintabInterop.SetExtensionPropertyString(contextHandle, extTag, tabletIndex,
-                    controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE_NAME,
-                    $"MIDI EK{controlIndex}");
-
-                if (overrideOk)
-                    overrideCount++;
-                else
-                    failCount++;
-            }
-        }
-
-        _expressKeyCount = (int)numControls;
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
-        _expressKeyDiagnostics = $"EK: {numControls} keys, {overrideCount} overridden";
-    }
-
-    private void HandleExpressKeyPacket(WintabInterop.PacketExt pktExt)
-    {
-        int control = pktExt.ExpKey.Control;
-        bool isPressed = pktExt.ExpKey.State != 0;
+        int control = expressKey.Control;
+        bool isPressed = expressKey.IsPressed;
 
         // Engine expects (lower 16 bits = key index, upper 16 bits = pressed flag).
         uint encoded = (uint)(control & 0xFFFF) | (isPressed ? 0x0001_0000u : 0u);
@@ -2266,7 +1957,7 @@ public partial class MainWindow : Window
         UpdateInputBackendStatus();
     }
 
-    private void HandleWintabPacket(uint contextHandle, WintabInterop.Packet packet)
+    private void HandleWintabPacket(WintabPacketEventArgs packet)
     {
         double width = Pad.ActualWidth;
         double height = Pad.ActualHeight;
@@ -2275,23 +1966,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!_wintabContexts.TryGetValue(contextHandle, out WintabContextInfo context))
-        {
-            return;
-        }
-
-        double xNorm = NormalizeWintabCoordinate(packet.X, context.OutputMinX, context.OutputMaxX);
-        double yNorm = NormalizeWintabCoordinate(packet.Y, context.OutputMinY, context.OutputMaxY);
-        MarkInputBackend($"Wintab D{context.DeviceIndex + 1}");
+        double xNorm = packet.XNorm;
+        double yNorm = packet.YNorm;
+        MarkInputBackend($"Wintab D{packet.DeviceIndex + 1}");
         UpdatePenButtonsDebug(packet.Buttons);
         double xPx = xNorm * width;
         double yPx = yNorm * height;
-        int pressure = context.PressureMax > 0
-            ? (int)Math.Round(packet.NormalPressure * 127.0 / context.PressureMax)
-            : 127;
-        bool hovering = pressure <= 0;
+        int pressure = packet.Pressure127;
+        bool hovering = packet.IsHovering;
 
-        _wintabDiagnostics = $"pkt: status=0x{packet.Status:X} p={packet.NormalPressure} x={packet.X} y={packet.Y} hover={hovering}";
+        _wintabDiagnostics = packet.PacketDiagnostics;
         UpdateInputBackendStatus();
 
         if (hovering)
@@ -2411,7 +2095,7 @@ public partial class MainWindow : Window
     {
         string ekPart = string.IsNullOrEmpty(_expressKeyDiagnostics) ? "" : $" | {_expressKeyDiagnostics}";
         string configured = _useWintab
-            ? $"Wintab enabled, {_wintabContexts.Count} context(s){ekPart}"
+            ? $"Wintab enabled, {_wintabInputBackend.Contexts.Count} context(s){ekPart}"
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
         _viewModel.InputBackendText = $"Input: {_lastInputBackend} | {configured}";
