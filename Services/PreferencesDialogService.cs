@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using TabletMidiPad.Views;
 
@@ -9,12 +10,22 @@ namespace TabletMidiPad.Services;
 /// </summary>
 internal sealed class PreferencesDialogService : IPreferencesDialogService
 {
+    private readonly IConfigValueParser _configValueParser;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PreferencesDialogService"/> class.
+    /// </summary>
+    public PreferencesDialogService(IConfigValueParser configValueParser)
+    {
+        _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+    }
+
     /// <inheritdoc />
     public PreferencesDialogResult? ShowDialog(Window owner, AppConfig currentConfig, int expressKeyCount)
     {
         ExpressKeyConfig.EnsureCount(currentConfig.ExpressKeys, expressKeyCount);
 
-        var preferencesWindow = new PreferencesWindow(expressKeyCount)
+        var preferencesWindow = new PreferencesWindow(expressKeyCount, _configValueParser)
         {
             Owner = owner
         };

@@ -136,7 +136,7 @@ public partial class MainWindow : Window
             new WinMmMidiEngine(),
             new WacomServiceController(),
             new WintabInputBackend(),
-            new PreferencesDialogService(),
+            new PreferencesDialogService(new ConfigValueParser()),
             new ZoneConfigurationService(),
             new ZoneEditorService(new ConfigValueParser()),
             new ZoneOverlayRenderer(),
@@ -504,8 +504,10 @@ public partial class MainWindow : Window
         SyncPressureSplitBorder();
     }
 
-    private static Brush ThemeBrush(string key, Brush fallback)
-        => Application.Current?.Resources[key] as Brush ?? fallback;
+    private Brush ThemeBrush(string key, Brush fallback)
+        => TryFindResource(key) as Brush
+           ?? Application.Current?.TryFindResource(key) as Brush
+           ?? fallback;
 
     private void SyncPressureSplitBorder()
     {
@@ -681,16 +683,12 @@ public partial class MainWindow : Window
         _viewModel.SelectedPressureCurve = toolbarState.SelectedPressureCurve;
         _viewModel.ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;
         _viewModel.SelectedInputBackendMode = toolbarState.SelectedInputBackendMode;
-
-        string curve = toolbarState.SelectedPressureCurve;
-        _viewModel.IsPressureCurveLinearChecked = string.Equals(curve, "Linear", StringComparison.Ordinal);
-        _viewModel.IsPressureCurveLogarithmicChecked = string.Equals(curve, "Logarithmic", StringComparison.Ordinal);
-        _viewModel.IsPressureCurveExponentialChecked = string.Equals(curve, "Exponential", StringComparison.Ordinal);
-
-        string mode = toolbarState.SelectedInputBackendMode;
-        _viewModel.IsInputBackendAutoChecked = string.Equals(mode, "Auto", StringComparison.Ordinal);
-        _viewModel.IsInputBackendWintabChecked = string.Equals(mode, "Wintab", StringComparison.Ordinal);
-        _viewModel.IsInputBackendMouseChecked = string.Equals(mode, "Mouse", StringComparison.Ordinal);
+        _viewModel.IsPressureCurveLinearChecked = toolbarState.IsPressureCurveLinearChecked;
+        _viewModel.IsPressureCurveLogarithmicChecked = toolbarState.IsPressureCurveLogarithmicChecked;
+        _viewModel.IsPressureCurveExponentialChecked = toolbarState.IsPressureCurveExponentialChecked;
+        _viewModel.IsInputBackendAutoChecked = toolbarState.IsInputBackendAutoChecked;
+        _viewModel.IsInputBackendWintabChecked = toolbarState.IsInputBackendWintabChecked;
+        _viewModel.IsInputBackendMouseChecked = toolbarState.IsInputBackendMouseChecked;
     }
 
     private void RefreshZoneList()

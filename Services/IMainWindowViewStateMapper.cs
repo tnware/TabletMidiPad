@@ -23,7 +23,13 @@ internal readonly record struct MainWindowToolbarState(
     string ToolbarPressureLabelText,
     string SelectedPressureCurve,
     string ToolbarInputBackendLabelText,
-    string SelectedInputBackendMode);
+    string SelectedInputBackendMode,
+    bool IsPressureCurveLinearChecked,
+    bool IsPressureCurveLogarithmicChecked,
+    bool IsPressureCurveExponentialChecked,
+    bool IsInputBackendAutoChecked,
+    bool IsInputBackendWintabChecked,
+    bool IsInputBackendMouseChecked);
 
 /// <summary>
 /// Main connected-state status labels mapped from configuration.

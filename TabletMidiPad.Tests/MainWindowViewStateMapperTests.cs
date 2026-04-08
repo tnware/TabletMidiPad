@@ -21,6 +21,31 @@ public sealed class MainWindowViewStateMapperTests
         Assert.Equal("Logarithmic", state.SelectedPressureCurve);
         Assert.Equal("Input (Auto)", state.ToolbarInputBackendLabelText);
         Assert.Equal("Auto", state.SelectedInputBackendMode);
+        Assert.False(state.IsPressureCurveLinearChecked);
+        Assert.True(state.IsPressureCurveLogarithmicChecked);
+        Assert.False(state.IsPressureCurveExponentialChecked);
+        Assert.True(state.IsInputBackendAutoChecked);
+        Assert.False(state.IsInputBackendWintabChecked);
+        Assert.False(state.IsInputBackendMouseChecked);
+    }
+
+    [Fact]
+    public void BuildToolbarState_NormalizesInputBackendAliases_AndMapsCheckmarks()
+    {
+        var mapper = new MainWindowViewStateMapper();
+        var config = new AppConfig
+        {
+            InputBackendMode = "Wintab",
+            PressureCurve = "Exponential",
+        };
+
+        MainWindowToolbarState state = mapper.BuildToolbarState(config);
+
+        Assert.Equal("Input (Wintab)", state.ToolbarInputBackendLabelText);
+        Assert.Equal("Wintab", state.SelectedInputBackendMode);
+        Assert.True(state.IsInputBackendWintabChecked);
+        Assert.False(state.IsInputBackendAutoChecked);
+        Assert.True(state.IsPressureCurveExponentialChecked);
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using System;
+
 namespace TabletMidiPad.Services;
 
 /// <summary>
@@ -30,11 +32,18 @@ internal sealed class MainWindowViewStateMapper : IMainWindowViewStateMapper
             _ => "Auto"
         };
 
+        string curve = config.PressureCurve;
         return new MainWindowToolbarState(
             ToolbarPressureLabelText: $"Pressure ({curveShort})",
-            SelectedPressureCurve: config.PressureCurve,
+            SelectedPressureCurve: curve,
             ToolbarInputBackendLabelText: toolbarInputLabel,
-            SelectedInputBackendMode: selectedInputMode);
+            SelectedInputBackendMode: selectedInputMode,
+            IsPressureCurveLinearChecked: string.Equals(curve, "Linear", StringComparison.Ordinal),
+            IsPressureCurveLogarithmicChecked: string.Equals(curve, "Logarithmic", StringComparison.Ordinal),
+            IsPressureCurveExponentialChecked: string.Equals(curve, "Exponential", StringComparison.Ordinal),
+            IsInputBackendAutoChecked: string.Equals(selectedInputMode, "Auto", StringComparison.Ordinal),
+            IsInputBackendWintabChecked: string.Equals(selectedInputMode, "Wintab", StringComparison.Ordinal),
+            IsInputBackendMouseChecked: string.Equals(selectedInputMode, "Mouse", StringComparison.Ordinal));
     }
 
     /// <inheritdoc />

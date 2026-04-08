@@ -69,17 +69,15 @@ internal sealed class ConfigValueParser : IConfigValueParser
     }
 
     /// <inheritdoc />
-    public string NormalizeInputBackendMode(string? text)
+    public string RequirePressureCurve(string? text)
     {
         string value = (text ?? string.Empty).Trim();
-        return value switch
+        if (value is not ("Linear" or "Logarithmic" or "Exponential"))
         {
-            "Wintab" => "Wintab Only",
-            "Mouse" => "Stylus/Mouse Only",
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => "Auto"
-        };
+            throw new InvalidOperationException("Pressure Curve must be Linear, Logarithmic, or Exponential.");
+        }
+
+        return value;
     }
 
     /// <inheritdoc />
