@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- Enable built-in .NET analyzers and enforce code style during build -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -22,10 +23,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
-    <!-- Static analysis / linting packages. Marked as PrivateAssets so they don't flow to consumers. -->
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="7.12.0">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <!-- Try adding a known available StyleCop.Analyzers prerelease version. If this package
          isn't available in your feed or you prefer a stable release, replace with a compatible version. -->
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">

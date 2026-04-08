@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,14 +12,14 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
     private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
-    private const string WacomServiceName = "WTabletServicePro";
-
     private readonly Dictionary<string, int> _lastSentValues = new();
 
     private IntPtr _midiOutHandle;
@@ -42,6 +41,13 @@ public partial class MainWindow : Window
     private int _expressKeyCount;
     private string _expressKeyDiagnostics = "";
 
+    private readonly IConfigStore _configStore;
+    private readonly IMidiEngine _midiEngine;
+    private readonly IWacomServiceController _wacomServiceController;
+    private readonly IPreferencesDialogService _preferencesDialogService;
+    private readonly IZoneConfigurationService _zoneConfigurationService;
+    private readonly IConfigValueParser _configValueParser;
+    private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
@@ -76,8 +82,34 @@ public partial class MainWindow : Window
     }
 
     public MainWindow()
+        : this(
+            new JsonConfigStore(AppConfig.GetConfigPath()),
+            new WinMmMidiEngine(),
+            new WacomServiceController(),
+            new PreferencesDialogService(),
+            new ZoneConfigurationService(),
+            new ConfigValueParser())
     {
+    }
+
+    internal MainWindow(
+        IConfigStore configStore,
+        IMidiEngine midiEngine,
+        IWacomServiceController wacomServiceController,
+        IPreferencesDialogService preferencesDialogService,
+        IZoneConfigurationService zoneConfigurationService,
+        IConfigValueParser configValueParser)
+    {
+        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
+        _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
+        _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
+        _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
+        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+        _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         InitializeComponent();
+        _viewModel = new MainViewModel();
+        DataContext = _viewModel;
+        InitializeCommands();
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
@@ -116,24 +148,243 @@ public partial class MainWindow : Window
         }
     }
 
+    private void InitializeCommands()
+    {
+        _viewModel.ConfigureCommands(
+            saveSettings: ApplySettings,
+            resetDefaults: MenuResetDefaults,
+            openPreferences: MenuPreferences,
+            exit: Close,
+            refreshWacomStatus: RefreshWacomServiceStatus,
+            reconnectPen: ReconnectPenCore,
+            startWacomService: () => _ = StartWacomServiceAsync(),
+            showAbout: MenuAbout,
+            addZone: AddZone,
+            removeZone: RemoveZone,
+            autoLayout: AutoLayoutZones);
+    }
+
     private async void OnContentRendered(object? sender, EventArgs e)
     {
         ContentRendered -= OnContentRendered;
         await InitializeAppAsync();
     }
 
+    private void MenuResetDefaults()
+    {
+        _config = AppConfig.Default;
+        _zoneConfigurationService.AutoTileZones(_config);
+        LoadConfigIntoUi(_config);
+        ApplySettings();
+    }
+
+    private void MenuPreferences()
+    {
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
+        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, _expressKeyCount);
+        if (result is null)
+        {
+            return;
+        }
+
+        string previousAppPortName = _config.AppPortName;
+        string previousDawPortName = _config.DawPortName;
+        string previousAssociationId = _config.LoopbackAssociationId;
+        string previousInputBackendMode = _config.InputBackendMode;
+
+        _config.DawPortName = result.DawPortName;
+        _config.AppPortName = result.AppPortName;
+        _config.LoopbackAssociationId = result.AssociationId;
+        _config.MousePressureValue = result.MousePressureValue;
+        _config.PositionDeadZone = result.PositionDeadZone;
+        _config.PositionSmoothing = result.PositionSmoothing;
+        _config.PressureCurve = result.PressureCurve;
+        _config.InputBackendMode = result.InputBackendMode;
+        _config.LowerPenButtonAction = result.LowerPenButtonAction;
+        _config.LowerPenButtonMidiChannel = result.LowerPenButtonMidiChannel;
+        _config.LowerPenButtonCc = result.LowerPenButtonCc;
+        _config.LowerPenButtonNote = result.LowerPenButtonNote;
+        _config.UpperPenButtonAction = result.UpperPenButtonAction;
+        _config.UpperPenButtonMidiChannel = result.UpperPenButtonMidiChannel;
+        _config.UpperPenButtonCc = result.UpperPenButtonCc;
+        _config.UpperPenButtonNote = result.UpperPenButtonNote;
+        _config.SendPressureGlobally = result.SendPressureGlobally;
+        _config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
+        _config.ExpressKeys = result.ExpressKeys;
+
+        CommitCurrentZoneEdits();
+
+        try
+        {
+            ValidateConfig(_config);
+            _configStore.Save(_config);
+        }
+        catch (Exception ex)
+        {
+            SettingsResultText.Foreground = Brushes.IndianRed;
+            SettingsResultText.Text = ex.Message;
+            return;
+        }
+
+        bool routingChanged =
+            !string.Equals(previousAppPortName, _config.AppPortName, StringComparison.Ordinal) ||
+            !string.Equals(previousDawPortName, _config.DawPortName, StringComparison.Ordinal) ||
+            !string.Equals(previousAssociationId, _config.LoopbackAssociationId, StringComparison.Ordinal);
+        bool inputBackendChanged =
+            !string.Equals(previousInputBackendMode, _config.InputBackendMode, StringComparison.Ordinal);
+
+        if (routingChanged || _midiOutHandle == IntPtr.Zero)
+        {
+            RestartMidi();
+        }
+        else
+        {
+            _lastSentValues.Clear();
+            _activeZone = null;
+            UpdateUiForCurrentConfig();
+            DrawZoneOverlay();
+        }
+
+        if (inputBackendChanged)
+        {
+            RebindInputBackend();
+        }
+
+        SyncToolbar();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Preferences applied and saved.";
+    }
+
+    private async Task StartWacomServiceAsync()
+    {
+        MenuStartWacomService.IsEnabled = false;
+        MenuWacomServiceStatus.Header = "Service: starting...";
+        bool started = false;
+        string? failureText = null;
+
+        try
+        {
+            await Task.Run(() => _wacomServiceController.Start());
+            started = true;
+        }
+        catch (Win32Exception ex)
+        {
+            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            failureText = $"Could not start Wacom Professional Service: {ex.Message}";
+        }
+        finally
+        {
+            if (started)
+            {
+                RefreshWacomServiceStatus();
+                RebindInputBackend();
+            }
+            else
+            {
+                MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
+                RefreshWacomServiceStatus();
+            }
+        }
+    }
+
+    private void MenuAbout()
+    {
+        MessageBox.Show(
+            "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
+            "About Tablet MIDI Pad",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    private void AutoLayoutZones()
+    {
+        CommitCurrentZoneEdits();
+        _zoneConfigurationService.AutoTileZones(_config);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zones re-tiled across the pad. Click Apply Settings to save.";
+    }
+
+    private void AddZone()
+    {
+        CommitCurrentZoneEdits();
+
+        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(_config);
+
+        var zone = new ZoneConfig
+        {
+            Name = $"Zone {_config.Zones.Count + 1}",
+            Enabled = true,
+            MidiChannel = 1,
+            CcX = nextCcStart,
+            CcY = nextCcStart + 1,
+            CcPressure = nextCcStart + 2,
+            SendX = true,
+            SendY = true,
+            InvertY = true,
+            SendPressure = true,
+            ReleaseBehavior = ZoneReleaseBehaviors.NoSendOnRelease,
+            ResetPressureOnRelease = false,
+            Left = 0.0,
+            Top = 0.0,
+            Width = 0.5,
+            Height = 0.5
+        };
+
+        _config.Zones.Add(zone);
+        _zoneConfigurationService.AutoTileZones(_config);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
+    }
+
+    private void RemoveZone()
+    {
+        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        {
+            return;
+        }
+
+        _config.Zones.RemoveAt(_selectedZoneIndex);
+        if (_config.Zones.Count == 0)
+        {
+            _config.Zones.Add(ZoneConfig.CreateDefault());
+        }
+
+        _zoneConfigurationService.AutoTileZones(_config);
+        RefreshZoneList();
+        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        LoadSelectedZoneIntoEditor();
+        DrawZoneOverlay();
+        SettingsResultText.Foreground = Brushes.DarkSeaGreen;
+        SettingsResultText.Text = "Zone removed. Click Apply Settings to save.";
+    }
+
     private async Task InitializeAppAsync()
     {
         PopulateChannelList(ZoneChannelComboBox);
         PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
-        _config = AppConfig.Load();
+        _config = _configStore.Load();
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
         InitializeWintab();
 
         MidiStatusPanel.Visibility = Visibility.Visible;
-        MidiStatusText.Text = "Connecting MIDI...";
+        _viewModel.MidiStatusText = "Connecting MIDI...";
         await Task.Yield();
 
         try
@@ -145,7 +396,7 @@ public partial class MainWindow : Window
         {
             MidiProgressBar.Visibility = Visibility.Collapsed;
             MidiStatusText.Foreground = FindResource("DangerBrush") as Brush ?? Brushes.IndianRed;
-            MidiStatusText.Text = "MIDI init failed";
+            _viewModel.MidiStatusText = "MIDI init failed";
         }
     }
 
@@ -180,7 +431,7 @@ public partial class MainWindow : Window
     private void MenuResetDefaults_Click(object sender, RoutedEventArgs e)
     {
         _config = AppConfig.Default;
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         LoadConfigIntoUi(_config);
         ApplySettings();
     }
@@ -188,12 +439,8 @@ public partial class MainWindow : Window
     private void MenuPreferences_Click(object sender, RoutedEventArgs e)
     {
         ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
-        var prefs = new PreferencesWindow(_expressKeyCount) { Owner = this };
-        prefs.LoadFrom(_config);
-
-        prefs.ShowDialog();
-
-        if (!prefs.Accepted)
+        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, _expressKeyCount);
+        if (result is null)
         {
             return;
         }
@@ -203,32 +450,32 @@ public partial class MainWindow : Window
         string previousAssociationId = _config.LoopbackAssociationId;
         string previousInputBackendMode = _config.InputBackendMode;
 
-        _config.DawPortName = prefs.DawPortName;
-        _config.AppPortName = prefs.AppPortName;
-        _config.LoopbackAssociationId = prefs.AssociationId;
-        _config.MousePressureValue = prefs.MousePressureValue;
-        _config.PositionDeadZone = prefs.PositionDeadZone;
-        _config.PositionSmoothing = prefs.PositionSmoothing;
-        _config.PressureCurve = prefs.PressureCurve;
-        _config.InputBackendMode = prefs.InputBackendMode;
-        _config.LowerPenButtonAction = prefs.LowerPenButtonAction;
-        _config.LowerPenButtonMidiChannel = prefs.LowerPenButtonMidiChannel;
-        _config.LowerPenButtonCc = prefs.LowerPenButtonCc;
-        _config.LowerPenButtonNote = prefs.LowerPenButtonNote;
-        _config.UpperPenButtonAction = prefs.UpperPenButtonAction;
-        _config.UpperPenButtonMidiChannel = prefs.UpperPenButtonMidiChannel;
-        _config.UpperPenButtonCc = prefs.UpperPenButtonCc;
-        _config.UpperPenButtonNote = prefs.UpperPenButtonNote;
-        _config.SendPressureGlobally = prefs.SendPressureGlobally;
-        _config.AllowZoneSwitchWhilePressed = prefs.AllowZoneSwitchWhilePressed;
-        _config.ExpressKeys = prefs.GetExpressKeyConfigs();
+        _config.DawPortName = result.DawPortName;
+        _config.AppPortName = result.AppPortName;
+        _config.LoopbackAssociationId = result.AssociationId;
+        _config.MousePressureValue = result.MousePressureValue;
+        _config.PositionDeadZone = result.PositionDeadZone;
+        _config.PositionSmoothing = result.PositionSmoothing;
+        _config.PressureCurve = result.PressureCurve;
+        _config.InputBackendMode = result.InputBackendMode;
+        _config.LowerPenButtonAction = result.LowerPenButtonAction;
+        _config.LowerPenButtonMidiChannel = result.LowerPenButtonMidiChannel;
+        _config.LowerPenButtonCc = result.LowerPenButtonCc;
+        _config.LowerPenButtonNote = result.LowerPenButtonNote;
+        _config.UpperPenButtonAction = result.UpperPenButtonAction;
+        _config.UpperPenButtonMidiChannel = result.UpperPenButtonMidiChannel;
+        _config.UpperPenButtonCc = result.UpperPenButtonCc;
+        _config.UpperPenButtonNote = result.UpperPenButtonNote;
+        _config.SendPressureGlobally = result.SendPressureGlobally;
+        _config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
+        _config.ExpressKeys = result.ExpressKeys;
 
         CommitCurrentZoneEdits();
 
         try
         {
             ValidateConfig(_config);
-            _config.Save();
+            _configStore.Save(_config);
         }
         catch (Exception ex)
         {
@@ -278,6 +525,11 @@ public partial class MainWindow : Window
 
     private void MenuReconnectPen_Click(object sender, RoutedEventArgs e)
     {
+        ReconnectPenCore();
+    }
+
+    private void ReconnectPenCore()
+    {
         CommitCurrentZoneEdits();
         RebindInputBackend();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
@@ -293,7 +545,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await Task.Run(StartWacomService);
+            await Task.Run(() => _wacomServiceController.Start());
             started = true;
         }
         catch (Win32Exception ex)
@@ -319,15 +571,7 @@ public partial class MainWindow : Window
             {
                 MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
 
-                try
-                {
-                    using var service = new ServiceController(WacomServiceName);
-                    MenuStartWacomService.IsEnabled = service.Status != ServiceControllerStatus.Running;
-                }
-                catch
-                {
-                    MenuStartWacomService.IsEnabled = false;
-                }
+                RefreshWacomServiceStatus();
             }
         }
     }
@@ -497,7 +741,7 @@ public partial class MainWindow : Window
     {
         CommitCurrentZoneEdits();
 
-        int nextCcStart = GetNextAvailableCcStart();
+        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(_config);
 
         var zone = new ZoneConfig
         {
@@ -520,42 +764,13 @@ public partial class MainWindow : Window
         };
 
         _config.Zones.Add(zone);
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
-    }
-
-    private int GetNextAvailableCcStart()
-    {
-        var used = new HashSet<int>(
-            _config.Zones.SelectMany(zone => new[] { zone.CcX, zone.CcY, zone.CcPressure })
-        );
-
-        int preferredStart = _config.Zones.Count == 0
-            ? 16
-            : _config.Zones.Max(zone => Math.Max(zone.CcX, Math.Max(zone.CcY, zone.CcPressure))) + 1;
-
-        for (int start = preferredStart; start <= 125; start++)
-        {
-            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
-            {
-                return start;
-            }
-        }
-
-        for (int start = 16; start <= 125; start++)
-        {
-            if (!used.Contains(start) && !used.Contains(start + 1) && !used.Contains(start + 2))
-            {
-                return start;
-            }
-        }
-
-        throw new InvalidOperationException("No free 3-CC block is available for a new zone.");
     }
 
     private void RemoveZoneButton_Click(object sender, RoutedEventArgs e)
@@ -571,7 +786,7 @@ public partial class MainWindow : Window
             _config.Zones.Add(ZoneConfig.CreateDefault());
         }
 
-        AutoTileZones(_config);
+        _zoneConfigurationService.AutoTileZones(_config);
         RefreshZoneList();
         ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
         LoadSelectedZoneIntoEditor();
@@ -602,8 +817,8 @@ public partial class MainWindow : Window
         try
         {
             CommitCurrentZoneEdits();
-            ValidateConfig(_config);
-            _config.Save();
+            _zoneConfigurationService.ValidateConfig(_config);
+            _configStore.Save(_config);
 
             _lastSentValues.Clear();
             _activeZone = null;
@@ -622,9 +837,10 @@ public partial class MainWindow : Window
 
     private void RestartMidi()
     {
-        CloseMidiOut();
-        RemoveLoopbackPair();
-        InitMidi();
+        _midiEngine.Restart(_config);
+        _midiEngine.ClearCachedValues();
+        _activeZone = null;
+        UpdateUiForCurrentConfig();
         DrawZoneOverlay();
     }
 
@@ -657,16 +873,8 @@ public partial class MainWindow : Window
             "Exponential" => "Exp",
             _ => "Lin"
         };
-        ToolbarPressureLabel.Text = $"Pressure ({curveShort})";
-
-        foreach (var item in PressureCurveMenu.Items)
-        {
-            if (item is MenuItem mi)
-            {
-                bool active = string.Equals(mi.Header as string, _config.PressureCurve, StringComparison.Ordinal);
-                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
-            }
-        }
+        _viewModel.ToolbarPressureLabelText = $"Pressure ({curveShort})";
+        _viewModel.SelectedPressureCurve = _config.PressureCurve;
 
         string backendLabel = NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
@@ -675,33 +883,27 @@ public partial class MainWindow : Window
             _ => "Input (Auto)"
         };
 
-        ToolbarInputBackendLabel.Text = backendLabel;
-
-        foreach (var item in InputBackendMenu.Items)
+        _viewModel.ToolbarInputBackendLabelText = backendLabel;
+        _viewModel.SelectedInputBackendMode = NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
-            if (item is MenuItem mi)
-            {
-                bool active = (mi.Header as string) switch
-                {
-                    "Wintab" => string.Equals(_config.InputBackendMode, "Wintab Only", StringComparison.Ordinal),
-                    "Mouse" => string.Equals(_config.InputBackendMode, "Stylus/Mouse Only", StringComparison.Ordinal),
-                    _ => string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Auto", StringComparison.Ordinal)
-                };
-
-                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
-            }
-        }
+            "Wintab Only" => "Wintab",
+            "Stylus/Mouse Only" => "Mouse",
+            _ => "Auto"
+        };
     }
 
     private void RefreshZoneList()
     {
-        ZoneListBox.Items.Clear();
-
+        _viewModel.Zones.Clear();
         for (int i = 0; i < _config.Zones.Count; i++)
         {
             var zone = _config.Zones[i];
             string enabled = zone.Enabled ? "on" : "off";
-            ZoneListBox.Items.Add($"{i + 1}. {zone.Name} [{enabled}]");
+            _viewModel.Zones.Add(new ZoneListItemViewModel
+            {
+                Index = i,
+                DisplayText = $"{i + 1}. {zone.Name} [{enabled}]"
+            });
         }
     }
 
@@ -711,50 +913,49 @@ public partial class MainWindow : Window
 
         if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
         {
-            ZoneNameTextBox.Text = string.Empty;
-            ZoneEnabledCheckBox.IsChecked = false;
-            ZoneChannelComboBox.SelectedIndex = -1;
+            _viewModel.ZoneName = string.Empty;
+            _viewModel.ZoneEnabled = false;
+            _viewModel.ZoneChannel = string.Empty;
             SetZoneSelectionSummary(null);
-            ZoneDetailsExpander.IsEnabled = false;
-            ZoneCcXTextBox.Text = string.Empty;
-            ZoneCcYTextBox.Text = string.Empty;
-            ZoneCcPressureTextBox.Text = string.Empty;
-            ZoneLeftTextBox.Text = string.Empty;
-            ZoneTopTextBox.Text = string.Empty;
-            ZoneWidthTextBox.Text = string.Empty;
-            ZoneHeightTextBox.Text = string.Empty;
-            ZoneSendXCheckBox.IsChecked = false;
-            ZoneSendYCheckBox.IsChecked = false;
-            ZoneInvertXCheckBox.IsChecked = false;
-            ZoneInvertYCheckBox.IsChecked = false;
-            ZoneSendPressureCheckBox.IsChecked = false;
-            ZoneReleaseBehaviorComboBox.SelectedIndex = -1;
-            ZoneReleaseBehaviorComboBox.Text = string.Empty;
+            _viewModel.ZoneDetailsEnabled = false;
+            _viewModel.ZoneCcX = string.Empty;
+            _viewModel.ZoneCcY = string.Empty;
+            _viewModel.ZoneCcPressure = string.Empty;
+            _viewModel.ZoneLeft = string.Empty;
+            _viewModel.ZoneTop = string.Empty;
+            _viewModel.ZoneWidth = string.Empty;
+            _viewModel.ZoneHeight = string.Empty;
+            _viewModel.ZoneSendX = false;
+            _viewModel.ZoneSendY = false;
+            _viewModel.ZoneInvertX = false;
+            _viewModel.ZoneInvertY = false;
+            _viewModel.ZoneSendPressure = false;
+            _viewModel.ZoneReleaseBehavior = string.Empty;
             _isLoadingUi = false;
             return;
         }
 
         var zone = _config.Zones[_selectedZoneIndex];
-        ZoneDetailsExpander.IsEnabled = true;
-        ZoneNameTextBox.Text = zone.Name;
-        ZoneEnabledCheckBox.IsChecked = zone.Enabled;
+        _viewModel.ZoneDetailsEnabled = true;
+        _viewModel.ZoneName = zone.Name;
+        _viewModel.ZoneEnabled = zone.Enabled;
         ZoneChannelComboBox.SelectedItem = zone.MidiChannel;
-        ZoneChannelComboBox.Text = zone.MidiChannel.ToString();
+        _viewModel.ZoneChannel = zone.MidiChannel.ToString();
         SetZoneSelectionSummary(zone);
-        ZoneCcXTextBox.Text = zone.CcX.ToString();
-        ZoneCcYTextBox.Text = zone.CcY.ToString();
-        ZoneCcPressureTextBox.Text = zone.CcPressure.ToString();
-        ZoneLeftTextBox.Text = zone.Left.ToString("0.###");
-        ZoneTopTextBox.Text = zone.Top.ToString("0.###");
-        ZoneWidthTextBox.Text = zone.Width.ToString("0.###");
-        ZoneHeightTextBox.Text = zone.Height.ToString("0.###");
-        ZoneSendXCheckBox.IsChecked = zone.SendX;
-        ZoneSendYCheckBox.IsChecked = zone.SendY;
-        ZoneInvertXCheckBox.IsChecked = zone.InvertX;
-        ZoneInvertYCheckBox.IsChecked = zone.InvertY;
-        ZoneSendPressureCheckBox.IsChecked = zone.SendPressure;
+        _viewModel.ZoneCcX = zone.CcX.ToString();
+        _viewModel.ZoneCcY = zone.CcY.ToString();
+        _viewModel.ZoneCcPressure = zone.CcPressure.ToString();
+        _viewModel.ZoneLeft = zone.Left.ToString("0.###");
+        _viewModel.ZoneTop = zone.Top.ToString("0.###");
+        _viewModel.ZoneWidth = zone.Width.ToString("0.###");
+        _viewModel.ZoneHeight = zone.Height.ToString("0.###");
+        _viewModel.ZoneSendX = zone.SendX;
+        _viewModel.ZoneSendY = zone.SendY;
+        _viewModel.ZoneInvertX = zone.InvertX;
+        _viewModel.ZoneInvertY = zone.InvertY;
+        _viewModel.ZoneSendPressure = zone.SendPressure;
         ZoneReleaseBehaviorComboBox.SelectedItem = NormalizeReleaseBehavior(zone.ReleaseBehavior);
-        ZoneReleaseBehaviorComboBox.Text = NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        _viewModel.ZoneReleaseBehavior = NormalizeReleaseBehavior(zone.ReleaseBehavior);
 
         _isLoadingUi = false;
     }
@@ -769,22 +970,22 @@ public partial class MainWindow : Window
         var zone = _config.Zones[_selectedZoneIndex];
         _config.MaxZoneRows = ReadInt(MaxZoneRowsTextBox.Text, 1, 16, "Max Zone Rows");
         _config.MaxZonesPerRow = ReadInt(MaxZonesPerRowTextBox.Text, 1, 32, "Max Zones Per Row");
-        zone.Name = RequireText(ZoneNameTextBox.Text, "Zone Name");
-        zone.Enabled = ZoneEnabledCheckBox.IsChecked == true;
-        zone.MidiChannel = ReadInt(ZoneChannelComboBox.Text, 1, 16, "Zone MIDI Channel");
-        zone.CcX = ReadInt(ZoneCcXTextBox.Text, 0, 127, "Zone CC X");
-        zone.CcY = ReadInt(ZoneCcYTextBox.Text, 0, 127, "Zone CC Y");
-        zone.CcPressure = ReadInt(ZoneCcPressureTextBox.Text, 0, 127, "Zone Pressure CC");
-        zone.Left = ReadDouble(ZoneLeftTextBox.Text, 0.0, 1.0, "Zone Left");
-        zone.Top = ReadDouble(ZoneTopTextBox.Text, 0.0, 1.0, "Zone Top");
-        zone.Width = ReadDouble(ZoneWidthTextBox.Text, 0.0, 1.0, "Zone Width");
-        zone.Height = ReadDouble(ZoneHeightTextBox.Text, 0.0, 1.0, "Zone Height");
-        zone.SendX = ZoneSendXCheckBox.IsChecked != false;
-        zone.SendY = ZoneSendYCheckBox.IsChecked != false;
-        zone.InvertX = ZoneInvertXCheckBox.IsChecked == true;
-        zone.InvertY = ZoneInvertYCheckBox.IsChecked == true;
-        zone.SendPressure = ZoneSendPressureCheckBox.IsChecked == true;
-        zone.ReleaseBehavior = NormalizeReleaseBehavior(ZoneReleaseBehaviorComboBox.Text);
+        zone.Name = RequireText(_viewModel.ZoneName, "Zone Name");
+        zone.Enabled = _viewModel.ZoneEnabled;
+        zone.MidiChannel = ReadInt(_viewModel.ZoneChannel, 1, 16, "Zone MIDI Channel");
+        zone.CcX = ReadInt(_viewModel.ZoneCcX, 0, 127, "Zone CC X");
+        zone.CcY = ReadInt(_viewModel.ZoneCcY, 0, 127, "Zone CC Y");
+        zone.CcPressure = ReadInt(_viewModel.ZoneCcPressure, 0, 127, "Zone Pressure CC");
+        zone.Left = ReadDouble(_viewModel.ZoneLeft, 0.0, 1.0, "Zone Left");
+        zone.Top = ReadDouble(_viewModel.ZoneTop, 0.0, 1.0, "Zone Top");
+        zone.Width = ReadDouble(_viewModel.ZoneWidth, 0.0, 1.0, "Zone Width");
+        zone.Height = ReadDouble(_viewModel.ZoneHeight, 0.0, 1.0, "Zone Height");
+        zone.SendX = _viewModel.ZoneSendX;
+        zone.SendY = _viewModel.ZoneSendY;
+        zone.InvertX = _viewModel.ZoneInvertX;
+        zone.InvertY = _viewModel.ZoneInvertY;
+        zone.SendPressure = _viewModel.ZoneSendPressure;
+        zone.ReleaseBehavior = NormalizeReleaseBehavior(_viewModel.ZoneReleaseBehavior);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
         SetZoneSelectionSummary(zone);
 
@@ -796,15 +997,15 @@ public partial class MainWindow : Window
     {
         if (zone is null)
         {
-            ZoneSelectionSummaryPrimaryText.Text = "No zone selected";
-            ZoneSelectionSummarySecondaryText.Text = "Select a zone to edit its routing and bounds.";
+            _viewModel.ZoneSelectionSummaryPrimaryText = "No zone selected";
+            _viewModel.ZoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
             return;
         }
 
         string enabled = zone.Enabled ? "Enabled" : "Disabled";
-        ZoneSelectionSummaryPrimaryText.Text =
+        _viewModel.ZoneSelectionSummaryPrimaryText =
             $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
-        ZoneSelectionSummarySecondaryText.Text =
+        _viewModel.ZoneSelectionSummarySecondaryText =
             $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
             $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
@@ -874,78 +1075,37 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InitMidi()
-    {
-        try
-        {
-            RemoveLoopbackPair();
-            CreateLoopbackPair();
-            OpenMidiOutWithRetry(_config.AppPortName);
-            _lastSentValues.Clear();
-            _activeZone = null;
-            UpdateUiForCurrentConfig();
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Windows MIDI Services init failed";
-            RoutingText.Text = string.Empty;
-            InputBackendText.Text = string.Empty;
-            ActiveZoneText.Text = string.Empty;
-            ConfigSummaryText.Text = string.Empty;
-            ValueText.Text = ex.Message;
-            throw;
-        }
-    }
-
     private async Task InitializeMidiAsync()
     {
         try
         {
-            MidiStatusText.Text = "Removing stale MIDI pair...";
-            await Task.Run(RemoveLoopbackPair);
-
-            MidiStatusText.Text = "Creating MIDI loopback...";
-            await Task.Run(CreateLoopbackPair);
-
-            MidiStatusText.Text = $"Opening '{_config.AppPortName}'...";
-            await Task.Run(() => OpenMidiOutWithRetry(_config.AppPortName));
-
-            _lastSentValues.Clear();
+            await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
+            _midiEngine.ClearCachedValues();
             _activeZone = null;
             UpdateUiForCurrentConfig();
         }
         catch (Exception ex)
         {
-            StatusText.Text = "MIDI init failed";
-            ValueText.Text = ex.Message;
+            _viewModel.StatusText = "MIDI init failed";
+            _viewModel.ValueText = ex.Message;
             throw;
         }
     }
 
     private void UpdateUiForCurrentConfig()
     {
-        StatusText.Text = "Connected";
-        RoutingText.Text = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
+        _viewModel.StatusText = "Connected";
+        _viewModel.RoutingText = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
         UpdateInputBackendStatus();
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
-        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
-        ModifiersText.Text = "Modifiers: none";
+        _viewModel.ConfigSummaryText = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
+        _viewModel.ModifiersText = "Modifiers: none";
     }
 
-    private void ShutdownMidi()
-    {
-        try
-        {
-            CloseMidiOut();
-            RemoveLoopbackPair();
-        }
-        catch
-        {
-        }
-    }
+    private void ShutdownMidi() => _midiEngine.Shutdown(_config);
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
@@ -1287,7 +1447,7 @@ public partial class MainWindow : Window
     private void HandleStylus(StylusEventArgs e)
     {
         MarkInputBackend("Stylus");
-        PenButtonsText.Text = "Pen buttons: stylus fallback";
+        _viewModel.PenButtonsText = "Pen buttons: stylus fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -1313,7 +1473,7 @@ public partial class MainWindow : Window
     private void HandleMouse(MouseEventArgs e)
     {
         MarkInputBackend("Mouse");
-        PenButtonsText.Text = "Pen buttons: mouse fallback";
+        _viewModel.PenButtonsText = "Pen buttons: mouse fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -1338,8 +1498,8 @@ public partial class MainWindow : Window
 
         if (zone is null)
         {
-            ActiveZoneText.Text = "Active zone: none";
-            ValueText.Text = "Outside configured zones";
+            _viewModel.ActiveZoneText = "Active zone: none";
+            _viewModel.ValueText = "Outside configured zones";
             return;
         }
 
@@ -1380,7 +1540,7 @@ public partial class MainWindow : Window
         int y = ToCc(local.y, zone.InvertY);
         int curvedPressure = ApplyPressureCurve(pressure);
 
-        ActiveZoneText.Text = $"Active zone: {zone.Name}";
+        _viewModel.ActiveZoneText = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
         if ((_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
             (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
@@ -1402,7 +1562,7 @@ public partial class MainWindow : Window
         string xText = zone.SendX ? x.ToString() : "off";
         string yText = zone.SendY ? y.ToString() : "off";
         string pressureText = sendPressure ? curvedPressure.ToString() : "off";
-        ValueText.Text = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
+        _viewModel.ValueText = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
 
         if (zone.SendX)
         {
@@ -1424,7 +1584,7 @@ public partial class MainWindow : Window
     {
         SendZoneRelease(_activeZone);
         _activeZone = null;
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         _hasLockedPosition = false;
         _lowerPenButtonHeld = false;
         _upperPenButtonHeld = false;
@@ -1673,171 +1833,10 @@ public partial class MainWindow : Window
     }
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
-    {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"{channel}:{cc}";
-        value = Math.Clamp(value, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
-        {
-            return;
-        }
-
-        byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
-        byte controller = (byte)(cc & 0x7F);
-        byte data = (byte)(value & 0x7F);
-
-        int packedMessage = status | (controller << 8) | (data << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = value;
-    }
+        => _midiEngine.SendCcIfChanged(channel, cc, value, force);
 
     private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
-    {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"note:{channel}:{note}";
-        int state = on ? 1 : 0;
-        velocity = Math.Clamp(velocity, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
-        {
-            return;
-        }
-
-        byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
-        byte noteByte = (byte)(note & 0x7F);
-        byte velocityByte = (byte)(velocity & 0x7F);
-
-        int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = state;
-    }
-
-    private void CreateLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback create --name-a \"{_config.AppPortName}\" --name-b \"{_config.DawPortName}\" --association-id \"{_config.LoopbackAssociationId}\""
-        );
-        Thread.Sleep(300);
-    }
-
-    private void RemoveLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback remove --association-id \"{_config.LoopbackAssociationId}\"",
-            allowFailure: true
-        );
-    }
-
-    private void OpenMidiOutWithRetry(string portName)
-    {
-        for (int attempt = 0; attempt < 60; attempt++)
-        {
-            if (TryOpenMidiOut(portName, out _midiOutHandle))
-            {
-                return;
-            }
-
-            Thread.Sleep(100);
-        }
-
-        string available = string.Join(", ", EnumerateMidiOutPortNames());
-        throw new InvalidOperationException(
-            $"Could not open MIDI destination '{portName}'. Available MIDI outputs: {available}."
-        );
-    }
-
-    private static bool TryOpenMidiOut(string targetName, out IntPtr handle)
-    {
-        handle = IntPtr.Zero;
-
-        int count = midiOutGetNumDevs();
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            if (midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) != 0)
-            {
-                continue;
-            }
-
-            if (!string.Equals(caps.Name, targetName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            int result = midiOutOpen(out handle, deviceId, IntPtr.Zero, IntPtr.Zero, 0);
-            return result == 0;
-        }
-
-        return false;
-    }
-
-    private void CloseMidiOut()
-    {
-        if (_midiOutHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        midiOutReset(_midiOutHandle);
-        midiOutClose(_midiOutHandle);
-        _midiOutHandle = IntPtr.Zero;
-    }
-
-    private static string[] EnumerateMidiOutPortNames()
-    {
-        int count = midiOutGetNumDevs();
-        var names = new string[count];
-
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            names[deviceId] = midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) == 0
-                ? caps.Name
-                : $"<error:{deviceId}>";
-        }
-
-        return names.Where(name => !string.IsNullOrWhiteSpace(name)).ToArray();
-    }
-
-    private static void RunMidiConsole(string arguments, bool allowFailure = false)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = MidiConsolePath,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (allowFailure || process.ExitCode == 0)
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim()
-        );
-    }
+        => _midiEngine.SendNoteIfChanged(channel, note, on, velocity, force);
 
     private static int ToCc(double normalized, bool invert)
     {
@@ -2125,7 +2124,7 @@ public partial class MainWindow : Window
 
                 CursorDot.Visibility = Visibility.Collapsed;
                 CursorDot.Opacity = 0.85;
-                ActiveZoneText.Text = "Active zone: none";
+                _viewModel.ActiveZoneText = "Active zone: none";
             }
 
             handled = true;
@@ -2294,9 +2293,9 @@ public partial class MainWindow : Window
         _upperPenButtonHeld = false;
         _hasLockedPosition = false;
         CursorDot.Visibility = Visibility.Collapsed;
-        ActiveZoneText.Text = "Active zone: none";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
+        _viewModel.ActiveZoneText = "Active zone: none";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
         UpdateModifiersText();
         HandleRelease();
         Pad.ReleaseMouseCapture();
@@ -2463,7 +2462,7 @@ public partial class MainWindow : Window
             Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
 
             var hoverZone = FindMatchingZone(xNorm, yNorm);
-            ActiveZoneText.Text = hoverZone is not null
+            _viewModel.ActiveZoneText = hoverZone is not null
                 ? $"Hovering: {hoverZone.Name}"
                 : "Hovering: outside zones";
             return;
@@ -2594,44 +2593,14 @@ public partial class MainWindow : Window
             ? $"Wintab enabled, {_wintabContexts.Count} context(s){ekPart}"
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
-        InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
+        _viewModel.InputBackendText = $"Input: {_lastInputBackend} | {configured}";
     }
 
     private void RefreshWacomServiceStatus()
     {
-        try
-        {
-            using var service = new ServiceController(WacomServiceName);
-            string displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? WacomServiceName : service.DisplayName;
-            bool running = service.Status == ServiceControllerStatus.Running;
-            MenuWacomServiceStatus.Header = running
-                ? $"Service: {displayName} running"
-                : $"Service: {displayName} {service.Status}";
-            MenuStartWacomService.IsEnabled = !running;
-        }
-        catch (InvalidOperationException)
-        {
-            MenuWacomServiceStatus.Header = "Service: not found";
-            MenuStartWacomService.IsEnabled = false;
-        }
-        catch (Exception ex)
-        {
-            MenuWacomServiceStatus.Header = $"Service: {ex.Message}";
-            MenuStartWacomService.IsEnabled = false;
-        }
-    }
-
-    private static void StartWacomService()
-    {
-        using var service = new ServiceController(WacomServiceName);
-
-        if (service.Status == ServiceControllerStatus.Running)
-        {
-            return;
-        }
-
-        service.Start();
-        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+        WacomServiceStatus status = _wacomServiceController.GetStatus();
+        MenuWacomServiceStatus.Header = status.StatusText;
+        MenuStartWacomService.IsEnabled = status.CanStart;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)
@@ -2647,7 +2616,7 @@ public partial class MainWindow : Window
             _ => "none"
         };
 
-        PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
+        _viewModel.PenButtonsText = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
     }
 
     private void UpdatePenButtonActionState(uint buttons)
@@ -2744,7 +2713,7 @@ public partial class MainWindow : Window
         AppendPenButtonModifier(parts, "lower", NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
         AppendPenButtonModifier(parts, "upper", NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
 
-        ModifiersText.Text = parts.Count > 0
+        _viewModel.ModifiersText = parts.Count > 0
             ? $"Modifiers: {string.Join(" | ", parts)}"
             : "Modifiers: none";
     }
@@ -2798,38 +2767,4 @@ public partial class MainWindow : Window
         bool IsIntegrated
     );
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MidiOutCaps
-    {
-        public ushort ManufacturerId;
-        public ushort ProductId;
-        public uint DriverVersion;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string Name;
-
-        public ushort Technology;
-        public ushort Voices;
-        public ushort Notes;
-        public ushort ChannelMask;
-        public uint Support;
-    }
-
-    [DllImport("winmm.dll", CharSet = CharSet.Auto)]
-    private static extern int midiOutGetDevCaps(UIntPtr uDeviceId, out MidiOutCaps caps, uint cbMidiOutCaps);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutGetNumDevs();
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutOpen(out IntPtr handle, int deviceId, IntPtr callback, IntPtr instance, int flags);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutShortMsg(IntPtr handle, int message);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutReset(IntPtr handle);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutClose(IntPtr handle);
 }

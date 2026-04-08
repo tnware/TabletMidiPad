@@ -1,6 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:converters="clr-namespace:TabletMidiPad.Converters">
+    <converters:BoolToCheckmarkConverter x:Key="BoolToCheckmarkConverter"/>
     <Color x:Key="ColorWindow">#FF060A07</Color>
     <Color x:Key="ColorSurface">#FF0B120E</Color>
     <Color x:Key="ColorSurfaceRaised">#FF101813</Color>

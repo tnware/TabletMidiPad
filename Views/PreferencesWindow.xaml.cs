@@ -4,45 +4,50 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad;
+namespace TabletMidiPad.Views;
 
 public partial class PreferencesWindow : Window
 {
     public bool Accepted { get; private set; }
+    private readonly PreferencesViewModel _viewModel = new();
 
-    public string DawPortName => DawPortNameTextBox.Text.Trim();
-    public string AppPortName => AppPortNameTextBox.Text.Trim();
-    public string AssociationId => AssociationIdTextBox.Text.Trim();
+    public string DawPortName => _viewModel.DawPortName.Trim();
+    public string AppPortName => _viewModel.AppPortName.Trim();
+    public string AssociationId => _viewModel.AssociationId.Trim();
     public int MousePressureValue { get; private set; }
     public double PositionDeadZone { get; private set; }
     public double PositionSmoothing { get; private set; }
-    public string PressureCurve => PressureCurveComboBox.Text;
-    public string InputBackendMode => InputBackendModeComboBox.Text;
-    public string LowerPenButtonAction => LowerPenButtonActionComboBox.Text;
+    public string PressureCurve => _viewModel.PressureCurve;
+    public string InputBackendMode => _viewModel.InputBackendMode;
+    public string LowerPenButtonAction => _viewModel.LowerPenButtonAction;
     public int LowerPenButtonMidiChannel { get; private set; }
     public int LowerPenButtonCc { get; private set; }
     public int LowerPenButtonNote { get; private set; }
-    public string UpperPenButtonAction => UpperPenButtonActionComboBox.Text;
+    public string UpperPenButtonAction => _viewModel.UpperPenButtonAction;
     public int UpperPenButtonMidiChannel { get; private set; }
     public int UpperPenButtonCc { get; private set; }
     public int UpperPenButtonNote { get; private set; }
-    public bool SendPressureGlobally => SendPressureGloballyCheckBox.IsChecked == true;
-    public bool AllowZoneSwitchWhilePressed => AllowZoneSwitchCheckBox.IsChecked == true;
+    public bool SendPressureGlobally => _viewModel.SendPressureGlobally;
+    public bool AllowZoneSwitchWhilePressed => _viewModel.AllowZoneSwitchWhilePressed;
 
     private readonly int _expressKeyCount;
-    private readonly List<(ComboBox Action, ComboBox Channel, TextBox Cc, TextBox Note)> _expressKeyRows = new();
 
     public PreferencesWindow(int expressKeyCount)
     {
         _expressKeyCount = expressKeyCount;
         InitializeComponent();
+        DataContext = _viewModel;
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();
         PopulateMidiChannelCombo(LowerPenButtonMidiChannelComboBox);
         PopulateMidiChannelCombo(UpperPenButtonMidiChannelComboBox);
+        SetMidiChannelComboSelection(LowerPenButtonMidiChannelComboBox, 1);
+        SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, 1);
+        _viewModel.EnsureExpressKeyCount(_expressKeyCount);
         BuildExpressKeyRows();
         ConfigureNumericInputs();
     }
@@ -75,54 +80,50 @@ public partial class PreferencesWindow : Window
 
     public void LoadFrom(AppConfig config)
     {
-        DawPortNameTextBox.Text = config.DawPortName;
-        AppPortNameTextBox.Text = config.AppPortName;
-        AssociationIdTextBox.Text = config.LoopbackAssociationId;
-        MousePressureTextBox.Text = config.MousePressureValue.ToString();
-        DeadZoneTextBox.Text = config.PositionDeadZone.ToString("0.###");
-        SmoothingTextBox.Text = config.PositionSmoothing.ToString("0.##");
-        PressureCurveComboBox.SelectedItem = config.PressureCurve;
-        PressureCurveComboBox.Text = config.PressureCurve;
-        InputBackendModeComboBox.SelectedItem = NormalizeInputBackendMode(config.InputBackendMode);
-        InputBackendModeComboBox.Text = NormalizeInputBackendMode(config.InputBackendMode);
-        LowerPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.LowerPenButtonAction);
-        LowerPenButtonActionComboBox.Text = NormalizePenButtonAction(config.LowerPenButtonAction);
+        _viewModel.DawPortName = config.DawPortName;
+        _viewModel.AppPortName = config.AppPortName;
+        _viewModel.AssociationId = config.LoopbackAssociationId;
+        _viewModel.MousePressureText = config.MousePressureValue.ToString();
+        _viewModel.PositionDeadZoneText = config.PositionDeadZone.ToString("0.###");
+        _viewModel.PositionSmoothingText = config.PositionSmoothing.ToString("0.##");
+        _viewModel.PressureCurve = config.PressureCurve;
+        _viewModel.InputBackendMode = NormalizeInputBackendMode(config.InputBackendMode);
+        _viewModel.LowerPenButtonAction = NormalizePenButtonAction(config.LowerPenButtonAction);
         SetMidiChannelComboSelection(LowerPenButtonMidiChannelComboBox, config.LowerPenButtonMidiChannel);
-        LowerPenButtonCcTextBox.Text = config.LowerPenButtonCc.ToString();
-        LowerPenButtonNoteTextBox.Text = config.LowerPenButtonNote.ToString();
-        UpperPenButtonActionComboBox.SelectedItem = NormalizePenButtonAction(config.UpperPenButtonAction);
-        UpperPenButtonActionComboBox.Text = NormalizePenButtonAction(config.UpperPenButtonAction);
+        _viewModel.LowerPenButtonCcText = config.LowerPenButtonCc.ToString();
+        _viewModel.LowerPenButtonNoteText = config.LowerPenButtonNote.ToString();
+        _viewModel.UpperPenButtonAction = NormalizePenButtonAction(config.UpperPenButtonAction);
         SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, config.UpperPenButtonMidiChannel);
-        UpperPenButtonCcTextBox.Text = config.UpperPenButtonCc.ToString();
-        UpperPenButtonNoteTextBox.Text = config.UpperPenButtonNote.ToString();
-        SendPressureGloballyCheckBox.IsChecked = config.SendPressureGlobally;
-        AllowZoneSwitchCheckBox.IsChecked = config.AllowZoneSwitchWhilePressed;
+        _viewModel.UpperPenButtonCcText = config.UpperPenButtonCc.ToString();
+        _viewModel.UpperPenButtonNoteText = config.UpperPenButtonNote.ToString();
+        _viewModel.SendPressureGlobally = config.SendPressureGlobally;
+        _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
 
         ExpressKeyConfig.EnsureCount(config.ExpressKeys, _expressKeyCount);
-        for (int i = 0; i < _expressKeyRows.Count && i < config.ExpressKeys.Count; i++)
+        _viewModel.EnsureExpressKeyCount(_expressKeyCount);
+        for (int i = 0; i < _viewModel.ExpressKeys.Count && i < config.ExpressKeys.Count; i++)
         {
-            var row = _expressKeyRows[i];
             var ek = config.ExpressKeys[i];
-            row.Action.SelectedItem = NormalizePenButtonAction(ek.Action);
-            row.Action.Text = NormalizePenButtonAction(ek.Action);
-            SetMidiChannelComboSelection(row.Channel, ek.MidiChannel);
-            row.Cc.Text = ek.Cc.ToString();
-            row.Note.Text = ek.Note.ToString();
+            var row = _viewModel.ExpressKeys[i];
+            row.Action = NormalizePenButtonAction(ek.Action);
+            row.MidiChannelText = Math.Clamp(ek.MidiChannel, 1, 16).ToString();
+            row.CcText = Math.Clamp(ek.Cc, 0, 127).ToString();
+            row.NoteText = Math.Clamp(ek.Note, 0, 127).ToString();
         }
     }
 
     public List<ExpressKeyConfig> GetExpressKeyConfigs()
     {
         var list = new List<ExpressKeyConfig>();
-        for (int i = 0; i < _expressKeyRows.Count; i++)
+        for (int i = 0; i < _viewModel.ExpressKeys.Count; i++)
         {
-            var row = _expressKeyRows[i];
+            var row = _viewModel.ExpressKeys[i];
             list.Add(new ExpressKeyConfig
             {
-                Action = NormalizePenButtonAction(row.Action.Text),
-                MidiChannel = ReadMidiChannelFromCombo(row.Channel, $"ExpressKey {i + 1} MIDI Channel"),
-                Cc = int.TryParse(row.Cc.Text, out int cc) ? Math.Clamp(cc, 0, 127) : 70 + i,
-                Note = int.TryParse(row.Note.Text, out int note) ? Math.Clamp(note, 0, 127) : 36 + i
+                Action = NormalizePenButtonAction(row.Action),
+                MidiChannel = ReadMidiChannelText(row.MidiChannelText, $"ExpressKey {i + 1} MIDI Channel"),
+                Cc = int.TryParse(row.CcText, out int cc) ? Math.Clamp(cc, 0, 127) : 70 + i,
+                Note = int.TryParse(row.NoteText, out int note) ? Math.Clamp(note, 0, 127) : 36 + i
             });
         }
         return list;
@@ -193,35 +194,46 @@ public partial class PreferencesWindow : Window
         if (int.TryParse(comboBox.Text?.Trim(), out int parsed))
             return ReadInt(parsed.ToString(), 1, 16, fieldName);
 
-        throw new InvalidOperationException($"{fieldName} must be between 1 and 16.");
+        // Treat empty/unset combo text as the default MIDI channel rather than hard-failing.
+        return 1;
+    }
+
+    private static int ReadMidiChannelText(string? text, string fieldName)
+    {
+        if (!int.TryParse(text?.Trim(), out int parsed))
+        {
+            throw new InvalidOperationException($"{fieldName} must be between 1 and 16.");
+        }
+
+        return ReadInt(parsed.ToString(), 1, 16, fieldName);
     }
 
     private void Validate()
     {
-        RequireText(DawPortNameTextBox.Text, "DAW Input Port");
-        RequireText(AppPortNameTextBox.Text, "Internal App Port");
-        RequireGuidText(AssociationIdTextBox.Text, "Association Id");
-        MousePressureValue = ReadInt(MousePressureTextBox.Text, 0, 127, "Mouse Pressure Fallback");
-        PositionDeadZone = ReadDouble(DeadZoneTextBox.Text, 0.0, 0.1, "Position Dead Zone");
-        PositionSmoothing = ReadDouble(SmoothingTextBox.Text, 0.0, 0.95, "XY Smoothing");
-        ReadPressureCurve(PressureCurveComboBox.Text);
-        ReadInputBackendMode(InputBackendModeComboBox.Text);
-        ReadPenButtonAction(LowerPenButtonActionComboBox.Text);
-        ReadPenButtonAction(UpperPenButtonActionComboBox.Text);
+        RequireText(_viewModel.DawPortName, "DAW Input Port");
+        RequireText(_viewModel.AppPortName, "Internal App Port");
+        RequireGuidText(_viewModel.AssociationId, "Association Id");
+        MousePressureValue = ReadInt(_viewModel.MousePressureText, 0, 127, "Mouse Pressure Fallback");
+        PositionDeadZone = ReadDouble(_viewModel.PositionDeadZoneText, 0.0, 0.1, "Position Dead Zone");
+        PositionSmoothing = ReadDouble(_viewModel.PositionSmoothingText, 0.0, 0.95, "XY Smoothing");
+        ReadPressureCurve(_viewModel.PressureCurve);
+        ReadInputBackendMode(_viewModel.InputBackendMode);
+        ReadPenButtonAction(_viewModel.LowerPenButtonAction);
+        ReadPenButtonAction(_viewModel.UpperPenButtonAction);
         LowerPenButtonMidiChannel = ReadMidiChannelFromCombo(LowerPenButtonMidiChannelComboBox, "Lower Button MIDI Channel");
-        LowerPenButtonCc = ReadInt(LowerPenButtonCcTextBox.Text, 0, 127, "Lower Button CC");
-        LowerPenButtonNote = ReadInt(LowerPenButtonNoteTextBox.Text, 0, 127, "Lower Button Note");
+        LowerPenButtonCc = ReadInt(_viewModel.LowerPenButtonCcText, 0, 127, "Lower Button CC");
+        LowerPenButtonNote = ReadInt(_viewModel.LowerPenButtonNoteText, 0, 127, "Lower Button Note");
         UpperPenButtonMidiChannel = ReadMidiChannelFromCombo(UpperPenButtonMidiChannelComboBox, "Upper Button MIDI Channel");
-        UpperPenButtonCc = ReadInt(UpperPenButtonCcTextBox.Text, 0, 127, "Upper Button CC");
-        UpperPenButtonNote = ReadInt(UpperPenButtonNoteTextBox.Text, 0, 127, "Upper Button Note");
+        UpperPenButtonCc = ReadInt(_viewModel.UpperPenButtonCcText, 0, 127, "Upper Button CC");
+        UpperPenButtonNote = ReadInt(_viewModel.UpperPenButtonNoteText, 0, 127, "Upper Button Note");
 
-        for (int i = 0; i < _expressKeyRows.Count; i++)
+        for (int i = 0; i < _viewModel.ExpressKeys.Count; i++)
         {
-            var row = _expressKeyRows[i];
-            ReadPenButtonAction(row.Action.Text);
-            ReadMidiChannelFromCombo(row.Channel, $"ExpressKey {i + 1} MIDI Channel");
-            ReadInt(row.Cc.Text, 0, 127, $"ExpressKey {i + 1} CC");
-            ReadInt(row.Note.Text, 0, 127, $"ExpressKey {i + 1} Note");
+            var row = _viewModel.ExpressKeys[i];
+            ReadPenButtonAction(row.Action);
+            ReadMidiChannelText(row.MidiChannelText, $"ExpressKey {i + 1} MIDI Channel");
+            ReadInt(row.CcText, 0, 127, $"ExpressKey {i + 1} CC");
+            ReadInt(row.NoteText, 0, 127, $"ExpressKey {i + 1} Note");
         }
     }
 
@@ -270,7 +282,7 @@ public partial class PreferencesWindow : Window
             return;
 
         ExpressKeysPanel.Children.Clear();
-        _expressKeyRows.Clear();
+        _viewModel.EnsureExpressKeyCount(_expressKeyCount);
 
         ExpressKeysPanel.Children.Add(new TextBlock
         {
@@ -282,6 +294,7 @@ public partial class PreferencesWindow : Window
 
         for (int i = 0; i < _expressKeyCount; i++)
         {
+            ExpressKeyRowViewModel rowVm = _viewModel.ExpressKeys[i];
             var label = new TextBlock
             {
                 Text = $"ExpressKey {i + 1}",
@@ -299,9 +312,21 @@ public partial class PreferencesWindow : Window
 
             var actionCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
             PopulateActionComboBox(actionCombo);
+            actionCombo.SetBinding(ComboBox.TextProperty, new System.Windows.Data.Binding(nameof(ExpressKeyRowViewModel.Action))
+            {
+                Source = rowVm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
 
             var channelCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
             PopulateMidiChannelCombo(channelCombo);
+            channelCombo.SetBinding(ComboBox.TextProperty, new System.Windows.Data.Binding(nameof(ExpressKeyRowViewModel.MidiChannelText))
+            {
+                Source = rowVm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
 
             var ccBox = new TextBox { Margin = new Thickness(0, 0, 6, 0) };
             var noteBox = new TextBox { Margin = new Thickness(0, 0, 6, 0) };
@@ -309,6 +334,18 @@ public partial class PreferencesWindow : Window
             NumericTextBoxBehavior.SetMode(noteBox, NumericTextMode.Integer);
             ccBox.HorizontalContentAlignment = HorizontalAlignment.Right;
             noteBox.HorizontalContentAlignment = HorizontalAlignment.Right;
+            ccBox.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding(nameof(ExpressKeyRowViewModel.CcText))
+            {
+                Source = rowVm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
+            noteBox.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding(nameof(ExpressKeyRowViewModel.NoteText))
+            {
+                Source = rowVm,
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
 
             var stepperStyle = (Style)FindResource("NumericStepperRepeatStyle");
 
@@ -367,8 +404,6 @@ public partial class PreferencesWindow : Window
             card.Child = stack;
 
             ExpressKeysPanel.Children.Add(card);
-
-            _expressKeyRows.Add((actionCombo, channelCombo, ccBox, noteBox));
         }
     }
 
