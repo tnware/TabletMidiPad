@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly PadInputHost _padInputHost;
     private readonly IMainWindowPadInputSession _padInputSession;
     private readonly IMainWindowZonePadSession _zonePadSession;
+    private readonly IMainWindowZoneEditorSession _zoneEditorSession;
     private readonly IMainWindowSettingsSession _settingsSession;
     private readonly StartupHost _startupHost;
     private readonly IMainWindowZoneListSession _zoneListSession;
@@ -121,6 +122,10 @@ public partial class MainWindow : Window
             inputInteractionOrchestrator,
             _inputBackendStatusFormatter);
         _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
+        _zoneEditorSession = new MainWindowZoneEditorSession(
+            new ZoneEditorHost(this),
+            _zoneEditorService,
+            _workflowCoordinator);
         _settingsSession = new MainWindowSettingsSession(
             new SettingsSessionHost(this),
             _workflowCoordinator,
@@ -237,6 +242,7 @@ public partial class MainWindow : Window
             {
                 _padInputSession.RebindInputBackend();
             }
+
             return;
         }
 
@@ -265,7 +271,7 @@ public partial class MainWindow : Window
             _midiEngine,
             _viewModel,
             a => Dispatcher.Invoke(a),
-            UpdateUiForCurrentConfig);
+            _zoneEditorSession.UpdateUiForCurrentConfig);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -275,7 +281,7 @@ public partial class MainWindow : Window
 
     private void ReconnectPenCore()
     {
-        CommitCurrentZoneEdits();
+        _zoneEditorSession.CommitCurrentZoneEdits();
         _padInputSession.RebindInputBackend();
         SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
@@ -342,31 +348,7 @@ public partial class MainWindow : Window
     }
 
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_isLoadingUi)
-        {
-            return;
-        }
-
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-    }
-
-    private void LoadConfigIntoUi(AppConfig config)
-    {
-        _isLoadingUi = true;
-
-        _viewModel.MaxZoneRowsText = config.MaxZoneRows.ToString();
-        _viewModel.MaxZonesPerRowText = config.MaxZonesPerRow.ToString();
-        RefreshZoneList();
-        SelectedZoneIndex = config.Zones.Count > 0 ? 0 : -1;
-        _viewModel.NotifySelectedZoneIndexChanged();
-        LoadSelectedZoneIntoEditor();
-        SyncToolbar();
-
-        _isLoadingUi = false;
-        RefreshPadZoneOverlay();
-    }
+        => _zoneEditorSession.OnZoneListSelectionChanged();
 
     private void SyncToolbar()
     {
@@ -385,46 +367,6 @@ public partial class MainWindow : Window
         _viewModel.IsInputBackendAutoChecked = toolbarState.IsInputBackendAutoChecked;
         _viewModel.IsInputBackendWintabChecked = toolbarState.IsInputBackendWintabChecked;
         _viewModel.IsInputBackendMouseChecked = toolbarState.IsInputBackendMouseChecked;
-    }
-
-    private void RefreshZoneList()
-    {
-        _zoneEditorService.RefreshZoneList(_viewModel.Zones, _config);
-    }
-
-    private void LoadSelectedZoneIntoEditor()
-    {
-        _isLoadingUi = true;
-
-        _zoneEditorService.LoadSelectedZoneIntoEditor(_viewModel, _config, SelectedZoneIndex);
-
-        _isLoadingUi = false;
-    }
-
-    private void CommitCurrentZoneEdits()
-    {
-        _zoneEditorService.CommitCurrentZoneEdits(
-            _config,
-            _viewModel,
-            SelectedZoneIndex,
-            _viewModel.MaxZoneRowsText,
-            _viewModel.MaxZonesPerRowText);
-
-        RefreshZoneList();
-        _viewModel.NotifySelectedZoneIndexChanged();
-    }
-
-    private void UpdateUiForCurrentConfig()
-    {
-        MainWindowConnectedState statusState = _workflowCoordinator.BuildConnectedState(_config);
-        _viewModel.StatusText = statusState.StatusText;
-        _viewModel.RoutingText = statusState.RoutingText;
-        UpdateInputBackendStatus();
-        _viewModel.ActiveZoneText = statusState.ActiveZoneText;
-        _viewModel.ConfigSummaryText = statusState.ConfigSummaryText;
-        _viewModel.ValueText = statusState.ValueText;
-        _viewModel.PenButtonsText = statusState.PenButtonsText;
-        _viewModel.ModifiersText = statusState.ModifiersText;
     }
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
@@ -513,7 +455,7 @@ public partial class MainWindow : Window
         else if (e.PropertyName == nameof(MainViewModel.AllowZoneSwitchWhilePressed))
         {
             _config.AllowZoneSwitchWhilePressed = _viewModel.AllowZoneSwitchWhilePressed;
-            UpdateUiForCurrentConfig();
+            _zoneEditorSession.UpdateUiForCurrentConfig();
         }
     }
 
@@ -562,6 +504,35 @@ public partial class MainWindow : Window
         _viewModel.SettingsResultKind = kind;
     }
 
+    private sealed class ZoneEditorHost : IMainWindowZoneEditorSessionHost
+    {
+        private readonly MainWindow _w;
+
+        public ZoneEditorHost(MainWindow window) => _w = window;
+
+        public AppConfig Config => _w._config;
+
+        public MainViewModel ViewModel => _w._viewModel;
+
+        public int SelectedZoneIndex
+        {
+            get => _w.SelectedZoneIndex;
+            set => _w.SelectedZoneIndex = value;
+        }
+
+        public bool IsLoadingUi
+        {
+            get => _w._isLoadingUi;
+            set => _w._isLoadingUi = value;
+        }
+
+        public void SyncToolbar() => _w.SyncToolbar();
+
+        public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
+
+        public void RefreshInputBackendStatus() => _w.UpdateInputBackendStatus();
+    }
+
     private sealed class PadInputHost : IMainWindowPadInputSessionHost
     {
         private readonly MainWindow _w;
@@ -596,7 +567,7 @@ public partial class MainWindow : Window
 
         public void UpdateInputBackendStatus() => _w.UpdateInputBackendStatus();
 
-        public void OnRebindCompletedRefreshRouting() => _w.UpdateUiForCurrentConfig();
+        public void OnRebindCompletedRefreshRouting() => _w._zoneEditorSession.UpdateUiForCurrentConfig();
 
         public void BeginPopulateTabletDeviceList()
             => _w.TabletDeviceComboBox.SelectionChanged -= _w.TabletDeviceComboBox_SelectionChanged;
@@ -623,9 +594,9 @@ public partial class MainWindow : Window
 
         public double PadActualHeight => _w.Pad.ActualHeight;
 
-        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
 
-        public void LoadSelectedZoneIntoEditor() => _w.LoadSelectedZoneIntoEditor();
+        public void LoadSelectedZoneIntoEditor() => _w._zoneEditorSession.LoadSelectedZoneIntoEditor();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
@@ -648,17 +619,17 @@ public partial class MainWindow : Window
 
         public PadInputSessionState PadState => _w._padState;
 
-        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
 
         public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
 
-        public void UpdateUiForCurrentConfig() => _w.UpdateUiForCurrentConfig();
+        public void UpdateUiForCurrentConfig() => _w._zoneEditorSession.UpdateUiForCurrentConfig();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
         public void SyncToolbar() => _w.SyncToolbar();
 
-        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
+        public void LoadConfigIntoUi(AppConfig config) => _w._zoneEditorSession.LoadConfigIntoUi(config);
     }
 
     private sealed class ZoneListHost : IMainWindowZoneListSessionHost
@@ -675,13 +646,13 @@ public partial class MainWindow : Window
             set => _w.SelectedZoneIndex = value;
         }
 
-        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+        public void CommitCurrentZoneEdits() => _w._zoneEditorSession.CommitCurrentZoneEdits();
 
-        public void RefreshZoneList() => _w.RefreshZoneList();
+        public void RefreshZoneList() => _w._zoneEditorSession.RefreshZoneList();
 
         public void NotifySelectedZoneIndexChanged() => _w._viewModel.NotifySelectedZoneIndexChanged();
 
-        public void LoadSelectedZoneIntoEditor() => _w.LoadSelectedZoneIntoEditor();
+        public void LoadSelectedZoneIntoEditor() => _w._zoneEditorSession.LoadSelectedZoneIntoEditor();
 
         public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
 
@@ -698,7 +669,7 @@ public partial class MainWindow : Window
 
         public void ReplaceRuntimeConfig(AppConfig config) => _w._config = config;
 
-        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
+        public void LoadConfigIntoUi(AppConfig config) => _w._zoneEditorSession.LoadConfigIntoUi(config);
 
         public WacomServiceStatus GetWacomServiceStatus() => _w._wacomServiceController.GetStatus();
 
