@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private readonly PadInputHost _padInputHost;
     private readonly IMainWindowPadInputSession _padInputSession;
     private readonly IMainWindowZonePadSession _zonePadSession;
+    private readonly IMainWindowSettingsSession _settingsSession;
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
@@ -163,6 +164,14 @@ public partial class MainWindow : Window
             inputInteractionOrchestrator,
             _inputBackendStatusFormatter);
         _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
+        _settingsSession = new MainWindowSettingsSession(
+            new SettingsSessionHost(this),
+            _workflowCoordinator,
+            _preferencesDialogService,
+            _zoneConfigurationService,
+            _configStore,
+            _midiEngine,
+            _padInputSession);
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -223,9 +232,9 @@ public partial class MainWindow : Window
     private void InitializeCommands()
     {
         _viewModel.ConfigureCommands(
-            saveSettings: ApplySettings,
-            resetDefaults: MenuResetDefaults,
-            openPreferences: MenuPreferences,
+            saveSettings: _settingsSession.ApplySettings,
+            resetDefaults: _settingsSession.ResetToDefaultsAndApply,
+            openPreferences: _settingsSession.RunPreferencesFlow,
             exit: Close,
             refreshWacomStatus: RefreshWacomServiceStatus,
             reconnectPen: ReconnectPenCore,
@@ -253,58 +262,6 @@ public partial class MainWindow : Window
     {
         ContentRendered -= OnContentRendered;
         await InitializeAppAsync();
-    }
-
-    private void MenuResetDefaults()
-    {
-        _config = AppConfig.Default;
-        _zoneConfigurationService.AutoTileZones(_config);
-        LoadConfigIntoUi(_config);
-        ApplySettings();
-    }
-
-    private void MenuPreferences()
-    {
-        int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(_padState.ExpressKeyCount, _config.ExpressKeys.Count);
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
-        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
-        if (result is null)
-        {
-            return;
-        }
-
-        CommitCurrentZoneEdits();
-        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_config, result, IntPtr.Zero);
-        if (!applyResult.SaveSucceeded)
-        {
-            SetSettingsResult(applyResult.ErrorMessage ?? "Preferences could not be applied.", SettingsResultKind.Error);
-            return;
-        }
-
-        WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_config, _configStore);
-        if (!persistResult.Success)
-        {
-            SetSettingsResult(persistResult.ErrorMessage ?? "Preferences could not be saved.", SettingsResultKind.Error);
-            return;
-        }
-
-        if (applyResult.ShouldRestartMidi)
-        {
-            RestartMidi();
-        }
-        else
-        {
-            UpdateUiForCurrentConfig();
-            RefreshPadZoneOverlay();
-        }
-
-        if (applyResult.ShouldRebindInputBackend)
-        {
-            _padInputSession.RebindInputBackend();
-        }
-
-        SyncToolbar();
-        SetSettingsResult("Preferences applied and saved.", SettingsResultKind.Success);
     }
 
     private async Task StartWacomServiceAsync()
@@ -410,7 +367,7 @@ public partial class MainWindow : Window
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        ApplySettings();
+        _settingsSession.ApplySettings();
     }
 
     private void ReconnectPenCore()
@@ -489,37 +446,6 @@ public partial class MainWindow : Window
         }
 
         LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-    }
-
-    private void ApplySettings()
-    {
-        try
-        {
-            CommitCurrentZoneEdits();
-            WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_config, _configStore);
-            if (!persistResult.Success)
-            {
-                SetSettingsResult(persistResult.ErrorMessage ?? "Settings could not be applied.", SettingsResultKind.Error);
-                return;
-            }
-
-            UpdateUiForCurrentConfig();
-            RefreshPadZoneOverlay();
-
-            SetSettingsResult("Settings applied and saved.", SettingsResultKind.Success);
-        }
-        catch (Exception ex)
-        {
-            SetSettingsResult(ex.Message, SettingsResultKind.Error);
-        }
-    }
-
-    private void RestartMidi()
-    {
-        _midiEngine.Restart(_config);
-        _midiEngine.ClearCachedValues();
-        UpdateUiForCurrentConfig();
         RefreshPadZoneOverlay();
     }
 
@@ -803,5 +729,32 @@ public partial class MainWindow : Window
         public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
 
         public void ClearPadCursor() => _w.Pad.Cursor = null;
+    }
+
+    private sealed class SettingsSessionHost : IMainWindowSettingsSessionHost
+    {
+        private readonly MainWindow _w;
+
+        public SettingsSessionHost(MainWindow window) => _w = window;
+
+        public Window OwnerWindow => _w;
+
+        public AppConfig Config => _w._config;
+
+        public void ReplaceConfig(AppConfig config) => _w._config = config;
+
+        public PadInputSessionState PadState => _w._padState;
+
+        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+
+        public void UpdateUiForCurrentConfig() => _w.UpdateUiForCurrentConfig();
+
+        public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
+
+        public void SyncToolbar() => _w.SyncToolbar();
+
+        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
     }
 }
