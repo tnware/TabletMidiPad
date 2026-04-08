@@ -48,6 +48,32 @@ internal sealed class MainWindowWorkflowCoordinator : IMainWindowWorkflowCoordin
     }
 
     /// <inheritdoc />
+    public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store)
+    {
+        WorkflowSaveResult validation = ValidateAndSave(config);
+        if (!validation.Success)
+        {
+            return validation;
+        }
+
+        return PersistConfigToDisk(config, store);
+    }
+
+    /// <inheritdoc />
+    public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store)
+    {
+        try
+        {
+            store.Save(config);
+            return new WorkflowSaveResult(true, null);
+        }
+        catch (Exception ex)
+        {
+            return new WorkflowSaveResult(false, ex.Message);
+        }
+    }
+
+    /// <inheritdoc />
     public PreferencesWorkflowResult ApplyPreferences(
         AppConfig config,
         PreferencesDialogResult result,

@@ -91,4 +91,74 @@ public sealed class MainWindowWorkflowCoordinatorTests
         Assert.Equal("Service: running", menu.Header);
         Assert.False(menu.StartEnabled);
     }
+
+    [Fact]
+    public void PersistConfigToDisk_OnSaveFailure_ReturnsMessage()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var store = new ThrowingConfigStore("disk full");
+
+        WorkflowSaveResult result = coordinator.PersistConfigToDisk(AppConfig.Default, store);
+
+        Assert.False(result.Success);
+        Assert.Equal("disk full", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void PersistConfigToDisk_OnSuccess_ReturnsTrue()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var store = new RecordingConfigStore();
+
+        WorkflowSaveResult result = coordinator.PersistConfigToDisk(AppConfig.Default, store);
+
+        Assert.True(result.Success);
+        Assert.True(store.SaveCalled);
+    }
+
+    [Fact]
+    public void ApplySettingsAndPersist_ValidationFailure_DoesNotCallSave()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var store = new RecordingConfigStore();
+        var config = AppConfig.Default;
+        config.Zones = new List<ZoneConfig>();
+
+        WorkflowSaveResult result = coordinator.ApplySettingsAndPersist(config, store);
+
+        Assert.False(result.Success);
+        Assert.False(store.SaveCalled);
+    }
+
+    [Fact]
+    public void ApplySettingsAndPersist_OnValidConfig_CallsSave()
+    {
+        var coordinator = new MainWindowWorkflowCoordinator();
+        var store = new RecordingConfigStore();
+
+        WorkflowSaveResult result = coordinator.ApplySettingsAndPersist(AppConfig.Default, store);
+
+        Assert.True(result.Success);
+        Assert.True(store.SaveCalled);
+    }
+
+    private sealed class RecordingConfigStore : IConfigStore
+    {
+        public bool SaveCalled { get; private set; }
+
+        public AppConfig Load() => AppConfig.Default;
+
+        public void Save(AppConfig config) => SaveCalled = true;
+    }
+
+    private sealed class ThrowingConfigStore : IConfigStore
+    {
+        private readonly string _message;
+
+        public ThrowingConfigStore(string message) => _message = message;
+
+        public AppConfig Load() => AppConfig.Default;
+
+        public void Save(AppConfig config) => throw new InvalidOperationException(_message);
+    }
 }

@@ -318,14 +318,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        try
-        {
-            _configStore.Save(_config);
-        }
-        catch (Exception ex)
+        WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_config, _configStore);
+        if (!persistResult.Success)
         {
             SettingsResultText.Foreground = Brushes.IndianRed;
-            SettingsResultText.Text = ex.Message;
+            SettingsResultText.Text = persistResult.ErrorMessage ?? "Preferences could not be saved.";
             return;
         }
 
@@ -644,15 +641,14 @@ public partial class MainWindow : Window
         try
         {
             CommitCurrentZoneEdits();
-            WorkflowSaveResult applyResult = _workflowCoordinator.ValidateAndSave(_config);
-            if (!applyResult.Success)
+            WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_config, _configStore);
+            if (!persistResult.Success)
             {
                 SettingsResultText.Foreground = Brushes.IndianRed;
-                SettingsResultText.Text = applyResult.ErrorMessage ?? "Settings could not be applied.";
+                SettingsResultText.Text = persistResult.ErrorMessage ?? "Settings could not be applied.";
                 return;
             }
 
-            _configStore.Save(_config);
             UpdateUiForCurrentConfig();
             DrawZoneOverlay();
 
