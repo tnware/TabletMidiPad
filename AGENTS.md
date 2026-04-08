@@ -18,19 +18,17 @@ Secondary goals:
 ## Core Philosophy
 
 1. **Behavior first, structure second**
-   - Refactors must preserve user-visible behavior unless a change is explicitly requested.
-   - Organizational cleanup is valid and encouraged, but should not silently alter runtime behavior.
-
+  - Refactors must preserve user-visible behavior unless a change is explicitly requested.
+  - Organizational cleanup is valid and encouraged, but should not silently alter runtime behavior.
 2. **Incremental migration over big-bang rewrites**
-   - Make small, verifiable steps.
-   - Keep the app shippable after each commit.
-   - Use compatibility bridges during migration (e.g., keep existing event handlers while binding new VM state).
-
+  - Make small, verifiable steps.
+  - Keep the app shippable after each commit.
+  - Use compatibility bridges during migration (e.g., keep existing event handlers while binding new VM state).
 3. **Single responsibility by layer**
-   - Views: presentation concerns only.
-   - ViewModels: UI state and presentation logic.
-   - Services: infrastructure/system integrations and domain operations.
-   - Composition root: dependency wiring only.
+  - Views: presentation concerns only.
+  - ViewModels: UI state and presentation logic.
+  - Services: infrastructure/system integrations and domain operations.
+  - Composition root: dependency wiring only.
 
 ---
 
@@ -98,7 +96,7 @@ Do **not** place new business/infrastructure logic in code-behind.
 Before finalizing changes:
 
 1. Build the project successfully.
-   - Run: `dotnet build -v minimal`
+  - Run: `dotnet build -v minimal`
 2. Verify no unintended behavior changes were introduced in touched flows.
 3. Keep commits logically grouped and descriptive.
 
@@ -120,22 +118,41 @@ When performing multi-step refactors:
 
 ---
 
-## Recommended Ongoing Migration Priorities
+## Forward Goals (Post-Migration)
 
-When continuing cleanup work, prioritize in this order:
+The MVVM/DI migration baseline is now established. Follow-up work should focus on product quality and sustainable velocity rather than additional broad rewrites.
 
-1. Remaining code-behind state writes -> ViewModel properties.
-2. Remaining infrastructure logic -> service interfaces + implementations.
-3. Tighten ViewModel/service boundaries and remove temporary migration bridges.
-4. Add targeted tests around normalized config behavior and key service contracts.
+Prioritize in this order:
+
+1. **Reliability and regression safety**
+   - Add targeted automated tests for critical flows:
+     - startup and configuration load/save,
+     - zone configuration/edit/apply behavior,
+     - preferences validation and persistence,
+     - MIDI send/restart behavior at service boundaries.
+   - Prevent regressions in command wiring and XAML bindings with focused UI/integration tests where practical.
+
+2. **Input pipeline hardening**
+   - Improve observability around Wintab/mouse fallback transitions and service startup failures.
+   - Keep error handling user-friendly and diagnosable (clear UI messages, actionable logs).
+   - Preserve graceful degradation when hardware/services are unavailable.
+
+3. **Boundary tightening and simplification**
+   - Continue reducing accidental coupling between views and operational logic.
+   - Prefer small extractions that improve cohesion (single-purpose services/viewmodel helpers).
+   - Remove temporary compatibility bridges only when replacement behavior is verified.
+
+4. **Developer experience**
+   - Keep build output clean and actionable.
+   - Maintain deterministic startup behavior across contributor environments.
+   - Document non-obvious architectural decisions close to the relevant code.
 
 ---
 
-## Non-Goals for Refactor-Only Changes
+## Non-Goals for Routine Changes
 
 - No unrequested feature additions.
 - No silent UX/behavior changes.
 - No format-breaking config changes.
 
 If a requested task conflicts with these standards, document the tradeoff explicitly in the PR summary.
-
