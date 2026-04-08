@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
@@ -17,6 +16,9 @@ public partial class MainWindow : Window
     /// <summary>Shared MIDI engine for the parameterless designer ctor so <see cref="IPadInteractionOutcomeApplier"/> uses the same instance.</summary>
     private static readonly IMidiEngine DesignerMidiEngine = new WinMmMidiEngine();
 
+    /// <summary>Shared Wintab backend for the designer ctor so <see cref="ITabletDevicePickerSyncService"/> and <see cref="IWintabInputBackend"/> refer to the same instance.</summary>
+    private static readonly IWintabInputBackend DesignerWintabBackend = new WintabInputBackend();
+
     private bool _isActive;
     private bool _isLoadingUi;
     private bool _useWintab;
@@ -27,6 +29,7 @@ public partial class MainWindow : Window
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IWintabInputBackend _wintabInputBackend;
+    private readonly ITabletDevicePickerSyncService _tabletDevicePickerSyncService;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IZoneEditorService _zoneEditorService;
@@ -70,7 +73,8 @@ public partial class MainWindow : Window
             new JsonConfigStore(AppConfig.GetConfigPath()),
             DesignerMidiEngine,
             new WacomServiceController(),
-            new WintabInputBackend(),
+            DesignerWintabBackend,
+            new TabletDevicePickerSyncService(DesignerWintabBackend),
             new PreferencesDialogService(new ConfigValueParser()),
             new ZoneConfigurationService(),
             new ZoneEditorService(new ConfigValueParser()),
@@ -98,6 +102,7 @@ public partial class MainWindow : Window
         IMidiEngine midiEngine,
         IWacomServiceController wacomServiceController,
         IWintabInputBackend wintabInputBackend,
+        ITabletDevicePickerSyncService tabletDevicePickerSyncService,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
         IZoneEditorService zoneEditorService,
@@ -122,6 +127,7 @@ public partial class MainWindow : Window
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
+        _tabletDevicePickerSyncService = tabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(tabletDevicePickerSyncService));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
@@ -947,32 +953,8 @@ public partial class MainWindow : Window
         TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
 
         int previousDeviceIndex = _viewModel.SelectedTabletDevice?.DeviceIndex ?? -1;
+        _tabletDevicePickerSyncService.Refresh(_viewModel, previousDeviceIndex);
 
-        _viewModel.TabletDevices.Clear();
-        IReadOnlyList<WintabTabletDevice> devices = _wintabInputBackend.GetAvailableDevices();
-        if (devices.Count <= 0)
-        {
-            var placeholder = new TabletDeviceListItemViewModel(-1, "No tablets");
-            _viewModel.TabletDevices.Add(placeholder);
-            _viewModel.SelectedTabletDevice = placeholder;
-            _viewModel.IsTabletDevicePickerEnabled = false;
-            TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
-            return;
-        }
-
-        _viewModel.IsTabletDevicePickerEnabled = true;
-        int selectIndex = 0;
-        for (int i = 0; i < devices.Count; i++)
-        {
-            WintabTabletDevice device = devices[i];
-            _viewModel.TabletDevices.Add(new TabletDeviceListItemViewModel(device.DeviceIndex, device.Label));
-            if (previousDeviceIndex >= 0 && device.DeviceIndex == previousDeviceIndex)
-            {
-                selectIndex = i;
-            }
-        }
-
-        _viewModel.SelectedTabletDevice = _viewModel.TabletDevices[selectIndex];
         TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
     }
 
