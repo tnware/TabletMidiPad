@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace TabletMidiPad.ViewModels;
 
 /// <summary>
@@ -130,5 +132,26 @@ internal sealed class PreferencesViewModel : ViewModelBase
     {
         get => _allowZoneSwitchWhilePressed;
         set => SetProperty(ref _allowZoneSwitchWhilePressed, value);
+    }
+
+    public ObservableCollection<ExpressKeyRowViewModel> ExpressKeys { get; } = new();
+
+    /// <summary>
+    /// Ensures the express-key rows collection has at least the requested count.
+    /// </summary>
+    /// <param name="count">The minimum row count.</param>
+    public void EnsureExpressKeyCount(int count)
+    {
+        while (ExpressKeys.Count < count)
+        {
+            int index = ExpressKeys.Count;
+            ExpressKeys.Add(new ExpressKeyRowViewModel
+            {
+                Action = PenButtonActions.None,
+                MidiChannelText = "1",
+                CcText = Math.Clamp(70 + index, 0, 127).ToString(),
+                NoteText = Math.Clamp(36 + index, 0, 127).ToString()
+            });
+        }
     }
 }
