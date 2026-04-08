@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
+    private readonly IConfigValueParser _configValueParser;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -86,7 +87,8 @@ public partial class MainWindow : Window
             new WinMmMidiEngine(),
             new WacomServiceController(),
             new PreferencesDialogService(),
-            new ZoneConfigurationService())
+            new ZoneConfigurationService(),
+            new ConfigValueParser())
     {
     }
 
@@ -95,13 +97,15 @@ public partial class MainWindow : Window
         IMidiEngine midiEngine,
         IWacomServiceController wacomServiceController,
         IPreferencesDialogService preferencesDialogService,
-        IZoneConfigurationService zoneConfigurationService)
+        IZoneConfigurationService zoneConfigurationService,
+        IConfigValueParser configValueParser)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+        _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;

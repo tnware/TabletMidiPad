@@ -25,6 +25,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
+        container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
 
         // Views (created by DI so they can receive view models/services later).
         container.AddTransient(c => new MainWindow(
@@ -32,7 +33,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMidiEngine>(),
             c.GetRequiredService<IWacomServiceController>(),
             c.GetRequiredService<IPreferencesDialogService>(),
-            c.GetRequiredService<IZoneConfigurationService>()));
+            c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<IConfigValueParser>()));
 
         return container;
     }

@@ -1,0 +1,113 @@
+using System;
+
+namespace TabletMidiPad.Services;
+
+/// <summary>
+/// Default parser/normalizer for configuration-bound values.
+/// </summary>
+internal sealed class ConfigValueParser : IConfigValueParser
+{
+    /// <inheritdoc />
+    public int ReadInt(string? text, int min, int max, string fieldName)
+    {
+        if (!int.TryParse(text, out int value))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a whole number.");
+        }
+
+        if (value < min || value > max)
+        {
+            throw new InvalidOperationException($"{fieldName} must be between {min} and {max}.");
+        }
+
+        return value;
+    }
+
+    /// <inheritdoc />
+    public double ReadDouble(string? text, double min, double max, string fieldName)
+    {
+        if (!double.TryParse(text, out double value))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a number.");
+        }
+
+        if (value < min || value > max)
+        {
+            throw new InvalidOperationException($"{fieldName} must be between {min:0.###} and {max:0.###}.");
+        }
+
+        return value;
+    }
+
+    /// <inheritdoc />
+    public string RequireText(string? text, string fieldName)
+    {
+        string value = (text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"{fieldName} is required.");
+        }
+
+        return value;
+    }
+
+    /// <inheritdoc />
+    public string RequireGuidText(string? text, string fieldName)
+    {
+        string value = RequireText(text, fieldName);
+        if (!Guid.TryParse(value, out Guid parsed))
+        {
+            throw new InvalidOperationException($"{fieldName} must be a valid GUID.");
+        }
+
+        return parsed.ToString("B");
+    }
+
+    /// <inheritdoc />
+    public string NormalizeInputBackendMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            "Wintab" => "Wintab Only",
+            "Mouse" => "Stylus/Mouse Only",
+            "Wintab Only" => value,
+            "Stylus/Mouse Only" => value,
+            _ => "Auto"
+        };
+    }
+
+    /// <inheritdoc />
+    public string NormalizeReleaseBehavior(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
+            ZoneReleaseBehaviors.Hold => value,
+            ZoneReleaseBehaviors.ResetAll => value,
+            ZoneReleaseBehaviors.NoSendOnRelease => value,
+            _ => ZoneReleaseBehaviors.ResetPressureOnly
+        };
+    }
+
+    /// <inheritdoc />
+    public string NormalizePenButtonAction(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            PenButtonActions.None => value,
+            PenButtonActions.LockXY => value,
+            PenButtonActions.LockX => value,
+            PenButtonActions.LockY => value,
+            PenButtonActions.DisablePressure => value,
+            PenButtonActions.EnablePressure => value,
+            PenButtonActions.CcMomentary => value,
+            PenButtonActions.CcToggle => value,
+            PenButtonActions.NoteMomentary => value,
+            PenButtonActions.NoteToggle => value,
+            _ => PenButtonActions.None
+        };
+    }
+}
