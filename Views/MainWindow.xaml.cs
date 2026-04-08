@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
     private readonly IWintabEventAdapter _wintabEventAdapter;
+    private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -155,6 +156,7 @@ public partial class MainWindow : Window
             new PadInteractionEngine(),
             new ZoneResizeService(),
             new InputFallbackService(),
+            new InputInteractionOrchestrator(new PadInteractionEngine(), new InputFallbackService()),
             new InputBackendStatusFormatter(),
             new WintabEventAdapter())
     {
@@ -173,6 +175,7 @@ public partial class MainWindow : Window
         IPadInteractionEngine padInteractionEngine,
         IZoneResizeService zoneResizeService,
         IInputFallbackService inputFallbackService,
+        IInputInteractionOrchestrator inputInteractionOrchestrator,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IWintabEventAdapter wintabEventAdapter)
     {
@@ -190,6 +193,7 @@ public partial class MainWindow : Window
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
         _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
+        _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -1103,15 +1107,15 @@ public partial class MainWindow : Window
         }
 
         ProcessInteractionTick(
-            xPx: sample.PixelPosition.X,
-            yPx: sample.PixelPosition.Y,
-            xNorm: sample.XNorm,
-            yNorm: sample.YNorm,
-            pressure: sample.Pressure127,
-            isDown: true,
-            isHovering: false,
-            penButtons: 0,
-            backend: InteractionBackend.StylusFallback);
+            new InteractionInput(
+                XNorm: sample.XNorm,
+                YNorm: sample.YNorm,
+                Pressure: sample.Pressure127,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0,
+                Backend: InteractionBackend.StylusFallback),
+            sample.PixelPosition);
     }
 
     private void HandleMouse(MouseEventArgs e)
@@ -1130,48 +1134,32 @@ public partial class MainWindow : Window
         }
 
         ProcessInteractionTick(
-            xPx: sample.PixelPosition.X,
-            yPx: sample.PixelPosition.Y,
-            xNorm: sample.XNorm,
-            yNorm: sample.YNorm,
-            pressure: sample.Pressure127,
-            isDown: true,
-            isHovering: false,
-            penButtons: 0,
-            backend: InteractionBackend.MouseFallback);
+            new InteractionInput(
+                XNorm: sample.XNorm,
+                YNorm: sample.YNorm,
+                Pressure: sample.Pressure127,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0,
+                Backend: InteractionBackend.MouseFallback),
+            sample.PixelPosition);
     }
 
-    private void ProcessInteractionTick(
-        double xPx,
-        double yPx,
-        double xNorm,
-        double yNorm,
-        int pressure,
-        bool isDown,
-        bool isHovering,
-        uint penButtons,
-        InteractionBackend backend)
+    private void ProcessInteractionTick(InteractionInput input, Point pixelPosition)
     {
         // Cursor is purely UI; keep it here for now.
-        if (isHovering || isDown)
+        if (input.IsHovering || input.IsDown)
         {
             CursorDot.Visibility = Visibility.Visible;
-            Canvas.SetLeft(CursorDot, xPx - CursorDot.Width / 2);
-            Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
+            Canvas.SetLeft(CursorDot, pixelPosition.X - CursorDot.Width / 2);
+            Canvas.SetTop(CursorDot, pixelPosition.Y - CursorDot.Height / 2);
         }
 
-        InteractionResult result = _padInteractionEngine.Process(
+        InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
             BuildInteractionConfig(),
             BuildZoneSnapshots(),
             _interactionState,
-            new InteractionInput(
-                XNorm: xNorm,
-                YNorm: yNorm,
-                Pressure: pressure,
-                IsDown: isDown,
-                IsHovering: isHovering,
-                PenButtons: penButtons,
-                Backend: backend));
+            input);
 
         ApplyInteractionResult(result);
 
@@ -1185,16 +1173,16 @@ public partial class MainWindow : Window
     private void HandleRelease()
     {
         // Release tick goes through engine so release behavior stays centralized.
-        ProcessInteractionTick(
-            xPx: 0,
-            yPx: 0,
-            xNorm: 0,
-            yNorm: 0,
-            pressure: 0,
-            isDown: false,
-            isHovering: false,
-            penButtons: _lastWintabButtons,
-            backend: InteractionBackend.Unknown);
+        InteractionResult releaseResult = _inputInteractionOrchestrator.ProcessRelease(
+            BuildInteractionConfig(),
+            BuildZoneSnapshots(),
+            _interactionState,
+            _lastWintabButtons);
+        ApplyInteractionResult(releaseResult);
+        _activeZone = releaseResult.ActiveZoneIndex >= 0 && releaseResult.ActiveZoneIndex < _config.Zones.Count
+            ? _config.Zones[releaseResult.ActiveZoneIndex]
+            : null;
+        DrawZoneOverlay();
 
         CursorDot.Visibility = Visibility.Collapsed;
         CursorDot.Opacity = 0.85;
@@ -1488,30 +1476,30 @@ public partial class MainWindow : Window
 
             CursorDot.Opacity = update.CursorOpacity;
             ProcessInteractionTick(
-                xPx: update.XPixel,
-                yPx: update.YPixel,
-                xNorm: update.XNorm,
-                yNorm: update.YNorm,
-                pressure: 0,
-                isDown: false,
-                isHovering: true,
-                penButtons: update.PenButtons,
-                backend: InteractionBackend.Wintab);
+                new InteractionInput(
+                    XNorm: update.XNorm,
+                    YNorm: update.YNorm,
+                    Pressure: 0,
+                    IsDown: false,
+                    IsHovering: true,
+                    PenButtons: update.PenButtons,
+                    Backend: InteractionBackend.Wintab),
+                new Point(update.XPixel, update.YPixel));
             return;
         }
 
         CursorDot.Opacity = update.CursorOpacity;
         _isActive = update.IsDown;
         ProcessInteractionTick(
-            xPx: update.XPixel,
-            yPx: update.YPixel,
-            xNorm: update.XNorm,
-            yNorm: update.YNorm,
-            pressure: update.Pressure127,
-            isDown: true,
-            isHovering: false,
-            penButtons: update.PenButtons,
-            backend: InteractionBackend.Wintab);
+            new InteractionInput(
+                XNorm: update.XNorm,
+                YNorm: update.YNorm,
+                Pressure: update.Pressure127,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: update.PenButtons,
+                Backend: InteractionBackend.Wintab),
+            new Point(update.XPixel, update.YPixel));
     }
 
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)

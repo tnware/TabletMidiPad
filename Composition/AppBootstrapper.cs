@@ -31,6 +31,9 @@ internal static class AppBootstrapper
         container.AddSingleton<IZoneEditorService>(_ => new ZoneEditorService());
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IInputFallbackService>(_ => new InputFallbackService());
+        container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
+            c.GetRequiredService<IPadInteractionEngine>(),
+            c.GetRequiredService<IInputFallbackService>()));
         container.AddSingleton<IInputBackendStatusFormatter>(_ => new InputBackendStatusFormatter());
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
@@ -50,6 +53,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IPadInteractionEngine>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IInputFallbackService>(),
+            c.GetRequiredService<IInputInteractionOrchestrator>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
             c.GetRequiredService<IWintabEventAdapter>()));
 
