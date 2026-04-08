@@ -45,6 +45,8 @@ internal static class AppBootstrapper
         container.AddSingleton<IMainWindowInputBackendCoordinator>(_ => new MainWindowInputBackendCoordinator());
         container.AddSingleton<IWacomServiceWorkflowCoordinator>(_ => new WacomServiceWorkflowCoordinator());
         container.AddSingleton<IMainWindowLifecycleCoordinator>(_ => new MainWindowLifecycleCoordinator());
+        container.AddSingleton<IMainWindowStartupLifecycleService>(c => new MainWindowStartupLifecycleService(
+            c.GetRequiredService<IMainWindowLifecycleCoordinator>()));
         container.AddSingleton<IMainWindowWintabInputBridge>(c => new MainWindowWintabInputBridge(
             c.GetRequiredService<IWintabEventAdapter>(),
             c.GetRequiredService<IMainWindowInputBackendCoordinator>()));
@@ -78,6 +80,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMainWindowInputBackendCoordinator>(),
             c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),
             c.GetRequiredService<IMainWindowLifecycleCoordinator>(),
+            c.GetRequiredService<IMainWindowStartupLifecycleService>(),
             c.GetRequiredService<IMainWindowWintabInputBridge>(),
             c.GetRequiredService<IMainWindowPadPresentationCoordinator>(),
             c.GetRequiredService<IMainWindowToolbarSession>(),

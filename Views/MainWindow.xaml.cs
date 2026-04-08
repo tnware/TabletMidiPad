@@ -22,6 +22,11 @@ public partial class MainWindow : Window
     /// <summary>Shared zone configuration for designer-time <see cref="IZoneActionWorkflowCoordinator"/> parity.</summary>
     private static readonly IZoneConfigurationService DesignerZoneConfiguration = new ZoneConfigurationService();
 
+    private static readonly IMainWindowLifecycleCoordinator DesignerLifecycleCoordinator = new MainWindowLifecycleCoordinator();
+
+    private static readonly IMainWindowStartupLifecycleService DesignerStartupLifecycle =
+        new MainWindowStartupLifecycleService(DesignerLifecycleCoordinator);
+
     private static readonly MainWindowInputBackendCoordinator DesignerInputBackendCoordinator = new();
 
     private static readonly MainWindowWintabInputBridge DesignerWintabInputBridge = new(new WintabEventAdapter(), DesignerInputBackendCoordinator);
@@ -48,6 +53,7 @@ public partial class MainWindow : Window
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
+    private readonly IMainWindowStartupLifecycleService _startupLifecycle;
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowToolbarSession _toolbarSession;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
@@ -92,7 +98,8 @@ public partial class MainWindow : Window
             new MainWindowWorkflowCoordinator(),
             DesignerInputBackendCoordinator,
             new WacomServiceWorkflowCoordinator(),
-            new MainWindowLifecycleCoordinator(),
+            DesignerLifecycleCoordinator,
+            DesignerStartupLifecycle,
             DesignerWintabInputBridge,
             new MainWindowPadPresentationCoordinator(),
             new MainWindowToolbarSession(),
@@ -120,6 +127,7 @@ public partial class MainWindow : Window
         IMainWindowInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IMainWindowLifecycleCoordinator lifecycleCoordinator,
+        IMainWindowStartupLifecycleService startupLifecycle,
         IMainWindowWintabInputBridge wintabInputBridge,
         IMainWindowPadPresentationCoordinator padPresentationCoordinator,
         IMainWindowToolbarSession toolbarSession,
@@ -144,6 +152,7 @@ public partial class MainWindow : Window
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
+        _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
@@ -190,11 +199,12 @@ public partial class MainWindow : Window
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
         {
-            _lifecycleCoordinator.ShutdownMidiOutput(_midiEngine, _config);
-            ApplyInputBackendLifecycleState(
-                _lifecycleCoordinator.ShutdownTabletInput(_inputBackendCoordinator, _wintabInputBackend),
-                refreshInputBackendStatusText: false);
-            _wintabInputBackend.Dispose();
+            _startupLifecycle.ShutdownForExit(
+                _midiEngine,
+                _config,
+                _inputBackendCoordinator,
+                _wintabInputBackend,
+                r => ApplyInputBackendLifecycleState(r, refreshInputBackendStatusText: false));
         };
     }
 
@@ -389,36 +399,18 @@ public partial class MainWindow : Window
 
     private async Task InitializeAppAsync()
     {
-        _config = _lifecycleCoordinator.LoadStartupConfig(_configStore);
+        _config = _startupLifecycle.LoadPersistedConfig(_configStore);
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
         InitializeWintab();
 
-        _viewModel.IsMidiStatusPanelVisible = true;
-        _viewModel.IsMidiProgressVisible = true;
-        _viewModel.MidiStatusSeverity = MidiStatusSeverity.Normal;
-        _viewModel.MidiStatusText = "Connecting MIDI...";
-        await Task.Yield();
-
-        MidiInitializationResult midiResult = await _lifecycleCoordinator.TryInitializeMidiAsync(
+        await _startupLifecycle.RunStartupMidiSequenceAsync(
             _midiEngine,
             _config,
-            text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
-
-        if (midiResult.Succeeded)
-        {
-            UpdateUiForCurrentConfig();
-            _viewModel.IsMidiStatusPanelVisible = false;
-        }
-        else
-        {
-            _viewModel.IsMidiProgressVisible = false;
-            _viewModel.MidiStatusSeverity = MidiStatusSeverity.Error;
-            _viewModel.MidiStatusText = "MIDI init failed";
-            _viewModel.StatusText = "MIDI init failed";
-            _viewModel.ValueText = midiResult.ErrorMessage ?? string.Empty;
-        }
+            _viewModel,
+            a => Dispatcher.Invoke(a),
+            UpdateUiForCurrentConfig);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
