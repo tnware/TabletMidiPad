@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IZoneEditorService _zoneEditorService;
     private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
+    private readonly IZoneResizeService _zoneResizeService;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -134,23 +135,8 @@ public partial class MainWindow : Window
     }
 
     // Zone resize drag state
-    private const double ResizeHitMargin = 8.0;
-    private const double ZoneSelectionInset = 0.02;
     private bool _isResizingZone;
-    private int _resizeZoneIndex = -1;
-    private ResizeEdge _resizeEdge;
-    private Point _resizeDragStart;
-    private double _resizeOrigLeft, _resizeOrigTop, _resizeOrigWidth, _resizeOrigHeight;
-
-    [Flags]
-    private enum ResizeEdge
-    {
-        None = 0,
-        Left = 1,
-        Right = 2,
-        Top = 4,
-        Bottom = 8
-    }
+    private ZoneResizeSession? _zoneResizeSession;
 
     public MainWindow()
         : this(
@@ -163,7 +149,8 @@ public partial class MainWindow : Window
             new ZoneEditorService(),
             new ZoneOverlayRenderer(),
             new ConfigValueParser(),
-            new PadInteractionEngine())
+            new PadInteractionEngine(),
+            new ZoneResizeService())
     {
     }
 
@@ -177,7 +164,8 @@ public partial class MainWindow : Window
         IZoneEditorService zoneEditorService,
         IZoneOverlayRenderer zoneOverlayRenderer,
         IConfigValueParser configValueParser,
-        IPadInteractionEngine padInteractionEngine)
+        IPadInteractionEngine padInteractionEngine,
+        IZoneResizeService zoneResizeService)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -189,6 +177,7 @@ public partial class MainWindow : Window
         _zoneOverlayRenderer = zoneOverlayRenderer ?? throw new ArgumentNullException(nameof(zoneOverlayRenderer));
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
+        _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -999,66 +988,32 @@ public partial class MainWindow : Window
         HandleRelease();
     }
 
-    private (int zone, ResizeEdge edge) HitTestZoneEdge(Point pos)
-    {
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
-        if (width <= 0 || height <= 0)
-            return (-1, ResizeEdge.None);
+    private (int zone, ZoneResizeEdge edge) HitTestZoneEdge(Point pos)
+        => _zoneResizeService.HitTestZoneEdge(_config.Zones, _selectedZoneIndex, Pad.ActualWidth, Pad.ActualHeight, pos);
 
-        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
-        {
-            return (-1, ResizeEdge.None);
-        }
-
-        int i = _selectedZoneIndex;
-        var zone = _config.Zones[i];
-        double zl = zone.Left * width;
-        double zt = zone.Top * height;
-        double zr = (zone.Left + zone.Width) * width;
-        double zb = (zone.Top + zone.Height) * height;
-
-        if (pos.X < zl - ResizeHitMargin || pos.X > zr + ResizeHitMargin ||
-            pos.Y < zt - ResizeHitMargin || pos.Y > zb + ResizeHitMargin)
-            return (-1, ResizeEdge.None);
-
-        ResizeEdge edge = ResizeEdge.None;
-        if (Math.Abs(pos.X - zl) <= ResizeHitMargin) edge |= ResizeEdge.Left;
-        else if (Math.Abs(pos.X - zr) <= ResizeHitMargin) edge |= ResizeEdge.Right;
-        if (Math.Abs(pos.Y - zt) <= ResizeHitMargin) edge |= ResizeEdge.Top;
-        else if (Math.Abs(pos.Y - zb) <= ResizeHitMargin) edge |= ResizeEdge.Bottom;
-
-        return edge != ResizeEdge.None ? (i, edge) : (-1, ResizeEdge.None);
-    }
-
-    private static Cursor ResizeEdgeToCursor(ResizeEdge edge)
+    private static Cursor? ResizeEdgeToCursor(ZoneResizeEdge edge)
     {
         return edge switch
         {
-            ResizeEdge.Left or ResizeEdge.Right => Cursors.SizeWE,
-            ResizeEdge.Top or ResizeEdge.Bottom => Cursors.SizeNS,
-            ResizeEdge.Left | ResizeEdge.Top => Cursors.SizeNWSE,
-            ResizeEdge.Right | ResizeEdge.Bottom => Cursors.SizeNWSE,
-            ResizeEdge.Left | ResizeEdge.Bottom => Cursors.SizeNESW,
-            ResizeEdge.Right | ResizeEdge.Top => Cursors.SizeNESW,
-            _ => null!
+            ZoneResizeEdge.Left or ZoneResizeEdge.Right => Cursors.SizeWE,
+            ZoneResizeEdge.Top or ZoneResizeEdge.Bottom => Cursors.SizeNS,
+            ZoneResizeEdge.Left | ZoneResizeEdge.Top => Cursors.SizeNWSE,
+            ZoneResizeEdge.Right | ZoneResizeEdge.Bottom => Cursors.SizeNWSE,
+            ZoneResizeEdge.Left | ZoneResizeEdge.Bottom => Cursors.SizeNESW,
+            ZoneResizeEdge.Right | ZoneResizeEdge.Top => Cursors.SizeNESW,
+            _ => null
         };
     }
 
-    private void StartZoneResize(int zoneIndex, ResizeEdge edge, Point pos)
+    private void StartZoneResize(int zoneIndex, ZoneResizeEdge edge, Point pos)
     {
-        _isResizingZone = true;
-        _resizeZoneIndex = zoneIndex;
-        _resizeEdge = edge;
-        _resizeDragStart = pos;
+        _zoneResizeSession = _zoneResizeService.StartResizeSession(_config.Zones, zoneIndex, edge, pos);
+        _isResizingZone = _zoneResizeSession is not null;
+        if (!_isResizingZone)
+        {
+            return;
+        }
 
-        var zone = _config.Zones[zoneIndex];
-        _resizeOrigLeft = zone.Left;
-        _resizeOrigTop = zone.Top;
-        _resizeOrigWidth = zone.Width;
-        _resizeOrigHeight = zone.Height;
-
-        // Select this zone in the editor
         if (_selectedZoneIndex != zoneIndex)
         {
             CommitCurrentZoneEdits();
@@ -1070,7 +1025,7 @@ public partial class MainWindow : Window
 
     private void SelectZoneAtPoint(Point pos)
     {
-        int zoneIndex = HitTestZoneBody(pos);
+        int zoneIndex = _zoneResizeService.HitTestZoneBody(_config.Zones, Pad.ActualWidth, Pad.ActualHeight, pos);
         if (zoneIndex < 0 || zoneIndex == _selectedZoneIndex)
         {
             return;
@@ -1083,100 +1038,29 @@ public partial class MainWindow : Window
         DrawZoneOverlay();
     }
 
-    private int HitTestZoneBody(Point pos)
-    {
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
-        if (width <= 0 || height <= 0)
-        {
-            return -1;
-        }
-
-        for (int i = 0; i < _config.Zones.Count; i++)
-        {
-            var zone = _config.Zones[i];
-            double insetX = Math.Min(ZoneSelectionInset, Math.Max(0.0, (zone.Width / 2.0) - 0.001));
-            double insetY = Math.Min(ZoneSelectionInset, Math.Max(0.0, (zone.Height / 2.0) - 0.001));
-            double zl = (zone.Left + insetX) * width;
-            double zt = (zone.Top + insetY) * height;
-            double zr = ((zone.Left + zone.Width) - insetX) * width;
-            double zb = ((zone.Top + zone.Height) - insetY) * height;
-
-            if (pos.X >= zl && pos.X <= zr && pos.Y >= zt && pos.Y <= zb)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     private void UpdateZoneResize(Point pos)
     {
-        if (_resizeZoneIndex < 0 || _resizeZoneIndex >= _config.Zones.Count)
-            return;
-
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
-        if (width <= 0 || height <= 0) return;
-
-        double dxNorm = (pos.X - _resizeDragStart.X) / width;
-        double dyNorm = (pos.Y - _resizeDragStart.Y) / height;
-
-        const double snap = 0.05;
-        const double minSize = 0.05;
-        double newLeft = _resizeOrigLeft;
-        double newTop = _resizeOrigTop;
-        double newWidth = _resizeOrigWidth;
-        double newHeight = _resizeOrigHeight;
-
-        if ((_resizeEdge & ResizeEdge.Left) != 0)
-        {
-            newLeft = Snap(Math.Clamp(_resizeOrigLeft + dxNorm, 0.0, _resizeOrigLeft + _resizeOrigWidth - minSize), snap);
-            newWidth = (_resizeOrigLeft + _resizeOrigWidth) - newLeft;
-        }
-        else if ((_resizeEdge & ResizeEdge.Right) != 0)
-        {
-            double newRight = Snap(Math.Clamp(_resizeOrigLeft + _resizeOrigWidth + dxNorm, _resizeOrigLeft + minSize, 1.0), snap);
-            newWidth = newRight - _resizeOrigLeft;
-        }
-
-        if ((_resizeEdge & ResizeEdge.Top) != 0)
-        {
-            newTop = Snap(Math.Clamp(_resizeOrigTop + dyNorm, 0.0, _resizeOrigTop + _resizeOrigHeight - minSize), snap);
-            newHeight = (_resizeOrigTop + _resizeOrigHeight) - newTop;
-        }
-        else if ((_resizeEdge & ResizeEdge.Bottom) != 0)
-        {
-            double newBottom = Snap(Math.Clamp(_resizeOrigTop + _resizeOrigHeight + dyNorm, _resizeOrigTop + minSize, 1.0), snap);
-            newHeight = newBottom - _resizeOrigTop;
-        }
-
-        newLeft = Math.Clamp(newLeft, 0.0, 1.0);
-        newTop = Math.Clamp(newTop, 0.0, 1.0);
-        newWidth = Snap(Math.Clamp(newWidth, minSize, 1.0 - newLeft), snap);
-        newHeight = Snap(Math.Clamp(newHeight, minSize, 1.0 - newTop), snap);
-
-        if (newLeft + newWidth > 1.0)
-        {
-            newWidth = 1.0 - newLeft;
-        }
-
-        if (newTop + newHeight > 1.0)
-        {
-            newHeight = 1.0 - newTop;
-        }
-
-        if (!CanResizeZoneTo(_resizeZoneIndex, newLeft, newTop, newWidth, newHeight))
+        if (_zoneResizeSession is null)
         {
             return;
         }
 
-        var zone = _config.Zones[_resizeZoneIndex];
-        zone.Left = newLeft;
-        zone.Top = newTop;
-        zone.Width = newWidth;
-        zone.Height = newHeight;
+        ZoneResizeUpdate? update = _zoneResizeService.ComputeResizeUpdate(
+            _config.Zones,
+            _zoneResizeSession,
+            Pad.ActualWidth,
+            Pad.ActualHeight,
+            pos);
+        if (update is null)
+        {
+            return;
+        }
+
+        ZoneConfig zone = _config.Zones[update.ZoneIndex];
+        zone.Left = update.Left;
+        zone.Top = update.Top;
+        zone.Width = update.Width;
+        zone.Height = update.Height;
 
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
@@ -1185,61 +1069,10 @@ public partial class MainWindow : Window
     private void FinishZoneResize()
     {
         _isResizingZone = false;
-        _resizeZoneIndex = -1;
-        _resizeEdge = ResizeEdge.None;
-        Pad.Cursor = null!;
+        _zoneResizeSession = null;
+        Pad.Cursor = null;
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
         SettingsResultText.Text = "Zone resized. Click Apply Settings to save.";
-    }
-
-    private bool CanResizeZoneTo(int zoneIndex, double left, double top, double width, double height)
-    {
-        const double minSize = 0.05;
-        if (width < minSize || height < minSize)
-        {
-            return false;
-        }
-
-        if (left < 0.0 || top < 0.0 || left + width > 1.0 || top + height > 1.0)
-        {
-            return false;
-        }
-
-        foreach (var other in _config.Zones.Select((zone, index) => (zone, index)))
-        {
-            if (other.index == zoneIndex)
-            {
-                continue;
-            }
-
-            if (ZonesOverlap(left, top, width, height, other.zone.Left, other.zone.Top, other.zone.Width, other.zone.Height))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool ZonesOverlap(
-        double leftA,
-        double topA,
-        double widthA,
-        double heightA,
-        double leftB,
-        double topB,
-        double widthB,
-        double heightB)
-    {
-        double rightA = leftA + widthA;
-        double bottomA = topA + heightA;
-        double rightB = leftB + widthB;
-        double bottomB = topB + heightB;
-
-        return leftA < rightB &&
-               rightA > leftB &&
-               topA < bottomB &&
-               bottomA > topB;
     }
 
     private void HandleStylus(StylusEventArgs e)
@@ -1356,13 +1189,6 @@ public partial class MainWindow : Window
 
         CursorDot.Visibility = Visibility.Collapsed;
         CursorDot.Opacity = 0.85;
-    }
-
-    private static (double x, double y) NormalizeWithinZone(ZoneConfig zone, double xNorm, double yNorm)
-    {
-        double x = (xNorm - zone.Left) / zone.Width;
-        double y = (yNorm - zone.Top) / zone.Height;
-        return (Math.Clamp(x, 0.0, 1.0), Math.Clamp(y, 0.0, 1.0));
     }
 
     private bool TryGetPadCoordinates(Point point, out double xNorm, out double yNorm)
@@ -1731,11 +1557,6 @@ public partial class MainWindow : Window
     private bool AllowsStylusMouseFallback()
     {
         return !string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
-    }
-
-    private static double Snap(double value, double increment)
-    {
-        return Math.Round(value / increment) * increment;
     }
 
     private static string NormalizeInputBackendMode(string? text)

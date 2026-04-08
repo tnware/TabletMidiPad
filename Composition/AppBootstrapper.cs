@@ -28,6 +28,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IZoneEditorService>(_ => new ZoneEditorService());
+        container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
@@ -43,7 +44,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IConfigValueParser>(),
-            c.GetRequiredService<IPadInteractionEngine>()));
+            c.GetRequiredService<IPadInteractionEngine>(),
+            c.GetRequiredService<IZoneResizeService>()));
 
         return container;
     }
