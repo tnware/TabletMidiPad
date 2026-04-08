@@ -14,7 +14,7 @@ internal sealed class MainWindowInputBackendCoordinator : IMainWindowInputBacken
         int selectedDeviceIndex,
         int currentExpressKeyCount)
     {
-        string mode = NormalizeInputBackendMode(inputBackendMode);
+        string mode = InputBackendModeNormalizer.Normalize(inputBackendMode);
         if (string.Equals(mode, "Stylus/Mouse Only", StringComparison.Ordinal))
         {
             backend.Shutdown();
@@ -67,16 +67,4 @@ internal sealed class MainWindowInputBackendCoordinator : IMainWindowInputBacken
             ModifiersText: "Modifiers: none");
     }
 
-    private static string NormalizeInputBackendMode(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Wintab" => "Wintab Only",
-            "Mouse" => "Stylus/Mouse Only",
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => "Auto"
-        };
-    }
 }

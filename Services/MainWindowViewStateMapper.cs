@@ -8,7 +8,7 @@ internal sealed class MainWindowViewStateMapper : IMainWindowViewStateMapper
     /// <inheritdoc />
     public MainWindowToolbarState BuildToolbarState(AppConfig config)
     {
-        string normalizedInputMode = NormalizeInputBackendMode(config.InputBackendMode);
+        string normalizedInputMode = InputBackendModeNormalizer.Normalize(config.InputBackendMode);
         string curveShort = config.PressureCurve switch
         {
             "Logarithmic" => "Log",
@@ -51,16 +51,4 @@ internal sealed class MainWindowViewStateMapper : IMainWindowViewStateMapper
             ModifiersText: "Modifiers: none");
     }
 
-    private static string NormalizeInputBackendMode(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Wintab" => "Wintab Only",
-            "Mouse" => "Stylus/Mouse Only",
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => "Auto"
-        };
-    }
 }

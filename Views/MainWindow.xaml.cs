@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
+    private readonly IMainWindowInputEventFlowCoordinator _inputEventFlowCoordinator;
+    private readonly IMainWindowPadPresentationCoordinator _padPresentationCoordinator;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IConfigValueParser _configValueParser;
@@ -167,6 +169,8 @@ public partial class MainWindow : Window
             new MainWindowWorkflowCoordinator(),
             new MainWindowInputBackendCoordinator(),
             new WacomServiceWorkflowCoordinator(),
+            new MainWindowInputEventFlowCoordinator(),
+            new MainWindowPadPresentationCoordinator(),
             new MainWindowViewStateMapper(),
             new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()))
     {
@@ -191,6 +195,8 @@ public partial class MainWindow : Window
         IMainWindowWorkflowCoordinator workflowCoordinator,
         IMainWindowInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
+        IMainWindowInputEventFlowCoordinator inputEventFlowCoordinator,
+        IMainWindowPadPresentationCoordinator padPresentationCoordinator,
         IMainWindowViewStateMapper viewStateMapper,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator)
     {
@@ -212,6 +218,8 @@ public partial class MainWindow : Window
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
+        _inputEventFlowCoordinator = inputEventFlowCoordinator ?? throw new ArgumentNullException(nameof(inputEventFlowCoordinator));
+        _padPresentationCoordinator = padPresentationCoordinator ?? throw new ArgumentNullException(nameof(padPresentationCoordinator));
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
@@ -222,14 +230,13 @@ public partial class MainWindow : Window
             UpdateInputBackendStatus();
             if (!e.Entering)
             {
-                if (_isActive)
+                if (_inputEventFlowCoordinator.ShouldReleaseOnProximityLeave(_isActive))
                 {
                     _isActive = false;
                     HandleRelease();
                 }
 
-                CursorDot.Visibility = Visibility.Collapsed;
-                CursorDot.Opacity = 0.85;
+                ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
                 _viewModel.ActiveZoneText = "Active zone: none";
             }
         };
@@ -568,7 +575,7 @@ public partial class MainWindow : Window
 
     private void ToolbarInputBackendCycle_Click(object sender, RoutedEventArgs e)
     {
-        string next = NormalizeInputBackendMode(_config.InputBackendMode) switch
+        string next = InputBackendModeNormalizer.Normalize(_config.InputBackendMode) switch
         {
             "Wintab Only" => "Mouse",
             "Stylus/Mouse Only" => "Auto",
@@ -626,7 +633,7 @@ public partial class MainWindow : Window
 
     private void SetInputBackendMode(string mode)
     {
-        string normalized = NormalizeInputBackendMode(mode);
+        string normalized = InputBackendModeNormalizer.Normalize(mode);
         if (string.Equals(_config.InputBackendMode, normalized, StringComparison.Ordinal))
         {
             SyncToolbar();
@@ -852,7 +859,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         e.Handled = true;
         _isActive = true;
         Pad.CaptureStylus();
@@ -861,7 +868,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusMove(object sender, StylusEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
@@ -869,13 +876,13 @@ public partial class MainWindow : Window
 
     private void Pad_StylusUp(object sender, StylusEventArgs e)
     {
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
         _isActive = false;
         Pad.ReleaseStylusCapture();
-        CursorDot.Visibility = Visibility.Collapsed;
+        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
         HandleRelease();
     }
 
@@ -896,7 +903,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         _isActive = true;
         Pad.CaptureMouse();
         HandleMouse(e);
@@ -918,7 +925,7 @@ public partial class MainWindow : Window
         var hit = HitTestZoneEdge(pos);
         Pad.Cursor = ResizeEdgeToCursor(hit.edge);
 
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
     }
@@ -935,12 +942,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_useWintab || !AllowsStylusMouseFallback()) return;
+        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         HandleMouse(e);
         _isActive = false;
         Pad.ReleaseMouseCapture();
-        CursorDot.Visibility = Visibility.Collapsed;
+        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
         HandleRelease();
     }
 
@@ -1085,15 +1092,14 @@ public partial class MainWindow : Window
             sample.PixelPosition);
     }
 
-    private void ProcessInteractionTick(InteractionInput input, Point pixelPosition)
+    private void ProcessInteractionTick(InteractionInput input, Point pixelPosition, double? cursorOpacityOverride = null)
     {
-        // Cursor is purely UI; keep it here for now.
-        if (input.IsHovering || input.IsDown)
-        {
-            CursorDot.Visibility = Visibility.Visible;
-            Canvas.SetLeft(CursorDot, pixelPosition.X - CursorDot.Width / 2);
-            Canvas.SetTop(CursorDot, pixelPosition.Y - CursorDot.Height / 2);
-        }
+        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorForInteractionTick(
+            input,
+            pixelPosition,
+            CursorDot.Width,
+            CursorDot.Height,
+            cursorOpacityOverride));
 
         InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
             BuildInteractionConfig(),
@@ -1124,41 +1130,13 @@ public partial class MainWindow : Window
             : null;
         DrawZoneOverlay();
 
-        CursorDot.Visibility = Visibility.Collapsed;
-        CursorDot.Opacity = 0.85;
+        ApplyCursorChrome(_padPresentationCoordinator.ComputeCursorAfterRelease());
     }
 
     private void DrawZoneOverlay()
     {
-        IReadOnlyList<ZoneOverlayZone> zones = _config.Zones
-            .Select(zone => new ZoneOverlayZone(
-                Name: zone.Name,
-                Enabled: zone.Enabled,
-                SendX: zone.SendX,
-                SendY: zone.SendY,
-                SendPressure: zone.SendPressure,
-                Left: zone.Left,
-                Top: zone.Top,
-                Width: zone.Width,
-                Height: zone.Height))
-            .ToList();
-
-        var lastByIndex = new Dictionary<int, (double x, double y)>();
-        foreach ((int index, ZoneConfig zone) in _config.Zones.Select((zone, index) => (index, zone)))
-        {
-            if (_lastZonePoints.TryGetValue(zone, out Point last))
-            {
-                lastByIndex[index] = (last.X, last.Y);
-            }
-        }
-
-        var request = new ZoneOverlayRenderRequest(
-            PadWidth: Pad.ActualWidth,
-            PadHeight: Pad.ActualHeight,
-            Zones: zones,
-            SelectedZoneIndex: _selectedZoneIndex,
-            LastLocalByZoneIndex: lastByIndex,
-            ZonePalette: Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor).ToList(),
+        var theme = new MainWindowPadOverlayTheme(
+            ZonePalette: Enumerable.Range(0, _config.Zones.Count).Select(GetZonePaletteColor).ToList(),
             ColorWindow: ThemeColor("ColorWindow", Colors.Black),
             TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),
             TextMutedBrush: ThemeBrush("TextMutedBrush", Brushes.Gainsboro),
@@ -1167,7 +1145,31 @@ public partial class MainWindow : Window
             AccentBrushHover: ThemeBrush("AccentBrushHover", Brushes.White),
             SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black));
 
+        ZoneOverlayRenderRequest request = _padPresentationCoordinator.BuildZoneOverlayRequest(
+            _config.Zones,
+            _lastZonePoints,
+            _selectedZoneIndex,
+            Pad.ActualWidth,
+            Pad.ActualHeight,
+            theme);
+
         _zoneOverlayRenderer.Render(ZoneOverlayCanvas, request);
+    }
+
+    private void ApplyCursorChrome(CursorTickChrome chrome)
+    {
+        if (!chrome.ShouldApply)
+        {
+            return;
+        }
+
+        CursorDot.Visibility = chrome.Visibility;
+        Canvas.SetLeft(CursorDot, chrome.Left);
+        Canvas.SetTop(CursorDot, chrome.Top);
+        if (chrome.Opacity.HasValue)
+        {
+            CursorDot.Opacity = chrome.Opacity.Value;
+        }
     }
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
@@ -1396,63 +1398,20 @@ public partial class MainWindow : Window
         _wintabDiagnostics = update.PacketDiagnostics;
         UpdateInputBackendStatus();
 
-        if (update.IsHovering)
+        WintabPacketFlowResult flow = _inputEventFlowCoordinator.BuildWintabPacketFlow(_isActive, update);
+        if (flow.ReleaseBeforeTickIfWasActive)
         {
-            if (_isActive)
-            {
-                _isActive = false;
-                HandleRelease();
-            }
-
-            CursorDot.Opacity = update.CursorOpacity;
-            ProcessInteractionTick(
-                new InteractionInput(
-                    XNorm: update.XNorm,
-                    YNorm: update.YNorm,
-                    Pressure: 0,
-                    IsDown: false,
-                    IsHovering: true,
-                    PenButtons: update.PenButtons,
-                    Backend: InteractionBackend.Wintab),
-                new Point(update.XPixel, update.YPixel));
-            return;
+            _isActive = false;
+            HandleRelease();
         }
 
-        CursorDot.Opacity = update.CursorOpacity;
-        _isActive = update.IsDown;
-        ProcessInteractionTick(
-            new InteractionInput(
-                XNorm: update.XNorm,
-                YNorm: update.YNorm,
-                Pressure: update.Pressure127,
-                IsDown: true,
-                IsHovering: false,
-                PenButtons: update.PenButtons,
-                Backend: InteractionBackend.Wintab),
-            new Point(update.XPixel, update.YPixel));
+        _isActive = flow.IsActiveAfter;
+        ProcessInteractionTick(flow.TickInput, flow.PixelPosition, flow.CursorOpacity);
     }
 
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
     {
         return e.StylusDevice is not null;
-    }
-
-    private bool AllowsStylusMouseFallback()
-    {
-        return !string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Wintab Only", StringComparison.Ordinal);
-    }
-
-    private static string NormalizeInputBackendMode(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Wintab" => "Wintab Only",
-            "Mouse" => "Stylus/Mouse Only",
-            "Wintab Only" => value,
-            "Stylus/Mouse Only" => value,
-            _ => "Auto"
-        };
     }
 
     private static string NormalizeReleaseBehavior(string? text)
@@ -1501,15 +1460,5 @@ public partial class MainWindow : Window
         _lastWintabButtons = buttons;
         _viewModel.PenButtonsText = _inputBackendStatusFormatter.BuildPenButtonsText(buttons);
     }
-
-    private readonly record struct WintabContextInfo(
-        int DeviceIndex,
-        int OutputMinX,
-        int OutputMaxX,
-        int OutputMinY,
-        int OutputMaxY,
-        int PressureMax,
-        bool IsIntegrated
-    );
 
 }
