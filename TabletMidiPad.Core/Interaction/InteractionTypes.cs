@@ -92,12 +92,12 @@ public sealed class InteractionState
     /// <summary>
     /// Cached per-zone smoothed local X/Y (keyed by zone index).
     /// </summary>
-    public Dictionary<int, (double x, double y)> SmoothedLocalByZone { get; } = new();
+    public Dictionary<int, (double x, double y)> SmoothedLocalByZone { get; } = [];
 
     /// <summary>
     /// Last local X/Y (keyed by zone index).
     /// </summary>
-    public Dictionary<int, (double x, double y)> LastLocalByZone { get; } = new();
+    public Dictionary<int, (double x, double y)> LastLocalByZone { get; } = [];
 
     /// <summary>
     /// Pen button held state for the lower side button.
@@ -122,12 +122,12 @@ public sealed class InteractionState
     /// <summary>
     /// Express key held state by key index.
     /// </summary>
-    public Dictionary<int, bool> ExpressKeyHeld { get; } = new();
+    public Dictionary<int, bool> ExpressKeyHeld { get; } = [];
 
     /// <summary>
     /// Express key toggle state by key index.
     /// </summary>
-    public Dictionary<int, bool> ExpressKeyToggle { get; } = new();
+    public Dictionary<int, bool> ExpressKeyToggle { get; } = [];
 }
 
 /// <summary>
