@@ -25,7 +25,8 @@ internal static class AppBootstrapper
         container.AddSingleton<IConfigStore>(_ => new JsonConfigStore(AppConfig.GetConfigPath()));
         container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
-        container.AddSingleton<IWintabInputBackend>(_ => new WintabInputBackend());
+        container.AddSingleton<IAppTrace>(_ => new TraceAppTrace());
+        container.AddSingleton<IWintabInputBackend>(c => new WintabInputBackend(c.GetRequiredService<IAppTrace>()));
         container.AddSingleton<IWintabEventAdapter>(_ => new WintabEventAdapter());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
