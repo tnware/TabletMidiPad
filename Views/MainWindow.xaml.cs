@@ -547,8 +547,9 @@ public partial class MainWindow : Window
 
     private void MenuPreferences_Click(object sender, RoutedEventArgs e)
     {
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
-        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, _expressKeyCount);
+        int effectiveExpressKeyCount = Math.Max(_expressKeyCount, _config.ExpressKeys.Count);
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
+        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
         if (result is null)
         {
             return;
