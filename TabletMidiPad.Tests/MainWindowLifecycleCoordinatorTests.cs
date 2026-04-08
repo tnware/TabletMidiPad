@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Windows;
+using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.Services;
 using Xunit;
 
@@ -102,6 +104,23 @@ public sealed class MainWindowLifecycleCoordinatorTests
 
         public InputBackendResetResult BuildResetState()
             => new(false, "a", "v", "p", "m");
+
+        public bool IsStylusMouseFallbackSuppressed(bool useWintab, string inputBackendMode) => false;
+
+        public WintabPacketFlowResult BuildWintabPacketFlow(bool wasActive, WintabPacketUpdate update)
+        {
+            InteractionInput input = new(
+                XNorm: 0,
+                YNorm: 0,
+                Pressure: 0,
+                IsDown: false,
+                IsHovering: true,
+                PenButtons: 0,
+                Backend: InteractionBackend.Wintab);
+            return new WintabPacketFlowResult(false, false, input, new Point(0, 0), 1.0);
+        }
+
+        public bool ShouldReleaseOnProximityLeave(bool isActive) => false;
     }
 
     private sealed class MinimalWintabBackend : IWintabInputBackend

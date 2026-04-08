@@ -12,7 +12,7 @@ namespace TabletMidiPad.Views;
 internal partial class PreferencesWindow : Window
 {
     public bool Accepted { get; private set; }
-    private readonly PreferencesViewModel _viewModel = new();
+    private readonly PreferencesViewModel _viewModel;
     private readonly IConfigValueParser _configValueParser;
 
     public string DawPortName => _viewModel.DawPortName.Trim();
@@ -36,10 +36,11 @@ internal partial class PreferencesWindow : Window
 
     private readonly int _expressKeyCount;
 
-    public PreferencesWindow(int expressKeyCount, IConfigValueParser configValueParser)
+    public PreferencesWindow(int expressKeyCount, IConfigValueParser configValueParser, PreferencesViewModel viewModel)
     {
         _expressKeyCount = expressKeyCount;
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         InitializeComponent();
         DataContext = _viewModel;
         WindowChromeTheme.ApplyDarkNonClientChrome(this);

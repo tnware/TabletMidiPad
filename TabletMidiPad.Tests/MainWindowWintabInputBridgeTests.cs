@@ -7,7 +7,7 @@ namespace TabletMidiPad.Tests;
 
 public sealed class MainWindowWintabInputBridgeTests
 {
-    private readonly MainWindowWintabInputBridge _sut = new(new WintabEventAdapter(), new MainWindowInputEventFlowCoordinator());
+    private readonly MainWindowWintabInputBridge _sut = new(new WintabEventAdapter(), new MainWindowInputBackendCoordinator());
 
     [Fact]
     public void TryBuildPacketBridge_InvalidPad_ReturnsFalse()

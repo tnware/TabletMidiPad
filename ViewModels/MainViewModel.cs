@@ -76,6 +76,13 @@ internal sealed class MainViewModel : ViewModelBase
         AddZoneCommand = new DelegateCommand(() => { });
         RemoveZoneCommand = new DelegateCommand(() => { });
         AutoLayoutCommand = new DelegateCommand(() => { });
+        SelectPressureCurveLinearCommand = new DelegateCommand(() => { });
+        SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => { });
+        SelectPressureCurveExponentialCommand = new DelegateCommand(() => { });
+        SelectInputBackendAutoCommand = new DelegateCommand(() => { });
+        SelectInputBackendWintabCommand = new DelegateCommand(() => { });
+        SelectInputBackendMouseCommand = new DelegateCommand(() => { });
+        CycleInputBackendCommand = new DelegateCommand(() => { });
 
         for (int ch = 1; ch <= 16; ch++)
         {
@@ -184,6 +191,20 @@ internal sealed class MainViewModel : ViewModelBase
     public ICommand RemoveZoneCommand { get; private set; }
     public ICommand AutoLayoutCommand { get; private set; }
 
+    public ICommand SelectPressureCurveLinearCommand { get; private set; }
+
+    public ICommand SelectPressureCurveLogarithmicCommand { get; private set; }
+
+    public ICommand SelectPressureCurveExponentialCommand { get; private set; }
+
+    public ICommand SelectInputBackendAutoCommand { get; private set; }
+
+    public ICommand SelectInputBackendWintabCommand { get; private set; }
+
+    public ICommand SelectInputBackendMouseCommand { get; private set; }
+
+    public ICommand CycleInputBackendCommand { get; private set; }
+
     public void ConfigureCommands(
         Action saveSettings,
         Action resetDefaults,
@@ -219,6 +240,34 @@ internal sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(AddZoneCommand));
         OnPropertyChanged(nameof(RemoveZoneCommand));
         OnPropertyChanged(nameof(AutoLayoutCommand));
+    }
+
+    /// <summary>
+    /// Wires toolbar pressure-curve and input-backend commands (invoked from the view after construction).
+    /// </summary>
+    public void ConfigureToolbarCommands(
+        Action selectPressureCurveLinear,
+        Action selectPressureCurveLogarithmic,
+        Action selectPressureCurveExponential,
+        Action selectInputBackendAuto,
+        Action selectInputBackendWintab,
+        Action selectInputBackendMouse,
+        Action cycleInputBackend)
+    {
+        SelectPressureCurveLinearCommand = new DelegateCommand(selectPressureCurveLinear);
+        SelectPressureCurveLogarithmicCommand = new DelegateCommand(selectPressureCurveLogarithmic);
+        SelectPressureCurveExponentialCommand = new DelegateCommand(selectPressureCurveExponential);
+        SelectInputBackendAutoCommand = new DelegateCommand(selectInputBackendAuto);
+        SelectInputBackendWintabCommand = new DelegateCommand(selectInputBackendWintab);
+        SelectInputBackendMouseCommand = new DelegateCommand(selectInputBackendMouse);
+        CycleInputBackendCommand = new DelegateCommand(cycleInputBackend);
+        OnPropertyChanged(nameof(SelectPressureCurveLinearCommand));
+        OnPropertyChanged(nameof(SelectPressureCurveLogarithmicCommand));
+        OnPropertyChanged(nameof(SelectPressureCurveExponentialCommand));
+        OnPropertyChanged(nameof(SelectInputBackendAutoCommand));
+        OnPropertyChanged(nameof(SelectInputBackendWintabCommand));
+        OnPropertyChanged(nameof(SelectInputBackendMouseCommand));
+        OnPropertyChanged(nameof(CycleInputBackendCommand));
     }
 
     public string StatusText

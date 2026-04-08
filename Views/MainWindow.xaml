@@ -395,13 +395,13 @@
                                 </ContextMenu.Resources>
                                 <MenuItem Header="Linear"
                                           Icon="{Binding IsPressureCurveLinearChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveLinear_Click"/>
+                                          Command="{Binding SelectPressureCurveLinearCommand}"/>
                                 <MenuItem Header="Logarithmic"
                                           Icon="{Binding IsPressureCurveLogarithmicChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveLogarithmic_Click"/>
+                                          Command="{Binding SelectPressureCurveLogarithmicCommand}"/>
                                 <MenuItem Header="Exponential"
                                           Icon="{Binding IsPressureCurveExponentialChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                          Click="PressureCurveExponential_Click"/>
+                                          Command="{Binding SelectPressureCurveExponentialCommand}"/>
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
@@ -416,7 +416,7 @@
                         <Button Name="ToolbarInputBackendButton"
                                 Style="{StaticResource ToolbarButton}"
                                 Padding="8,4"
-                                Click="ToolbarInputBackendCycle_Click">
+                                Command="{Binding CycleInputBackendCommand}">
                             <TextBlock Name="ToolbarInputBackendLabel"
                                        Text="{Binding ToolbarInputBackendLabelText}"
                                        FontSize="11"/>
@@ -490,13 +490,13 @@
                                     </ContextMenu.Resources>
                                     <MenuItem Header="Auto"
                                               Icon="{Binding IsInputBackendAutoChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendAuto_Click"/>
+                                              Command="{Binding SelectInputBackendAutoCommand}"/>
                                     <MenuItem Header="Wintab"
                                               Icon="{Binding IsInputBackendWintabChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendWintab_Click"/>
+                                              Command="{Binding SelectInputBackendWintabCommand}"/>
                                     <MenuItem Header="Mouse"
                                               Icon="{Binding IsInputBackendMouseChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
-                                              Click="InputBackendStylus_Click"/>
+                                              Command="{Binding SelectInputBackendMouseCommand}"/>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>

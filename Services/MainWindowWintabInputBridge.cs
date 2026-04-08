@@ -9,17 +9,17 @@ namespace TabletMidiPad.Services;
 internal sealed class MainWindowWintabInputBridge : IMainWindowWintabInputBridge
 {
     private readonly IWintabEventAdapter _wintabEventAdapter;
-    private readonly IMainWindowInputEventFlowCoordinator _inputEventFlowCoordinator;
+    private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindowWintabInputBridge"/> class.
     /// </summary>
     public MainWindowWintabInputBridge(
         IWintabEventAdapter wintabEventAdapter,
-        IMainWindowInputEventFlowCoordinator inputEventFlowCoordinator)
+        IMainWindowInputBackendCoordinator inputBackendCoordinator)
     {
         _wintabEventAdapter = wintabEventAdapter;
-        _inputEventFlowCoordinator = inputEventFlowCoordinator;
+        _inputBackendCoordinator = inputBackendCoordinator;
     }
 
     /// <inheritdoc />
@@ -36,7 +36,7 @@ internal sealed class MainWindowWintabInputBridge : IMainWindowWintabInputBridge
             return false;
         }
 
-        WintabPacketFlowResult flow = _inputEventFlowCoordinator.BuildWintabPacketFlow(isActiveBefore, update);
+        WintabPacketFlowResult flow = _inputBackendCoordinator.BuildWintabPacketFlow(isActiveBefore, update);
         outcome = new WintabPacketBridgeOutcome(
             BackendLabel: update.BackendLabel,
             PenButtons: update.PenButtons,

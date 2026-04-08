@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;
 
 namespace TabletMidiPad.Services;
@@ -11,13 +12,17 @@ namespace TabletMidiPad.Services;
 internal sealed class PreferencesDialogService : IPreferencesDialogService
 {
     private readonly IConfigValueParser _configValueParser;
+    private readonly Func<PreferencesViewModel> _preferencesViewModelFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PreferencesDialogService"/> class.
     /// </summary>
-    public PreferencesDialogService(IConfigValueParser configValueParser)
+    public PreferencesDialogService(
+        IConfigValueParser configValueParser,
+        Func<PreferencesViewModel> preferencesViewModelFactory)
     {
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+        _preferencesViewModelFactory = preferencesViewModelFactory ?? throw new ArgumentNullException(nameof(preferencesViewModelFactory));
     }
 
     /// <inheritdoc />
@@ -25,7 +30,8 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
     {
         ExpressKeyConfig.EnsureCount(currentConfig.ExpressKeys, expressKeyCount);
 
-        var preferencesWindow = new PreferencesWindow(expressKeyCount, _configValueParser)
+        PreferencesViewModel viewModel = _preferencesViewModelFactory();
+        var preferencesWindow = new PreferencesWindow(expressKeyCount, _configValueParser, viewModel)
         {
             Owner = owner
         };

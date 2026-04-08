@@ -39,6 +39,16 @@ internal interface IMainWindowWorkflowCoordinator
     /// Builds Wacom service status menu state for current service status.
     /// </summary>
     WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status);
+
+    /// <summary>
+    /// Builds toolbar labels and selected mode values from configuration.
+    /// </summary>
+    MainWindowToolbarState BuildToolbarState(AppConfig config);
+
+    /// <summary>
+    /// Builds base connected-state text payload for the main view-model.
+    /// </summary>
+    MainWindowConnectedState BuildConnectedState(AppConfig config);
 }
 
 /// <summary>
@@ -61,3 +71,30 @@ internal readonly record struct PreferencesWorkflowResult(
 internal readonly record struct WacomServiceMenuState(
     string Header,
     bool StartEnabled);
+
+/// <summary>
+/// Toolbar label + selection state mapped from configuration.
+/// </summary>
+internal readonly record struct MainWindowToolbarState(
+    string ToolbarPressureLabelText,
+    string SelectedPressureCurve,
+    string ToolbarInputBackendLabelText,
+    string SelectedInputBackendMode,
+    bool IsPressureCurveLinearChecked,
+    bool IsPressureCurveLogarithmicChecked,
+    bool IsPressureCurveExponentialChecked,
+    bool IsInputBackendAutoChecked,
+    bool IsInputBackendWintabChecked,
+    bool IsInputBackendMouseChecked);
+
+/// <summary>
+/// Main connected-state status labels mapped from configuration.
+/// </summary>
+internal readonly record struct MainWindowConnectedState(
+    string StatusText,
+    string RoutingText,
+    string ActiveZoneText,
+    string ConfigSummaryText,
+    string ValueText,
+    string PenButtonsText,
+    string ModifiersText);

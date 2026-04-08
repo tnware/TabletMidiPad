@@ -19,6 +19,13 @@ public partial class MainWindow : Window
     /// <summary>Shared Wintab backend for the designer ctor so <see cref="ITabletDevicePickerSyncService"/> and <see cref="IWintabInputBackend"/> refer to the same instance.</summary>
     private static readonly IWintabInputBackend DesignerWintabBackend = new WintabInputBackend();
 
+    /// <summary>Shared zone configuration for designer-time <see cref="IZoneActionWorkflowCoordinator"/> parity.</summary>
+    private static readonly IZoneConfigurationService DesignerZoneConfiguration = new ZoneConfigurationService();
+
+    private static readonly MainWindowInputBackendCoordinator DesignerInputBackendCoordinator = new();
+
+    private static readonly MainWindowWintabInputBridge DesignerWintabInputBridge = new(new WintabEventAdapter(), DesignerInputBackendCoordinator);
+
     private bool _isActive;
     private bool _isLoadingUi;
     private bool _useWintab;
@@ -40,10 +47,9 @@ public partial class MainWindow : Window
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
-    private readonly IMainWindowInputEventFlowCoordinator _inputEventFlowCoordinator;
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
-    private readonly IMainWindowViewStateMapper _viewStateMapper;
+    private readonly IMainWindowToolbarSession _toolbarSession;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
@@ -75,8 +81,8 @@ public partial class MainWindow : Window
             new WacomServiceController(),
             DesignerWintabBackend,
             new TabletDevicePickerSyncService(DesignerWintabBackend),
-            new PreferencesDialogService(new ConfigValueParser()),
-            new ZoneConfigurationService(),
+            new PreferencesDialogService(new ConfigValueParser(), () => new PreferencesViewModel()),
+            DesignerZoneConfiguration,
             new ZoneEditorService(new ConfigValueParser()),
             new ZoneOverlayRenderer(),
             new ZoneResizeService(),
@@ -84,14 +90,13 @@ public partial class MainWindow : Window
             new InputInteractionOrchestrator(new PadInteractionEngine()),
             new InputBackendStatusFormatter(),
             new MainWindowWorkflowCoordinator(),
-            new MainWindowInputBackendCoordinator(),
+            DesignerInputBackendCoordinator,
             new WacomServiceWorkflowCoordinator(),
-            new MainWindowInputEventFlowCoordinator(),
             new MainWindowLifecycleCoordinator(),
-            new MainWindowWintabInputBridge(new WintabEventAdapter(), new MainWindowInputEventFlowCoordinator()),
+            DesignerWintabInputBridge,
             new MainWindowPadPresentationCoordinator(),
-            new MainWindowViewStateMapper(),
-            new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()),
+            new MainWindowToolbarSession(),
+            new ZoneActionWorkflowCoordinator(DesignerZoneConfiguration),
             new MainViewModel(),
             new PadInteractionOutcomeApplier(DesignerMidiEngine))
     {
@@ -114,11 +119,10 @@ public partial class MainWindow : Window
         IMainWindowWorkflowCoordinator workflowCoordinator,
         IMainWindowInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
-        IMainWindowInputEventFlowCoordinator inputEventFlowCoordinator,
         IMainWindowLifecycleCoordinator lifecycleCoordinator,
         IMainWindowWintabInputBridge wintabInputBridge,
         IMainWindowPadPresentationCoordinator padPresentationCoordinator,
-        IMainWindowViewStateMapper viewStateMapper,
+        IMainWindowToolbarSession toolbarSession,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator,
         MainViewModel viewModel,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
@@ -139,11 +143,10 @@ public partial class MainWindow : Window
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
-        _inputEventFlowCoordinator = inputEventFlowCoordinator ?? throw new ArgumentNullException(nameof(inputEventFlowCoordinator));
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
-        _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
+        _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
@@ -167,7 +170,7 @@ public partial class MainWindow : Window
             UpdateInputBackendStatus();
             if (!e.Entering)
             {
-                if (_inputEventFlowCoordinator.ShouldReleaseOnProximityLeave(_isActive))
+                if (_inputBackendCoordinator.ShouldReleaseOnProximityLeave(_isActive))
                 {
                     _isActive = false;
                     HandleRelease();
@@ -237,6 +240,19 @@ public partial class MainWindow : Window
             addZone: AddZone,
             removeZone: RemoveZone,
             autoLayout: AutoLayoutZones);
+        _viewModel.ConfigureToolbarCommands(
+            selectPressureCurveLinear: () => SetPressureCurve("Linear"),
+            selectPressureCurveLogarithmic: () => SetPressureCurve("Logarithmic"),
+            selectPressureCurveExponential: () => SetPressureCurve("Exponential"),
+            selectInputBackendAuto: () => SetInputBackendMode("Auto"),
+            selectInputBackendWintab: () => SetInputBackendMode("Wintab Only"),
+            selectInputBackendMouse: () => SetInputBackendMode("Mouse"),
+            cycleInputBackend: CycleInputBackend);
+    }
+
+    private void CycleInputBackend()
+    {
+        SetInputBackendMode(_toolbarSession.GetNextCycledInputBackendModeLabel(_config));
     }
 
     private async void OnContentRendered(object? sender, EventArgs e)
@@ -445,18 +461,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ToolbarInputBackendCycle_Click(object sender, RoutedEventArgs e)
-    {
-        string next = InputBackendModeNormalizer.Normalize(_config.InputBackendMode) switch
-        {
-            "Wintab Only" => "Mouse",
-            "Stylus/Mouse Only" => "Auto",
-            _ => "Wintab Only"
-        };
-
-        SetInputBackendMode(next);
-    }
-
     private void ToolbarInputBackendDropdown_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.ContextMenu is not null)
@@ -467,53 +471,26 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PressureCurveLinear_Click(object sender, RoutedEventArgs e)
-    {
-        SetPressureCurve("Linear");
-    }
-
-    private void PressureCurveLogarithmic_Click(object sender, RoutedEventArgs e)
-    {
-        SetPressureCurve("Logarithmic");
-    }
-
-    private void PressureCurveExponential_Click(object sender, RoutedEventArgs e)
-    {
-        SetPressureCurve("Exponential");
-    }
-
     private void SetPressureCurve(string curve)
     {
-        _config.PressureCurve = curve;
+        _toolbarSession.ApplyPressureCurve(_config, curve);
         SyncToolbar();
-    }
-
-    private void InputBackendAuto_Click(object sender, RoutedEventArgs e)
-    {
-        SetInputBackendMode("Auto");
-    }
-
-    private void InputBackendWintab_Click(object sender, RoutedEventArgs e)
-    {
-        SetInputBackendMode("Wintab Only");
-    }
-
-    private void InputBackendStylus_Click(object sender, RoutedEventArgs e)
-    {
-        SetInputBackendMode("Mouse");
     }
 
     private void SetInputBackendMode(string mode)
     {
-        string normalized = InputBackendModeNormalizer.Normalize(mode);
-        if (string.Equals(_config.InputBackendMode, normalized, StringComparison.Ordinal))
+        ToolbarInputModeApplyResult result = _toolbarSession.TryApplyInputBackendMode(_config, mode);
+        if (!result.ModeChanged)
         {
             SyncToolbar();
             return;
         }
 
-        _config.InputBackendMode = normalized;
-        RebindInputBackend();
+        if (result.RequiresInputRebind)
+        {
+            RebindInputBackend();
+        }
+
         SyncToolbar();
     }
 
@@ -581,7 +558,7 @@ public partial class MainWindow : Window
         _viewModel.AllowZoneSwitchWhilePressed = _config.AllowZoneSwitchWhilePressed;
         SyncPressureSplitBorder();
         SyncInputBackendSplitBorder();
-        MainWindowToolbarState toolbarState = _viewStateMapper.BuildToolbarState(_config);
+        MainWindowToolbarState toolbarState = _workflowCoordinator.BuildToolbarState(_config);
         _viewModel.ToolbarPressureLabelText = toolbarState.ToolbarPressureLabelText;
         _viewModel.SelectedPressureCurve = toolbarState.SelectedPressureCurve;
         _viewModel.ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;
@@ -623,7 +600,7 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        MainWindowConnectedState statusState = _viewStateMapper.BuildConnectedState(_config);
+        MainWindowConnectedState statusState = _workflowCoordinator.BuildConnectedState(_config);
         _viewModel.StatusText = statusState.StatusText;
         _viewModel.RoutingText = statusState.RoutingText;
         UpdateInputBackendStatus();
@@ -634,11 +611,9 @@ public partial class MainWindow : Window
         _viewModel.ModifiersText = statusState.ModifiersText;
     }
 
-    private void ShutdownMidi() => _lifecycleCoordinator.ShutdownMidiOutput(_midiEngine, _config);
-
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         e.Handled = true;
         _isActive = true;
         Pad.CaptureStylus();
@@ -647,7 +622,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusMove(object sender, StylusEventArgs e)
     {
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
@@ -655,7 +630,7 @@ public partial class MainWindow : Window
 
     private void Pad_StylusUp(object sender, StylusEventArgs e)
     {
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         e.Handled = true;
         HandleStylus(e);
@@ -682,7 +657,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         _isActive = true;
         Pad.CaptureMouse();
         HandleMouse(e);
@@ -704,7 +679,7 @@ public partial class MainWindow : Window
         var hit = HitTestZoneEdge(pos);
         Pad.Cursor = ResizeEdgeToCursor(hit.edge);
 
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
         HandleMouse(e);
     }
@@ -721,7 +696,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_inputEventFlowCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
+        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
         if (!_isActive) return;
         HandleMouse(e);
         _isActive = false;
