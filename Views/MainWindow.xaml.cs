@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly IMainWindowZonePadSession _zonePadSession;
     private readonly IMainWindowSettingsSession _settingsSession;
     private readonly StartupHost _startupHost;
+    private readonly IMainWindowZoneListSession _zoneListSession;
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
@@ -56,7 +57,6 @@ public partial class MainWindow : Window
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowStartupLifecycleService _startupLifecycle;
     private readonly IMainWindowToolbarSession _toolbarSession;
-    private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
@@ -149,7 +149,7 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(wintabInputBridge);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
-        _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
+        ArgumentNullException.ThrowIfNull(zoneActionWorkflowCoordinator);
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
@@ -174,6 +174,7 @@ public partial class MainWindow : Window
             _midiEngine,
             _padInputSession);
         _startupHost = new StartupHost(this);
+        _zoneListSession = new MainWindowZoneListSession(new ZoneListHost(this), zoneActionWorkflowCoordinator);
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -242,9 +243,9 @@ public partial class MainWindow : Window
             reconnectPen: ReconnectPenCore,
             startWacomService: () => _ = StartWacomServiceAsync(),
             showAbout: MenuAbout,
-            addZone: AddZone,
-            removeZone: RemoveZone,
-            autoLayout: AutoLayoutZones);
+            addZone: _zoneListSession.AddZone,
+            removeZone: _zoneListSession.RemoveZone,
+            autoLayout: _zoneListSession.AutoLayoutZones);
         _viewModel.ConfigureToolbarCommands(
             selectPressureCurveLinear: () => SetPressureCurve("Linear"),
             selectPressureCurveLogarithmic: () => SetPressureCurve("Logarithmic"),
@@ -298,46 +299,6 @@ public partial class MainWindow : Window
             "About Tablet MIDI Pad",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
-    }
-
-    private void AutoLayoutZones()
-    {
-        CommitCurrentZoneEdits();
-        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AutoLayout(_config, SelectedZoneIndex);
-        RefreshZoneList();
-        SelectedZoneIndex = result.SelectedZoneIndex;
-        _viewModel.NotifySelectedZoneIndexChanged();
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
-    }
-
-    private void AddZone()
-    {
-        CommitCurrentZoneEdits();
-        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AddZone(_config);
-        RefreshZoneList();
-        SelectedZoneIndex = result.SelectedZoneIndex;
-        _viewModel.NotifySelectedZoneIndexChanged();
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
-    }
-
-    private void RemoveZone()
-    {
-        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.RemoveZone(_config, SelectedZoneIndex);
-        if (!result.Changed)
-        {
-            return;
-        }
-
-        RefreshZoneList();
-        SelectedZoneIndex = result.SelectedZoneIndex;
-        _viewModel.NotifySelectedZoneIndexChanged();
-        LoadSelectedZoneIntoEditor();
-        RefreshPadZoneOverlay();
-        SetSettingsResult(result.StatusMessage, SettingsResultKind.Success);
     }
 
     private async Task InitializeAppAsync()
@@ -742,6 +703,33 @@ public partial class MainWindow : Window
         public void SyncToolbar() => _w.SyncToolbar();
 
         public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi(config);
+    }
+
+    private sealed class ZoneListHost : IMainWindowZoneListSessionHost
+    {
+        private readonly MainWindow _w;
+
+        public ZoneListHost(MainWindow window) => _w = window;
+
+        public AppConfig Config => _w._config;
+
+        public int SelectedZoneIndex
+        {
+            get => _w.SelectedZoneIndex;
+            set => _w.SelectedZoneIndex = value;
+        }
+
+        public void CommitCurrentZoneEdits() => _w.CommitCurrentZoneEdits();
+
+        public void RefreshZoneList() => _w.RefreshZoneList();
+
+        public void NotifySelectedZoneIndexChanged() => _w._viewModel.NotifySelectedZoneIndexChanged();
+
+        public void LoadSelectedZoneIntoEditor() => _w.LoadSelectedZoneIntoEditor();
+
+        public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
+
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
     }
 
     private sealed class StartupHost : IMainWindowStartupHost
