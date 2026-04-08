@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
     private readonly IZoneResizeService _zoneResizeService;
     private readonly IInputFallbackService _inputFallbackService;
+    private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -152,7 +153,8 @@ public partial class MainWindow : Window
             new ConfigValueParser(),
             new PadInteractionEngine(),
             new ZoneResizeService(),
-            new InputFallbackService())
+            new InputFallbackService(),
+            new InputBackendStatusFormatter())
     {
     }
 
@@ -168,7 +170,8 @@ public partial class MainWindow : Window
         IConfigValueParser configValueParser,
         IPadInteractionEngine padInteractionEngine,
         IZoneResizeService zoneResizeService,
-        IInputFallbackService inputFallbackService)
+        IInputFallbackService inputFallbackService,
+        IInputBackendStatusFormatter inputBackendStatusFormatter)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -182,6 +185,7 @@ public partial class MainWindow : Window
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
+        _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -1598,12 +1602,12 @@ public partial class MainWindow : Window
 
     private void UpdateInputBackendStatus()
     {
-        string ekPart = string.IsNullOrEmpty(_expressKeyDiagnostics) ? "" : $" | {_expressKeyDiagnostics}";
-        string configured = _useWintab
-            ? $"Wintab enabled, {_wintabInputBackend.Contexts.Count} context(s){ekPart}"
-            : $"Stylus/mouse fallback | {_wintabDiagnostics}";
-
-        _viewModel.InputBackendText = $"Input: {_lastInputBackend} | {configured}";
+        _viewModel.InputBackendText = _inputBackendStatusFormatter.BuildStatusText(
+            _lastInputBackend,
+            _useWintab,
+            _wintabInputBackend.Contexts.Count,
+            _wintabDiagnostics,
+            _expressKeyDiagnostics);
     }
 
     private void RefreshWacomServiceStatus()
