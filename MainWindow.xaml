@@ -294,7 +294,7 @@
                                 </Style>
                             </ToggleButton.Style>
                             <TextBlock Name="ToolbarPressureLabel"
-                                       Text="Pressure"
+                                       Text="{Binding ToolbarPressureLabelText}"
                                        FontSize="11"/>
                         </ToggleButton>
                         <Border Width="1"
@@ -391,10 +391,13 @@
                                     </Style>
                                 </ContextMenu.Resources>
                                 <MenuItem Header="Linear"
+                                          Icon="{Binding IsPressureCurveLinearChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                           Click="PressureCurveLinear_Click"/>
                                 <MenuItem Header="Logarithmic"
+                                          Icon="{Binding IsPressureCurveLogarithmicChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                           Click="PressureCurveLogarithmic_Click"/>
                                 <MenuItem Header="Exponential"
+                                          Icon="{Binding IsPressureCurveExponentialChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                           Click="PressureCurveExponential_Click"/>
                             </ContextMenu>
                         </Button.ContextMenu>
@@ -412,7 +415,7 @@
                                 Padding="8,4"
                                 Click="ToolbarInputBackendCycle_Click">
                             <TextBlock Name="ToolbarInputBackendLabel"
-                                       Text="Input (Auto)"
+                                       Text="{Binding ToolbarInputBackendLabelText}"
                                        FontSize="11"/>
                         </Button>
                         <Border Width="1"
@@ -483,10 +486,13 @@
                                         </Style>
                                     </ContextMenu.Resources>
                                     <MenuItem Header="Auto"
+                                              Icon="{Binding IsInputBackendAutoChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                               Click="InputBackendAuto_Click"/>
                                     <MenuItem Header="Wintab"
+                                              Icon="{Binding IsInputBackendWintabChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                               Click="InputBackendWintab_Click"/>
                                     <MenuItem Header="Mouse"
+                                              Icon="{Binding IsInputBackendMouseChecked, Converter={StaticResource BoolToCheckmarkConverter}}"
                                               Click="InputBackendStylus_Click"/>
                                 </ContextMenu>
                             </Button.ContextMenu>

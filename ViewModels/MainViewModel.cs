@@ -14,6 +14,16 @@ internal sealed class MainViewModel : ViewModelBase
     private string _inputBackendText = string.Empty;
     private string _configSummaryText = string.Empty;
     private string _midiStatusText = "Connecting MIDI...";
+    private string _toolbarPressureLabelText = "Pressure (Lin)";
+    private string _toolbarInputBackendLabelText = "Input (Auto)";
+    private string _selectedPressureCurve = "Linear";
+    private string _selectedInputBackendMode = "Auto";
+    private string? _pressureCurveLinearIcon;
+    private string? _pressureCurveLogarithmicIcon;
+    private string? _pressureCurveExponentialIcon;
+    private string? _inputBackendAutoIcon;
+    private string? _inputBackendWintabIcon;
+    private string? _inputBackendMouseIcon;
 
     public string StatusText
     {
@@ -67,5 +77,65 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _midiStatusText;
         set => SetProperty(ref _midiStatusText, value);
+    }
+
+    public string ToolbarPressureLabelText
+    {
+        get => _toolbarPressureLabelText;
+        set => SetProperty(ref _toolbarPressureLabelText, value);
+    }
+
+    public string ToolbarInputBackendLabelText
+    {
+        get => _toolbarInputBackendLabelText;
+        set => SetProperty(ref _toolbarInputBackendLabelText, value);
+    }
+
+    public string SelectedPressureCurve
+    {
+        get => _selectedPressureCurve;
+        set => SetProperty(ref _selectedPressureCurve, value);
+    }
+
+    public string SelectedInputBackendMode
+    {
+        get => _selectedInputBackendMode;
+        set => SetProperty(ref _selectedInputBackendMode, value);
+    }
+
+    public string? PressureCurveLinearIcon
+    {
+        get => _pressureCurveLinearIcon;
+        set => SetProperty(ref _pressureCurveLinearIcon, value);
+    }
+
+    public string? PressureCurveLogarithmicIcon
+    {
+        get => _pressureCurveLogarithmicIcon;
+        set => SetProperty(ref _pressureCurveLogarithmicIcon, value);
+    }
+
+    public string? PressureCurveExponentialIcon
+    {
+        get => _pressureCurveExponentialIcon;
+        set => SetProperty(ref _pressureCurveExponentialIcon, value);
+    }
+
+    public string? InputBackendAutoIcon
+    {
+        get => _inputBackendAutoIcon;
+        set => SetProperty(ref _inputBackendAutoIcon, value);
+    }
+
+    public string? InputBackendWintabIcon
+    {
+        get => _inputBackendWintabIcon;
+        set => SetProperty(ref _inputBackendWintabIcon, value);
+    }
+
+    public string? InputBackendMouseIcon
+    {
+        get => _inputBackendMouseIcon;
+        set => SetProperty(ref _inputBackendMouseIcon, value);
     }
 }

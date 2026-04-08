@@ -666,16 +666,8 @@ public partial class MainWindow : Window
             "Exponential" => "Exp",
             _ => "Lin"
         };
-        ToolbarPressureLabel.Text = $"Pressure ({curveShort})";
-
-        foreach (var item in PressureCurveMenu.Items)
-        {
-            if (item is MenuItem mi)
-            {
-                bool active = string.Equals(mi.Header as string, _config.PressureCurve, StringComparison.Ordinal);
-                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
-            }
-        }
+        _viewModel.ToolbarPressureLabelText = $"Pressure ({curveShort})";
+        _viewModel.SelectedPressureCurve = _config.PressureCurve;
 
         string backendLabel = NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
@@ -684,22 +676,13 @@ public partial class MainWindow : Window
             _ => "Input (Auto)"
         };
 
-        ToolbarInputBackendLabel.Text = backendLabel;
-
-        foreach (var item in InputBackendMenu.Items)
+        _viewModel.ToolbarInputBackendLabelText = backendLabel;
+        _viewModel.SelectedInputBackendMode = NormalizeInputBackendMode(_config.InputBackendMode) switch
         {
-            if (item is MenuItem mi)
-            {
-                bool active = (mi.Header as string) switch
-                {
-                    "Wintab" => string.Equals(_config.InputBackendMode, "Wintab Only", StringComparison.Ordinal),
-                    "Mouse" => string.Equals(_config.InputBackendMode, "Stylus/Mouse Only", StringComparison.Ordinal),
-                    _ => string.Equals(NormalizeInputBackendMode(_config.InputBackendMode), "Auto", StringComparison.Ordinal)
-                };
-
-                mi.Icon = active ? new System.Windows.Controls.TextBlock { Text = "\u2713", Foreground = Brushes.White, FontSize = 11 } : null;
-            }
-        }
+            "Wintab Only" => "Wintab",
+            "Stylus/Mouse Only" => "Mouse",
+            _ => "Auto"
+        };
     }
 
     private void RefreshZoneList()
