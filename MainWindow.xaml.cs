@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,8 +19,6 @@ namespace TabletMidiPad;
 public partial class MainWindow : Window
 {
     private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
-    private const string WacomServiceName = "WTabletServicePro";
-
     private readonly Dictionary<string, int> _lastSentValues = new();
 
     private IntPtr _midiOutHandle;
@@ -44,6 +41,8 @@ public partial class MainWindow : Window
     private string _expressKeyDiagnostics = "";
 
     private readonly IConfigStore _configStore;
+    private readonly IMidiEngine _midiEngine;
+    private readonly IWacomServiceController _wacomServiceController;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
@@ -78,13 +77,18 @@ public partial class MainWindow : Window
     }
 
     public MainWindow()
-        : this(new JsonConfigStore(AppConfig.GetConfigPath()))
+        : this(
+            new JsonConfigStore(AppConfig.GetConfigPath()),
+            new WinMmMidiEngine(),
+            new WacomServiceController())
     {
     }
 
-    internal MainWindow(IConfigStore configStore)
+    internal MainWindow(IConfigStore configStore, IMidiEngine midiEngine, IWacomServiceController wacomServiceController)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
+        _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
+        _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         InitializeComponent();
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
@@ -301,7 +305,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await Task.Run(StartWacomService);
+            await Task.Run(() => _wacomServiceController.Start());
             started = true;
         }
         catch (Win32Exception ex)
@@ -327,15 +331,7 @@ public partial class MainWindow : Window
             {
                 MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
 
-                try
-                {
-                    using var service = new ServiceController(WacomServiceName);
-                    MenuStartWacomService.IsEnabled = service.Status != ServiceControllerStatus.Running;
-                }
-                catch
-                {
-                    MenuStartWacomService.IsEnabled = false;
-                }
+                RefreshWacomServiceStatus();
             }
         }
     }
@@ -630,9 +626,10 @@ public partial class MainWindow : Window
 
     private void RestartMidi()
     {
-        CloseMidiOut();
-        RemoveLoopbackPair();
-        InitMidi();
+        _midiEngine.Restart(_config);
+        _midiEngine.ClearCachedValues();
+        _activeZone = null;
+        UpdateUiForCurrentConfig();
         DrawZoneOverlay();
     }
 
@@ -882,43 +879,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InitMidi()
-    {
-        try
-        {
-            RemoveLoopbackPair();
-            CreateLoopbackPair();
-            OpenMidiOutWithRetry(_config.AppPortName);
-            _lastSentValues.Clear();
-            _activeZone = null;
-            UpdateUiForCurrentConfig();
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Windows MIDI Services init failed";
-            RoutingText.Text = string.Empty;
-            InputBackendText.Text = string.Empty;
-            ActiveZoneText.Text = string.Empty;
-            ConfigSummaryText.Text = string.Empty;
-            ValueText.Text = ex.Message;
-            throw;
-        }
-    }
-
     private async Task InitializeMidiAsync()
     {
         try
         {
-            MidiStatusText.Text = "Removing stale MIDI pair...";
-            await Task.Run(RemoveLoopbackPair);
-
-            MidiStatusText.Text = "Creating MIDI loopback...";
-            await Task.Run(CreateLoopbackPair);
-
-            MidiStatusText.Text = $"Opening '{_config.AppPortName}'...";
-            await Task.Run(() => OpenMidiOutWithRetry(_config.AppPortName));
-
-            _lastSentValues.Clear();
+            await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => MidiStatusText.Text = text));
+            _midiEngine.ClearCachedValues();
             _activeZone = null;
             UpdateUiForCurrentConfig();
         }
@@ -943,17 +909,7 @@ public partial class MainWindow : Window
         ModifiersText.Text = "Modifiers: none";
     }
 
-    private void ShutdownMidi()
-    {
-        try
-        {
-            CloseMidiOut();
-            RemoveLoopbackPair();
-        }
-        catch
-        {
-        }
-    }
+    private void ShutdownMidi() => _midiEngine.Shutdown(_config);
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
@@ -1681,171 +1637,10 @@ public partial class MainWindow : Window
     }
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
-    {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"{channel}:{cc}";
-        value = Math.Clamp(value, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
-        {
-            return;
-        }
-
-        byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
-        byte controller = (byte)(cc & 0x7F);
-        byte data = (byte)(value & 0x7F);
-
-        int packedMessage = status | (controller << 8) | (data << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = value;
-    }
+        => _midiEngine.SendCcIfChanged(channel, cc, value, force);
 
     private void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
-    {
-        if (_midiOutHandle == IntPtr.Zero) return;
-
-        string key = $"note:{channel}:{note}";
-        int state = on ? 1 : 0;
-        velocity = Math.Clamp(velocity, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
-        {
-            return;
-        }
-
-        byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
-        byte noteByte = (byte)(note & 0x7F);
-        byte velocityByte = (byte)(velocity & 0x7F);
-
-        int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = state;
-    }
-
-    private void CreateLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback create --name-a \"{_config.AppPortName}\" --name-b \"{_config.DawPortName}\" --association-id \"{_config.LoopbackAssociationId}\""
-        );
-        Thread.Sleep(300);
-    }
-
-    private void RemoveLoopbackPair()
-    {
-        RunMidiConsole(
-            $"loopback remove --association-id \"{_config.LoopbackAssociationId}\"",
-            allowFailure: true
-        );
-    }
-
-    private void OpenMidiOutWithRetry(string portName)
-    {
-        for (int attempt = 0; attempt < 60; attempt++)
-        {
-            if (TryOpenMidiOut(portName, out _midiOutHandle))
-            {
-                return;
-            }
-
-            Thread.Sleep(100);
-        }
-
-        string available = string.Join(", ", EnumerateMidiOutPortNames());
-        throw new InvalidOperationException(
-            $"Could not open MIDI destination '{portName}'. Available MIDI outputs: {available}."
-        );
-    }
-
-    private static bool TryOpenMidiOut(string targetName, out IntPtr handle)
-    {
-        handle = IntPtr.Zero;
-
-        int count = midiOutGetNumDevs();
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            if (midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) != 0)
-            {
-                continue;
-            }
-
-            if (!string.Equals(caps.Name, targetName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            int result = midiOutOpen(out handle, deviceId, IntPtr.Zero, IntPtr.Zero, 0);
-            return result == 0;
-        }
-
-        return false;
-    }
-
-    private void CloseMidiOut()
-    {
-        if (_midiOutHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        midiOutReset(_midiOutHandle);
-        midiOutClose(_midiOutHandle);
-        _midiOutHandle = IntPtr.Zero;
-    }
-
-    private static string[] EnumerateMidiOutPortNames()
-    {
-        int count = midiOutGetNumDevs();
-        var names = new string[count];
-
-        for (int deviceId = 0; deviceId < count; deviceId++)
-        {
-            names[deviceId] = midiOutGetDevCaps((UIntPtr)deviceId, out MidiOutCaps caps, (uint)Marshal.SizeOf<MidiOutCaps>()) == 0
-                ? caps.Name
-                : $"<error:{deviceId}>";
-        }
-
-        return names.Where(name => !string.IsNullOrWhiteSpace(name)).ToArray();
-    }
-
-    private static void RunMidiConsole(string arguments, bool allowFailure = false)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = MidiConsolePath,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (allowFailure || process.ExitCode == 0)
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim()
-        );
-    }
+        => _midiEngine.SendNoteIfChanged(channel, note, on, velocity, force);
 
     private static int ToCc(double normalized, bool invert)
     {
@@ -2607,39 +2402,9 @@ public partial class MainWindow : Window
 
     private void RefreshWacomServiceStatus()
     {
-        try
-        {
-            using var service = new ServiceController(WacomServiceName);
-            string displayName = string.IsNullOrWhiteSpace(service.DisplayName) ? WacomServiceName : service.DisplayName;
-            bool running = service.Status == ServiceControllerStatus.Running;
-            MenuWacomServiceStatus.Header = running
-                ? $"Service: {displayName} running"
-                : $"Service: {displayName} {service.Status}";
-            MenuStartWacomService.IsEnabled = !running;
-        }
-        catch (InvalidOperationException)
-        {
-            MenuWacomServiceStatus.Header = "Service: not found";
-            MenuStartWacomService.IsEnabled = false;
-        }
-        catch (Exception ex)
-        {
-            MenuWacomServiceStatus.Header = $"Service: {ex.Message}";
-            MenuStartWacomService.IsEnabled = false;
-        }
-    }
-
-    private static void StartWacomService()
-    {
-        using var service = new ServiceController(WacomServiceName);
-
-        if (service.Status == ServiceControllerStatus.Running)
-        {
-            return;
-        }
-
-        service.Start();
-        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+        WacomServiceStatus status = _wacomServiceController.GetStatus();
+        MenuWacomServiceStatus.Header = status.StatusText;
+        MenuStartWacomService.IsEnabled = status.CanStart;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)
@@ -2806,38 +2571,4 @@ public partial class MainWindow : Window
         bool IsIntegrated
     );
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MidiOutCaps
-    {
-        public ushort ManufacturerId;
-        public ushort ProductId;
-        public uint DriverVersion;
-
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string Name;
-
-        public ushort Technology;
-        public ushort Voices;
-        public ushort Notes;
-        public ushort ChannelMask;
-        public uint Support;
-    }
-
-    [DllImport("winmm.dll", CharSet = CharSet.Auto)]
-    private static extern int midiOutGetDevCaps(UIntPtr uDeviceId, out MidiOutCaps caps, uint cbMidiOutCaps);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutGetNumDevs();
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutOpen(out IntPtr handle, int deviceId, IntPtr callback, IntPtr instance, int flags);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutShortMsg(IntPtr handle, int message);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutReset(IntPtr handle);
-
-    [DllImport("winmm.dll")]
-    private static extern int midiOutClose(IntPtr handle);
 }
