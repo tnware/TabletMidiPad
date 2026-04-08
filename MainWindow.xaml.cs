@@ -13,6 +13,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using TabletMidiPad.Services;
+using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad;
 
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
+    private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
     private string _lastInputBackend = "Idle";
@@ -90,6 +92,8 @@ public partial class MainWindow : Window
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         InitializeComponent();
+        _viewModel = new MainViewModel();
+        DataContext = _viewModel;
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
@@ -145,7 +149,7 @@ public partial class MainWindow : Window
         InitializeWintab();
 
         MidiStatusPanel.Visibility = Visibility.Visible;
-        MidiStatusText.Text = "Connecting MIDI...";
+        _viewModel.MidiStatusText = "Connecting MIDI...";
         await Task.Yield();
 
         try
@@ -157,7 +161,7 @@ public partial class MainWindow : Window
         {
             MidiProgressBar.Visibility = Visibility.Collapsed;
             MidiStatusText.Foreground = FindResource("DangerBrush") as Brush ?? Brushes.IndianRed;
-            MidiStatusText.Text = "MIDI init failed";
+            _viewModel.MidiStatusText = "MIDI init failed";
         }
     }
 
@@ -883,30 +887,30 @@ public partial class MainWindow : Window
     {
         try
         {
-            await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => MidiStatusText.Text = text));
+            await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
             _midiEngine.ClearCachedValues();
             _activeZone = null;
             UpdateUiForCurrentConfig();
         }
         catch (Exception ex)
         {
-            StatusText.Text = "MIDI init failed";
-            ValueText.Text = ex.Message;
+            _viewModel.StatusText = "MIDI init failed";
+            _viewModel.ValueText = ex.Message;
             throw;
         }
     }
 
     private void UpdateUiForCurrentConfig()
     {
-        StatusText.Text = "Connected";
-        RoutingText.Text = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
+        _viewModel.StatusText = "Connected";
+        _viewModel.RoutingText = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
         UpdateInputBackendStatus();
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         string switchMode = _config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
-        ConfigSummaryText.Text = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
-        ModifiersText.Text = "Modifiers: none";
+        _viewModel.ConfigSummaryText = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
+        _viewModel.ModifiersText = "Modifiers: none";
     }
 
     private void ShutdownMidi() => _midiEngine.Shutdown(_config);
@@ -1251,7 +1255,7 @@ public partial class MainWindow : Window
     private void HandleStylus(StylusEventArgs e)
     {
         MarkInputBackend("Stylus");
-        PenButtonsText.Text = "Pen buttons: stylus fallback";
+        _viewModel.PenButtonsText = "Pen buttons: stylus fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -1277,7 +1281,7 @@ public partial class MainWindow : Window
     private void HandleMouse(MouseEventArgs e)
     {
         MarkInputBackend("Mouse");
-        PenButtonsText.Text = "Pen buttons: mouse fallback";
+        _viewModel.PenButtonsText = "Pen buttons: mouse fallback";
         var point = e.GetPosition(Pad);
         if (!TryGetPadCoordinates(point, out double xNorm, out double yNorm))
         {
@@ -1302,8 +1306,8 @@ public partial class MainWindow : Window
 
         if (zone is null)
         {
-            ActiveZoneText.Text = "Active zone: none";
-            ValueText.Text = "Outside configured zones";
+            _viewModel.ActiveZoneText = "Active zone: none";
+            _viewModel.ValueText = "Outside configured zones";
             return;
         }
 
@@ -1344,7 +1348,7 @@ public partial class MainWindow : Window
         int y = ToCc(local.y, zone.InvertY);
         int curvedPressure = ApplyPressureCurve(pressure);
 
-        ActiveZoneText.Text = $"Active zone: {zone.Name}";
+        _viewModel.ActiveZoneText = $"Active zone: {zone.Name}";
         bool sendPressure = _config.SendPressureGlobally && zone.SendPressure;
         if ((_lowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
             (_upperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
@@ -1366,7 +1370,7 @@ public partial class MainWindow : Window
         string xText = zone.SendX ? x.ToString() : "off";
         string yText = zone.SendY ? y.ToString() : "off";
         string pressureText = sendPressure ? curvedPressure.ToString() : "off";
-        ValueText.Text = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
+        _viewModel.ValueText = $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}";
 
         if (zone.SendX)
         {
@@ -1388,7 +1392,7 @@ public partial class MainWindow : Window
     {
         SendZoneRelease(_activeZone);
         _activeZone = null;
-        ActiveZoneText.Text = "Active zone: none";
+        _viewModel.ActiveZoneText = "Active zone: none";
         _hasLockedPosition = false;
         _lowerPenButtonHeld = false;
         _upperPenButtonHeld = false;
@@ -1928,7 +1932,7 @@ public partial class MainWindow : Window
 
                 CursorDot.Visibility = Visibility.Collapsed;
                 CursorDot.Opacity = 0.85;
-                ActiveZoneText.Text = "Active zone: none";
+                _viewModel.ActiveZoneText = "Active zone: none";
             }
 
             handled = true;
@@ -2097,9 +2101,9 @@ public partial class MainWindow : Window
         _upperPenButtonHeld = false;
         _hasLockedPosition = false;
         CursorDot.Visibility = Visibility.Collapsed;
-        ActiveZoneText.Text = "Active zone: none";
-        ValueText.Text = "X: -, Y: -, Pressure: -";
-        PenButtonsText.Text = "Pen buttons: -";
+        _viewModel.ActiveZoneText = "Active zone: none";
+        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
+        _viewModel.PenButtonsText = "Pen buttons: -";
         UpdateModifiersText();
         HandleRelease();
         Pad.ReleaseMouseCapture();
@@ -2266,7 +2270,7 @@ public partial class MainWindow : Window
             Canvas.SetTop(CursorDot, yPx - CursorDot.Height / 2);
 
             var hoverZone = FindMatchingZone(xNorm, yNorm);
-            ActiveZoneText.Text = hoverZone is not null
+            _viewModel.ActiveZoneText = hoverZone is not null
                 ? $"Hovering: {hoverZone.Name}"
                 : "Hovering: outside zones";
             return;
@@ -2397,7 +2401,7 @@ public partial class MainWindow : Window
             ? $"Wintab enabled, {_wintabContexts.Count} context(s){ekPart}"
             : $"Stylus/mouse fallback | {_wintabDiagnostics}";
 
-        InputBackendText.Text = $"Input: {_lastInputBackend} | {configured}";
+        _viewModel.InputBackendText = $"Input: {_lastInputBackend} | {configured}";
     }
 
     private void RefreshWacomServiceStatus()
@@ -2420,7 +2424,7 @@ public partial class MainWindow : Window
             _ => "none"
         };
 
-        PenButtonsText.Text = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
+        _viewModel.PenButtonsText = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
     }
 
     private void UpdatePenButtonActionState(uint buttons)
@@ -2517,7 +2521,7 @@ public partial class MainWindow : Window
         AppendPenButtonModifier(parts, "lower", NormalizePenButtonAction(_config.LowerPenButtonAction), _lowerPenButtonHeld, _lowerPenButtonToggleState);
         AppendPenButtonModifier(parts, "upper", NormalizePenButtonAction(_config.UpperPenButtonAction), _upperPenButtonHeld, _upperPenButtonToggleState);
 
-        ModifiersText.Text = parts.Count > 0
+        _viewModel.ModifiersText = parts.Count > 0
             ? $"Modifiers: {string.Join(" | ", parts)}"
             : "Modifiers: none";
     }
