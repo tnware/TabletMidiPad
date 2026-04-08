@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace TabletMidiPad.ViewModels;
 
 /// <summary>
@@ -24,6 +26,9 @@ internal sealed class MainViewModel : ViewModelBase
     private string? _inputBackendAutoIcon;
     private string? _inputBackendWintabIcon;
     private string? _inputBackendMouseIcon;
+    private string _zoneSelectionSummaryPrimaryText = "No zone selected";
+    private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
+    private int _selectedZoneIndex = -1;
 
     public string StatusText
     {
@@ -137,5 +142,25 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _inputBackendMouseIcon;
         set => SetProperty(ref _inputBackendMouseIcon, value);
+    }
+
+    public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
+
+    public string ZoneSelectionSummaryPrimaryText
+    {
+        get => _zoneSelectionSummaryPrimaryText;
+        set => SetProperty(ref _zoneSelectionSummaryPrimaryText, value);
+    }
+
+    public string ZoneSelectionSummarySecondaryText
+    {
+        get => _zoneSelectionSummarySecondaryText;
+        set => SetProperty(ref _zoneSelectionSummarySecondaryText, value);
+    }
+
+    public int SelectedZoneIndex
+    {
+        get => _selectedZoneIndex;
+        set => SetProperty(ref _selectedZoneIndex, value);
     }
 }

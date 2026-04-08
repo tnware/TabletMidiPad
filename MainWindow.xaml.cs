@@ -687,13 +687,16 @@ public partial class MainWindow : Window
 
     private void RefreshZoneList()
     {
-        ZoneListBox.Items.Clear();
-
+        _viewModel.Zones.Clear();
         for (int i = 0; i < _config.Zones.Count; i++)
         {
             var zone = _config.Zones[i];
             string enabled = zone.Enabled ? "on" : "off";
-            ZoneListBox.Items.Add($"{i + 1}. {zone.Name} [{enabled}]");
+            _viewModel.Zones.Add(new ZoneListItemViewModel
+            {
+                Index = i,
+                DisplayText = $"{i + 1}. {zone.Name} [{enabled}]"
+            });
         }
     }
 
@@ -788,15 +791,15 @@ public partial class MainWindow : Window
     {
         if (zone is null)
         {
-            ZoneSelectionSummaryPrimaryText.Text = "No zone selected";
-            ZoneSelectionSummarySecondaryText.Text = "Select a zone to edit its routing and bounds.";
+            _viewModel.ZoneSelectionSummaryPrimaryText = "No zone selected";
+            _viewModel.ZoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
             return;
         }
 
         string enabled = zone.Enabled ? "Enabled" : "Disabled";
-        ZoneSelectionSummaryPrimaryText.Text =
+        _viewModel.ZoneSelectionSummaryPrimaryText =
             $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
-        ZoneSelectionSummarySecondaryText.Text =
+        _viewModel.ZoneSelectionSummarySecondaryText =
             $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
             $"Release {NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }

@@ -667,6 +667,9 @@
 
                         <ListBox Name="ZoneListBox"
                                  Height="132"
+                                 ItemsSource="{Binding ZoneListItems}"
+                                 SelectedIndex="{Binding SelectedZoneIndex, Mode=TwoWay}"
+                                 DisplayMemberPath="DisplayText"
                                  SelectionChanged="ZoneListBox_SelectionChanged"/>
 
                         <Grid Margin="0,8,0,0">
@@ -738,12 +741,14 @@
                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                    FontSize="11"
                                                    FontWeight="SemiBold"
-                                                   TextWrapping="Wrap"/>
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding ZoneSelectionSummaryPrimaryText}"/>
                                         <TextBlock Name="ZoneSelectionSummarySecondaryText"
                                                    Foreground="{StaticResource TextSoftBrush}"
                                                    FontSize="10"
                                                    Margin="0,4,0,0"
-                                                   TextWrapping="Wrap"/>
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding ZoneSelectionSummarySecondaryText}"/>
                                     </StackPanel>
                                 </Border>
 
