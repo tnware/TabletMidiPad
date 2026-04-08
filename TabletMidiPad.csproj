@@ -16,6 +16,8 @@
   <ItemGroup>
     <Compile Remove="teVirtualMIDI.cs" />
     <Compile Remove="wacom-device-kit-windows\**\*.cs" />
+    <Compile Remove="TabletMidiPad.Core\**\*.cs" />
+    <Compile Remove="TabletMidiPad.Tests\**\*.cs" />
     <EmbeddedResource Remove="wacom-device-kit-windows\**\*" />
     <None Remove="wacom-device-kit-windows\**\*" />
     <Page Remove="wacom-device-kit-windows\**\*" />
