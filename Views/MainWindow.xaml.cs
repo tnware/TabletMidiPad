@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
+    private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -162,7 +163,8 @@ public partial class MainWindow : Window
             new InputBackendStatusFormatter(),
             new WintabEventAdapter(),
             new MainWindowWorkflowCoordinator(),
-            new MainWindowViewStateMapper())
+            new MainWindowViewStateMapper(),
+            new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()))
     {
     }
 
@@ -183,7 +185,8 @@ public partial class MainWindow : Window
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IWintabEventAdapter wintabEventAdapter,
         IMainWindowWorkflowCoordinator workflowCoordinator,
-        IMainWindowViewStateMapper viewStateMapper)
+        IMainWindowViewStateMapper viewStateMapper,
+        IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -202,7 +205,7 @@ public partial class MainWindow : Window
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
-        _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
+        _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -403,71 +406,44 @@ public partial class MainWindow : Window
     private void AutoLayoutZones()
     {
         CommitCurrentZoneEdits();
-        _zoneConfigurationService.AutoTileZones(_config);
+        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AutoLayout(_config, _selectedZoneIndex);
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
+        _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zones re-tiled across the pad. Click Apply Settings to save.";
+        SettingsResultText.Text = result.StatusMessage;
     }
 
     private void AddZone()
     {
         CommitCurrentZoneEdits();
-
-        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(_config);
-
-        var zone = new ZoneConfig
-        {
-            Name = $"Zone {_config.Zones.Count + 1}",
-            Enabled = true,
-            MidiChannel = 1,
-            CcX = nextCcStart,
-            CcY = nextCcStart + 1,
-            CcPressure = nextCcStart + 2,
-            SendX = true,
-            SendY = true,
-            InvertY = true,
-            SendPressure = true,
-            ReleaseBehavior = ZoneReleaseBehaviors.NoSendOnRelease,
-            ResetPressureOnRelease = false,
-            Left = 0.0,
-            Top = 0.0,
-            Width = 0.5,
-            Height = 0.5
-        };
-
-        _config.Zones.Add(zone);
-        _zoneConfigurationService.AutoTileZones(_config);
+        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AddZone(_config);
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = _config.Zones.Count - 1;
+        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
+        _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone added. Click Apply Settings to save.";
+        SettingsResultText.Text = result.StatusMessage;
     }
 
     private void RemoveZone()
     {
-        if (_selectedZoneIndex < 0 || _selectedZoneIndex >= _config.Zones.Count)
+        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.RemoveZone(_config, _selectedZoneIndex);
+        if (!result.Changed)
         {
             return;
         }
 
-        _config.Zones.RemoveAt(_selectedZoneIndex);
-        if (_config.Zones.Count == 0)
-        {
-            _config.Zones.Add(ZoneConfig.CreateDefault());
-        }
-
-        _zoneConfigurationService.AutoTileZones(_config);
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = Math.Clamp(_selectedZoneIndex, 0, _config.Zones.Count - 1);
+        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
+        _selectedZoneIndex = result.SelectedZoneIndex;
         LoadSelectedZoneIntoEditor();
         DrawZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
-        SettingsResultText.Text = "Zone removed. Click Apply Settings to save.";
+        SettingsResultText.Text = result.StatusMessage;
     }
 
     private async Task InitializeAppAsync()
