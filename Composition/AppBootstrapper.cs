@@ -26,6 +26,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
         container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
+        container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
 
@@ -36,6 +37,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IWacomServiceController>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IConfigValueParser>(),
             c.GetRequiredService<IPadInteractionEngine>()));
 

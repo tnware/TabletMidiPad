@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
+    private readonly IZoneOverlayRenderer _zoneOverlayRenderer;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -164,6 +165,7 @@ public partial class MainWindow : Window
             new WacomServiceController(),
             new PreferencesDialogService(),
             new ZoneConfigurationService(),
+            new ZoneOverlayRenderer(),
             new ConfigValueParser(),
             new PadInteractionEngine())
     {
@@ -175,6 +177,7 @@ public partial class MainWindow : Window
         IWacomServiceController wacomServiceController,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
+        IZoneOverlayRenderer zoneOverlayRenderer,
         IConfigValueParser configValueParser,
         IPadInteractionEngine padInteractionEngine)
     {
@@ -183,6 +186,7 @@ public partial class MainWindow : Window
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+        _zoneOverlayRenderer = zoneOverlayRenderer ?? throw new ArgumentNullException(nameof(zoneOverlayRenderer));
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         InitializeComponent();
@@ -1718,166 +1722,44 @@ public partial class MainWindow : Window
 
     private void DrawZoneOverlay()
     {
-        ZoneOverlayCanvas.Children.Clear();
+        IReadOnlyList<ZoneOverlayZone> zones = _config.Zones
+            .Select(zone => new ZoneOverlayZone(
+                Name: zone.Name,
+                Enabled: zone.Enabled,
+                SendX: zone.SendX,
+                SendY: zone.SendY,
+                SendPressure: zone.SendPressure,
+                Left: zone.Left,
+                Top: zone.Top,
+                Width: zone.Width,
+                Height: zone.Height))
+            .ToList();
 
-        double width = Pad.ActualWidth;
-        double height = Pad.ActualHeight;
-        if (width <= 0 || height <= 0)
+        var lastByIndex = new Dictionary<int, (double x, double y)>();
+        foreach ((int index, ZoneConfig zone) in _config.Zones.Select((zone, index) => (index, zone)))
         {
-            return;
-        }
-
-        ZoneOverlayCanvas.Width = width;
-        ZoneOverlayCanvas.Height = height;
-
-        for (int i = 0; i < _config.Zones.Count; i++)
-        {
-            var zone = _config.Zones[i];
-            double rectLeft = zone.Left * width;
-            double rectTop = zone.Top * height;
-            double rectWidth = zone.Width * width;
-            double rectHeight = zone.Height * height;
-
-            Color baseColor = GetZonePaletteColor(i);
-            bool selected = i == _selectedZoneIndex;
-            byte fillAlpha = selected ? (byte)(zone.Enabled ? 100 : 56) : (byte)(zone.Enabled ? 56 : 28);
-            byte outlineAlpha = selected ? (byte)240 : (byte)(zone.Enabled ? 170 : 85);
-            Color fillColor = WithAlpha(baseColor, fillAlpha);
-            Color strokeColor = WithAlpha(baseColor, outlineAlpha);
-
-            var rect = new Rectangle
+            if (_lastZonePoints.TryGetValue(zone, out Point last))
             {
-                Width = rectWidth,
-                Height = rectHeight,
-                Fill = new SolidColorBrush(fillColor),
-                Stroke = new SolidColorBrush(strokeColor),
-                StrokeThickness = 2,
-                RadiusX = 8,
-                RadiusY = 8
-            };
-
-            string bounds = $"({zone.Left:0.##},{zone.Top:0.##}) {zone.Width:0.##}\u00D7{zone.Height:0.##}";
-            string axes = $"  [{(zone.SendX ? "X" : "-")}{(zone.SendY ? "Y" : "-")}{(zone.SendPressure ? "P" : "-")}]";
-            string pressureFlag = zone.SendPressure ? "" : "  [no pressure]";
-            string enabledFlag = zone.Enabled ? "" : "  [off]";
-
-            var label = new TextBlock
-            {
-                FontSize = 11,
-                Padding = new Thickness(6, 3, 6, 3),
-                Background = new SolidColorBrush(WithAlpha(ThemeColor("ColorWindow", Colors.Black), 180)),
-            };
-            label.Inlines.Add(new System.Windows.Documents.Run(zone.Name)
-            {
-                Foreground = ThemeBrush("TextPrimaryBrush", Brushes.White),
-                FontWeight = FontWeights.SemiBold
-            });
-            label.Inlines.Add(new System.Windows.Documents.Run($"  {bounds}")
-            {
-                Foreground = ThemeBrush("TextMutedBrush", Brushes.Gainsboro)
-            });
-            label.Inlines.Add(new System.Windows.Documents.Run(axes)
-            {
-                Foreground = new SolidColorBrush(WithAlpha(baseColor, 240))
-            });
-            if (pressureFlag.Length > 0)
-            {
-                label.Inlines.Add(new System.Windows.Documents.Run(pressureFlag)
-                {
-                    Foreground = ThemeBrush("DangerBrush", Brushes.IndianRed)
-                });
-            }
-            if (enabledFlag.Length > 0)
-            {
-                label.Inlines.Add(new System.Windows.Documents.Run(enabledFlag)
-                {
-                    Foreground = ThemeBrush("TextSoftBrush", Brushes.Gray)
-                });
-            }
-
-            Canvas.SetLeft(rect, rectLeft);
-            Canvas.SetTop(rect, rectTop);
-            Canvas.SetLeft(label, rectLeft + 6);
-            Canvas.SetTop(label, rectTop + 6);
-
-            ZoneOverlayCanvas.Children.Add(rect);
-            ZoneOverlayCanvas.Children.Add(label);
-
-            if (i == _selectedZoneIndex)
-            {
-                AddResizeHandles(rectLeft, rectTop, rectWidth, rectHeight, strokeColor);
-            }
-
-            if (_lastZonePoints.TryGetValue(zone, out Point lastPoint))
-            {
-                double markerX = zone.SendX ? lastPoint.X : 0.5;
-                double markerY = zone.SendY ? lastPoint.Y : 0.5;
-                double markerCenterX = rectLeft + (markerX * rectWidth);
-                double markerCenterY = rectTop + (markerY * rectHeight);
-
-                var markerRing = new Ellipse
-                {
-                    Width = 18,
-                    Height = 18,
-                    Stroke = new SolidColorBrush(WithAlpha(baseColor, 235)),
-                    StrokeThickness = 2,
-                    Fill = Brushes.Transparent
-                };
-
-                var markerDot = new Ellipse
-                {
-                    Width = 8,
-                    Height = 8,
-                    Fill = ThemeBrush("AccentBrushHover", Brushes.White),
-                    Stroke = ThemeBrush("SurfaceBrush", Brushes.Black),
-                    StrokeThickness = 1
-                };
-
-                Canvas.SetLeft(markerRing, markerCenterX - (markerRing.Width / 2));
-                Canvas.SetTop(markerRing, markerCenterY - (markerRing.Height / 2));
-                Canvas.SetLeft(markerDot, markerCenterX - (markerDot.Width / 2));
-                Canvas.SetTop(markerDot, markerCenterY - (markerDot.Height / 2));
-
-                ZoneOverlayCanvas.Children.Add(markerRing);
-                ZoneOverlayCanvas.Children.Add(markerDot);
+                lastByIndex[index] = (last.X, last.Y);
             }
         }
-    }
 
-    private void AddResizeHandles(double rectLeft, double rectTop, double rectWidth, double rectHeight, Color strokeColor)
-    {
-        const double handleSize = 10;
-        double half = handleSize / 2;
-        var brush = new SolidColorBrush(Color.FromArgb(235, strokeColor.R, strokeColor.G, strokeColor.B));
-        var fill = ThemeBrush("SurfaceBrush", Brushes.Black);
+        var request = new ZoneOverlayRenderRequest(
+            PadWidth: Pad.ActualWidth,
+            PadHeight: Pad.ActualHeight,
+            Zones: zones,
+            SelectedZoneIndex: _selectedZoneIndex,
+            LastLocalByZoneIndex: lastByIndex,
+            ZonePalette: Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor).ToList(),
+            ColorWindow: ThemeColor("ColorWindow", Colors.Black),
+            TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),
+            TextMutedBrush: ThemeBrush("TextMutedBrush", Brushes.Gainsboro),
+            TextSoftBrush: ThemeBrush("TextSoftBrush", Brushes.Gray),
+            DangerBrush: ThemeBrush("DangerBrush", Brushes.IndianRed),
+            AccentBrushHover: ThemeBrush("AccentBrushHover", Brushes.White),
+            SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black));
 
-        foreach (Point handleCenter in new[]
-        {
-            new Point(rectLeft, rectTop),
-            new Point(rectLeft + rectWidth / 2, rectTop),
-            new Point(rectLeft + rectWidth, rectTop),
-            new Point(rectLeft, rectTop + rectHeight / 2),
-            new Point(rectLeft + rectWidth, rectTop + rectHeight / 2),
-            new Point(rectLeft, rectTop + rectHeight),
-            new Point(rectLeft + rectWidth / 2, rectTop + rectHeight),
-            new Point(rectLeft + rectWidth, rectTop + rectHeight)
-        })
-        {
-            var handle = new Rectangle
-            {
-                Width = handleSize,
-                Height = handleSize,
-                RadiusX = 3,
-                RadiusY = 3,
-                Fill = fill,
-                Stroke = brush,
-                StrokeThickness = 1.5
-            };
-
-            Canvas.SetLeft(handle, handleCenter.X - half);
-            Canvas.SetTop(handle, handleCenter.Y - half);
-            ZoneOverlayCanvas.Children.Add(handle);
-        }
+        _zoneOverlayRenderer.Render(ZoneOverlayCanvas, request);
     }
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
