@@ -97,4 +97,12 @@ internal sealed class MainWindowWorkflowCoordinator : IMainWindowWorkflowCoordin
             ShouldRestartMidi: routingChanged || midiOutHandle == IntPtr.Zero,
             ShouldRebindInputBackend: inputBackendChanged);
     }
+
+    /// <inheritdoc />
+    public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status)
+    {
+        return new WacomServiceMenuState(
+            Header: status.StatusText,
+            StartEnabled: status.CanStart);
+    }
 }

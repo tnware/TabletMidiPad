@@ -24,6 +24,11 @@ internal interface IMainWindowWorkflowCoordinator
         AppConfig config,
         PreferencesDialogResult result,
         IntPtr midiOutHandle);
+
+    /// <summary>
+    /// Builds Wacom service status menu state for current service status.
+    /// </summary>
+    WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status);
 }
 
 /// <summary>
@@ -39,3 +44,10 @@ internal readonly record struct PreferencesWorkflowResult(
     string? ErrorMessage,
     bool ShouldRestartMidi,
     bool ShouldRebindInputBackend);
+
+/// <summary>
+/// Wacom service menu state projected for MainWindow controls.
+/// </summary>
+internal readonly record struct WacomServiceMenuState(
+    string Header,
+    bool StartEnabled);

@@ -47,6 +47,8 @@ public partial class MainWindow : Window
     private readonly IWintabEventAdapter _wintabEventAdapter;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
+    private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
+    private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IConfigValueParser _configValueParser;
@@ -163,6 +165,8 @@ public partial class MainWindow : Window
             new InputBackendStatusFormatter(),
             new WintabEventAdapter(),
             new MainWindowWorkflowCoordinator(),
+            new MainWindowInputBackendCoordinator(),
+            new WacomServiceWorkflowCoordinator(),
             new MainWindowViewStateMapper(),
             new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()))
     {
@@ -185,6 +189,8 @@ public partial class MainWindow : Window
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IWintabEventAdapter wintabEventAdapter,
         IMainWindowWorkflowCoordinator workflowCoordinator,
+        IMainWindowInputBackendCoordinator inputBackendCoordinator,
+        IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IMainWindowViewStateMapper viewStateMapper,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator)
     {
@@ -204,6 +210,8 @@ public partial class MainWindow : Window
         _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
+        _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
+        _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
@@ -357,41 +365,27 @@ public partial class MainWindow : Window
 
     private async Task StartWacomServiceAsync()
     {
-        MenuStartWacomService.IsEnabled = false;
-        MenuWacomServiceStatus.Header = "Service: starting...";
-        bool started = false;
-        string? failureText = null;
+        WacomServiceWorkflowState startingState = _wacomServiceWorkflowCoordinator.BuildStartingState();
+        MenuStartWacomService.IsEnabled = startingState.StartEnabled;
+        MenuWacomServiceStatus.Header = startingState.StatusHeader;
 
-        try
+        WacomServiceStartResult result = await Task.Run(() => _wacomServiceWorkflowCoordinator.Start(_wacomServiceController));
+        if (result.Started)
         {
-            await Task.Run(() => _wacomServiceController.Start());
-            started = true;
-        }
-        catch (Win32Exception ex)
-        {
-            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
-        }
-        catch (InvalidOperationException ex)
-        {
-            failureText = $"Could not start Wacom Professional Service. Try running TabletMidiPad as administrator. {ex.Message}";
-        }
-        catch (Exception ex)
-        {
-            failureText = $"Could not start Wacom Professional Service: {ex.Message}";
-        }
-        finally
-        {
-            if (started)
+            RefreshWacomServiceStatus(result.RefreshedStatus);
+            if (result.ShouldRebindInputBackend)
             {
-                RefreshWacomServiceStatus();
                 RebindInputBackend();
             }
-            else
-            {
-                MenuWacomServiceStatus.Header = $"Service: {(failureText ?? "failed to start")}";
-                RefreshWacomServiceStatus();
-            }
+            return;
         }
+
+        if (!string.IsNullOrWhiteSpace(result.FailureStatusHeader))
+        {
+            MenuWacomServiceStatus.Header = result.FailureStatusHeader;
+        }
+
+        RefreshWacomServiceStatus(result.RefreshedStatus);
     }
 
     private void MenuAbout()
@@ -1247,27 +1241,16 @@ public partial class MainWindow : Window
 
     private void InitializeWintab()
     {
-        string backendMode = NormalizeInputBackendMode(_config.InputBackendMode);
         PopulateTabletDeviceList();
-
-        if (string.Equals(backendMode, "Stylus/Mouse Only", StringComparison.Ordinal))
-        {
-            ShutdownWintab();
-            _wintabDiagnostics = "Manual stylus/mouse mode selected";
-            _lastInputBackend = "Stylus/Mouse Fallback";
-            UpdateInputBackendStatus();
-            return;
-        }
-
-        _wintabInputBackend.Initialize(_selectedDeviceIndex);
-        _expressKeyCount = Math.Max(_expressKeyCount, _wintabInputBackend.ExpressKeyCount);
-        _useWintab = _wintabInputBackend.IsActive;
-        _wintabDiagnostics = _useWintab ? "Wintab initialized" : "Wintab32.dll not available";
-        _lastInputBackend = _useWintab
-            ? "Wintab"
-            : string.Equals(backendMode, "Wintab Only", StringComparison.Ordinal)
-                ? "Wintab unavailable"
-                : "Stylus/Mouse Fallback";
+        InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Initialize(
+            _config.InputBackendMode,
+            _wintabInputBackend,
+            _selectedDeviceIndex,
+            _expressKeyCount);
+        _useWintab = lifecycle.UseWintab;
+        _expressKeyCount = lifecycle.ExpressKeyCount;
+        _lastInputBackend = lifecycle.LastInputBackend;
+        _wintabDiagnostics = lifecycle.WintabDiagnostics;
         UpdateInputBackendStatus();
     }
 
@@ -1334,11 +1317,11 @@ public partial class MainWindow : Window
 
     private void ShutdownWintab()
     {
-        _wintabInputBackend.Shutdown();
-        _useWintab = false;
-        _expressKeyCount = 0;
-        _lastInputBackend = "Stylus/Mouse Fallback";
-        _wintabDiagnostics = "Wintab shut down";
+        InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Shutdown(_wintabInputBackend);
+        _useWintab = lifecycle.UseWintab;
+        _expressKeyCount = lifecycle.ExpressKeyCount;
+        _lastInputBackend = lifecycle.LastInputBackend;
+        _wintabDiagnostics = lifecycle.WintabDiagnostics;
     }
 
     // WndProc and context plumbing have been extracted to IWintabInputBackend.
@@ -1361,16 +1344,17 @@ public partial class MainWindow : Window
 
     private void ResetActiveInputState()
     {
-        _isActive = false;
+        InputBackendResetResult resetState = _inputBackendCoordinator.BuildResetState();
+        _isActive = resetState.IsActive;
         _activeZone = null;
-        _lowerPenButtonHeld = false;
-        _upperPenButtonHeld = false;
-        _hasLockedPosition = false;
+        _lowerPenButtonHeld = resetState.LowerPenButtonHeld;
+        _upperPenButtonHeld = resetState.UpperPenButtonHeld;
+        _hasLockedPosition = resetState.HasLockedPosition;
         CursorDot.Visibility = Visibility.Collapsed;
-        _viewModel.ActiveZoneText = "Active zone: none";
-        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
-        _viewModel.PenButtonsText = "Pen buttons: -";
-        _viewModel.ModifiersText = "Modifiers: none";
+        _viewModel.ActiveZoneText = resetState.ActiveZoneText;
+        _viewModel.ValueText = resetState.ValueText;
+        _viewModel.PenButtonsText = resetState.PenButtonsText;
+        _viewModel.ModifiersText = resetState.ModifiersText;
         HandleRelease();
         Pad.ReleaseMouseCapture();
         Pad.ReleaseStylusCapture();
@@ -1502,9 +1486,14 @@ public partial class MainWindow : Window
 
     private void RefreshWacomServiceStatus()
     {
-        WacomServiceStatus status = _wacomServiceController.GetStatus();
-        MenuWacomServiceStatus.Header = status.StatusText;
-        MenuStartWacomService.IsEnabled = status.CanStart;
+        RefreshWacomServiceStatus(_wacomServiceController.GetStatus());
+    }
+
+    private void RefreshWacomServiceStatus(WacomServiceStatus status)
+    {
+        WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
+        MenuWacomServiceStatus.Header = menuState.Header;
+        MenuStartWacomService.IsEnabled = menuState.StartEnabled;
     }
 
     private void UpdatePenButtonsDebug(uint buttons)
