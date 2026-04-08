@@ -40,6 +40,8 @@ public partial class MainWindow : Window
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IMainWindowInputEventFlowCoordinator _inputEventFlowCoordinator;
+    private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
+    private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowPadPresentationCoordinator _padPresentationCoordinator;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
@@ -151,6 +153,8 @@ public partial class MainWindow : Window
             new MainWindowInputBackendCoordinator(),
             new WacomServiceWorkflowCoordinator(),
             new MainWindowInputEventFlowCoordinator(),
+            new MainWindowLifecycleCoordinator(),
+            new MainWindowWintabInputBridge(new WintabEventAdapter(), new MainWindowInputEventFlowCoordinator()),
             new MainWindowPadPresentationCoordinator(),
             new MainWindowViewStateMapper(),
             new ZoneActionWorkflowCoordinator(new ZoneConfigurationService()))
@@ -177,6 +181,8 @@ public partial class MainWindow : Window
         IMainWindowInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IMainWindowInputEventFlowCoordinator inputEventFlowCoordinator,
+        IMainWindowLifecycleCoordinator lifecycleCoordinator,
+        IMainWindowWintabInputBridge wintabInputBridge,
         IMainWindowPadPresentationCoordinator padPresentationCoordinator,
         IMainWindowViewStateMapper viewStateMapper,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator)
@@ -200,6 +206,8 @@ public partial class MainWindow : Window
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
         _inputEventFlowCoordinator = inputEventFlowCoordinator ?? throw new ArgumentNullException(nameof(inputEventFlowCoordinator));
+        _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
+        _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
         _padPresentationCoordinator = padPresentationCoordinator ?? throw new ArgumentNullException(nameof(padPresentationCoordinator));
         _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
@@ -235,8 +243,10 @@ public partial class MainWindow : Window
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
         {
-            ShutdownMidi();
-            ShutdownWintab();
+            _lifecycleCoordinator.ShutdownMidiOutput(_midiEngine, _config);
+            ApplyInputBackendLifecycleState(
+                _lifecycleCoordinator.ShutdownTabletInput(_inputBackendCoordinator, _wintabInputBackend),
+                refreshInputBackendStatusText: false);
             _wintabInputBackend.Dispose();
         };
     }
@@ -427,7 +437,7 @@ public partial class MainWindow : Window
     {
         PopulateChannelList(ZoneChannelComboBox);
         PopulateReleaseBehaviorList(ZoneReleaseBehaviorComboBox);
-        _config = _configStore.Load();
+        _config = _lifecycleCoordinator.LoadStartupConfig(_configStore);
         LoadConfigIntoUi(_config);
         RefreshWacomServiceStatus();
 
@@ -437,16 +447,23 @@ public partial class MainWindow : Window
         _viewModel.MidiStatusText = "Connecting MIDI...";
         await Task.Yield();
 
-        try
+        MidiInitializationResult midiResult = await _lifecycleCoordinator.TryInitializeMidiAsync(
+            _midiEngine,
+            _config,
+            text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
+
+        if (midiResult.Succeeded)
         {
-            await InitializeMidiAsync();
+            UpdateUiForCurrentConfig();
             MidiStatusPanel.Visibility = Visibility.Collapsed;
         }
-        catch
+        else
         {
             MidiProgressBar.Visibility = Visibility.Collapsed;
             MidiStatusText.Foreground = FindResource("DangerBrush") as Brush ?? Brushes.IndianRed;
             _viewModel.MidiStatusText = "MIDI init failed";
+            _viewModel.StatusText = "MIDI init failed";
+            _viewModel.ValueText = midiResult.ErrorMessage ?? string.Empty;
         }
     }
 
@@ -730,22 +747,6 @@ public partial class MainWindow : Window
         ZoneListBox.SelectedIndex = _selectedZoneIndex;
     }
 
-    private async Task InitializeMidiAsync()
-    {
-        try
-        {
-            await _midiEngine.InitializeAsync(_config, text => Dispatcher.Invoke(() => _viewModel.MidiStatusText = text));
-            _midiEngine.ClearCachedValues();
-            UpdateUiForCurrentConfig();
-        }
-        catch (Exception ex)
-        {
-            _viewModel.StatusText = "MIDI init failed";
-            _viewModel.ValueText = ex.Message;
-            throw;
-        }
-    }
-
     private void UpdateUiForCurrentConfig()
     {
         MainWindowConnectedState statusState = _viewStateMapper.BuildConnectedState(_config);
@@ -759,7 +760,7 @@ public partial class MainWindow : Window
         _viewModel.ModifiersText = statusState.ModifiersText;
     }
 
-    private void ShutdownMidi() => _midiEngine.Shutdown(_config);
+    private void ShutdownMidi() => _lifecycleCoordinator.ShutdownMidiOutput(_midiEngine, _config);
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
     {
@@ -1083,11 +1084,19 @@ public partial class MainWindow : Window
             _wintabInputBackend,
             _selectedDeviceIndex,
             _expressKeyCount);
+        ApplyInputBackendLifecycleState(lifecycle, refreshInputBackendStatusText: true);
+    }
+
+    private void ApplyInputBackendLifecycleState(InputBackendLifecycleResult lifecycle, bool refreshInputBackendStatusText)
+    {
         _useWintab = lifecycle.UseWintab;
         _expressKeyCount = lifecycle.ExpressKeyCount;
         _lastInputBackend = lifecycle.LastInputBackend;
         _wintabDiagnostics = lifecycle.WintabDiagnostics;
-        UpdateInputBackendStatus();
+        if (refreshInputBackendStatusText)
+        {
+            UpdateInputBackendStatus();
+        }
     }
 
     private void PopulateTabletDeviceList()
@@ -1153,11 +1162,9 @@ public partial class MainWindow : Window
 
     private void ShutdownWintab()
     {
-        InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Shutdown(_wintabInputBackend);
-        _useWintab = lifecycle.UseWintab;
-        _expressKeyCount = lifecycle.ExpressKeyCount;
-        _lastInputBackend = lifecycle.LastInputBackend;
-        _wintabDiagnostics = lifecycle.WintabDiagnostics;
+        ApplyInputBackendLifecycleState(
+            _lifecycleCoordinator.ShutdownTabletInput(_inputBackendCoordinator, _wintabInputBackend),
+            refreshInputBackendStatusText: false);
     }
 
     // WndProc and context plumbing have been extracted to IWintabInputBackend.
@@ -1196,39 +1203,37 @@ public partial class MainWindow : Window
 
     private void HandleExpressKeyPacket(WintabExpressKeyEventArgs expressKey)
     {
-        WintabExpressKeyUpdate update = _wintabEventAdapter.BuildExpressKeyUpdate(expressKey, _config.ExpressKeys);
-        _expressKeyCount = Math.Max(_expressKeyCount, update.RequiredExpressKeyCount);
+        WintabExpressKeyBridgeOutcome outcome = _wintabInputBridge.BuildExpressKeyBridge(expressKey, _config.ExpressKeys);
+        _expressKeyCount = Math.Max(_expressKeyCount, outcome.RequiredExpressKeyCount);
         ApplyInteractionResult(_padInteractionEngine.Process(
             BuildInteractionConfig(),
             BuildZoneSnapshots(),
             _interactionState,
-            new InteractionInput(
-                XNorm: 0,
-                YNorm: 0,
-                Pressure: 0,
-                IsDown: false,
-                IsHovering: false,
-                PenButtons: update.EncodedPenButtons,
-                Backend: InteractionBackend.ExpressKey)));
-        _expressKeyDiagnostics = update.ExpressKeyDiagnostics;
-        MarkInputBackend(update.BackendLabel);
+            outcome.EngineInput));
+        _expressKeyDiagnostics = outcome.ExpressKeyDiagnostics;
+        MarkInputBackend(outcome.BackendLabel);
         UpdateInputBackendStatus();
     }
 
     private void HandleWintabPacket(WintabPacketEventArgs packet)
     {
-        if (!_wintabEventAdapter.TryBuildPacketUpdate(packet, Pad.ActualWidth, Pad.ActualHeight, out WintabPacketUpdate update))
+        if (!_wintabInputBridge.TryBuildPacketBridge(
+            packet,
+            Pad.ActualWidth,
+            Pad.ActualHeight,
+            _isActive,
+            out WintabPacketBridgeOutcome bridge))
         {
             return;
         }
 
-        MarkInputBackend(update.BackendLabel);
-        UpdatePenButtonsDebug(update.PenButtons);
+        MarkInputBackend(bridge.BackendLabel);
+        UpdatePenButtonsDebug(bridge.PenButtons);
 
-        _wintabDiagnostics = update.PacketDiagnostics;
+        _wintabDiagnostics = bridge.PacketDiagnostics;
         UpdateInputBackendStatus();
 
-        WintabPacketFlowResult flow = _inputEventFlowCoordinator.BuildWintabPacketFlow(_isActive, update);
+        WintabPacketFlowResult flow = bridge.Flow;
         if (flow.ReleaseBeforeTickIfWasActive)
         {
             _isActive = false;
