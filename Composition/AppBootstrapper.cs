@@ -23,12 +23,14 @@ internal static class AppBootstrapper
         container.AddSingleton<IConfigStore>(_ => new JsonConfigStore(AppConfig.GetConfigPath()));
         container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
+        container.AddSingleton<IPreferencesDialogService>(_ => new PreferencesDialogService());
 
         // Views (created by DI so they can receive view models/services later).
         container.AddTransient(c => new MainWindow(
             c.GetRequiredService<IConfigStore>(),
             c.GetRequiredService<IMidiEngine>(),
-            c.GetRequiredService<IWacomServiceController>()));
+            c.GetRequiredService<IWacomServiceController>(),
+            c.GetRequiredService<IPreferencesDialogService>()));
 
         return container;
     }

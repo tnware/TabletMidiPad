@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
+    private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private ZoneConfig? _activeZone;
@@ -82,15 +83,21 @@ public partial class MainWindow : Window
         : this(
             new JsonConfigStore(AppConfig.GetConfigPath()),
             new WinMmMidiEngine(),
-            new WacomServiceController())
+            new WacomServiceController(),
+            new PreferencesDialogService())
     {
     }
 
-    internal MainWindow(IConfigStore configStore, IMidiEngine midiEngine, IWacomServiceController wacomServiceController)
+    internal MainWindow(
+        IConfigStore configStore,
+        IMidiEngine midiEngine,
+        IWacomServiceController wacomServiceController,
+        IPreferencesDialogService preferencesDialogService)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
+        _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         InitializeComponent();
         _viewModel = new MainViewModel();
         DataContext = _viewModel;
@@ -204,12 +211,8 @@ public partial class MainWindow : Window
     private void MenuPreferences_Click(object sender, RoutedEventArgs e)
     {
         ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
-        var prefs = new PreferencesWindow(_expressKeyCount) { Owner = this };
-        prefs.LoadFrom(_config);
-
-        prefs.ShowDialog();
-
-        if (!prefs.Accepted)
+        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, _expressKeyCount);
+        if (result is null)
         {
             return;
         }
@@ -219,25 +222,25 @@ public partial class MainWindow : Window
         string previousAssociationId = _config.LoopbackAssociationId;
         string previousInputBackendMode = _config.InputBackendMode;
 
-        _config.DawPortName = prefs.DawPortName;
-        _config.AppPortName = prefs.AppPortName;
-        _config.LoopbackAssociationId = prefs.AssociationId;
-        _config.MousePressureValue = prefs.MousePressureValue;
-        _config.PositionDeadZone = prefs.PositionDeadZone;
-        _config.PositionSmoothing = prefs.PositionSmoothing;
-        _config.PressureCurve = prefs.PressureCurve;
-        _config.InputBackendMode = prefs.InputBackendMode;
-        _config.LowerPenButtonAction = prefs.LowerPenButtonAction;
-        _config.LowerPenButtonMidiChannel = prefs.LowerPenButtonMidiChannel;
-        _config.LowerPenButtonCc = prefs.LowerPenButtonCc;
-        _config.LowerPenButtonNote = prefs.LowerPenButtonNote;
-        _config.UpperPenButtonAction = prefs.UpperPenButtonAction;
-        _config.UpperPenButtonMidiChannel = prefs.UpperPenButtonMidiChannel;
-        _config.UpperPenButtonCc = prefs.UpperPenButtonCc;
-        _config.UpperPenButtonNote = prefs.UpperPenButtonNote;
-        _config.SendPressureGlobally = prefs.SendPressureGlobally;
-        _config.AllowZoneSwitchWhilePressed = prefs.AllowZoneSwitchWhilePressed;
-        _config.ExpressKeys = prefs.GetExpressKeyConfigs();
+        _config.DawPortName = result.DawPortName;
+        _config.AppPortName = result.AppPortName;
+        _config.LoopbackAssociationId = result.AssociationId;
+        _config.MousePressureValue = result.MousePressureValue;
+        _config.PositionDeadZone = result.PositionDeadZone;
+        _config.PositionSmoothing = result.PositionSmoothing;
+        _config.PressureCurve = result.PressureCurve;
+        _config.InputBackendMode = result.InputBackendMode;
+        _config.LowerPenButtonAction = result.LowerPenButtonAction;
+        _config.LowerPenButtonMidiChannel = result.LowerPenButtonMidiChannel;
+        _config.LowerPenButtonCc = result.LowerPenButtonCc;
+        _config.LowerPenButtonNote = result.LowerPenButtonNote;
+        _config.UpperPenButtonAction = result.UpperPenButtonAction;
+        _config.UpperPenButtonMidiChannel = result.UpperPenButtonMidiChannel;
+        _config.UpperPenButtonCc = result.UpperPenButtonCc;
+        _config.UpperPenButtonNote = result.UpperPenButtonNote;
+        _config.SendPressureGlobally = result.SendPressureGlobally;
+        _config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
+        _config.ExpressKeys = result.ExpressKeys;
 
         CommitCurrentZoneEdits();
 
