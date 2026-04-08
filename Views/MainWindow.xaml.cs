@@ -288,8 +288,9 @@ public partial class MainWindow : Window
 
     private void MenuPreferences()
     {
-        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, _expressKeyCount);
-        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, _expressKeyCount);
+        int effectiveExpressKeyCount = Math.Max(_expressKeyCount, _config.ExpressKeys.Count);
+        ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
+        PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
         if (result is null)
         {
             return;
@@ -1854,6 +1855,8 @@ public partial class MainWindow : Window
     {
         int control = expressKey.Control;
         bool isPressed = expressKey.IsPressed;
+        // Keep editor capacity in sync with runtime-observed key indices.
+        _expressKeyCount = Math.Max(_expressKeyCount, control + 1);
 
         // Engine expects (lower 16 bits = key index, upper 16 bits = pressed flag).
         uint encoded = (uint)(control & 0xFFFF) | (isPressed ? 0x0001_0000u : 0u);
