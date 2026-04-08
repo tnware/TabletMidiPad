@@ -14,4 +14,9 @@ internal interface IInputBackendStatusFormatter
         int contextCount,
         string wintabDiagnostics,
         string expressKeyDiagnostics);
+
+    /// <summary>
+    /// Builds pen button diagnostics text from Wintab button flags.
+    /// </summary>
+    string BuildPenButtonsText(uint buttons);
 }

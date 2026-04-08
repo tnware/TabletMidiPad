@@ -1620,36 +1620,7 @@ public partial class MainWindow : Window
     private void UpdatePenButtonsDebug(uint buttons)
     {
         _lastWintabButtons = buttons;
-        uint buttonMask = buttons & 0xFFFF;
-        uint transition = (buttons >> 16) & 0xFFFF;
-
-        string transitionText = transition switch
-        {
-            1 => "up",
-            2 => "down",
-            _ => "none"
-        };
-
-        _viewModel.PenButtonsText = $"Pen buttons: mask=0x{buttonMask:X4} pressed={FormatPressedButtons(buttonMask)} transition={transitionText}";
-    }
-
-    private static string FormatPressedButtons(uint buttonMask)
-    {
-        if (buttonMask == 0)
-        {
-            return "none";
-        }
-
-        var pressed = new List<string>();
-        for (int bit = 0; bit < 16; bit++)
-        {
-            if ((buttonMask & (1u << bit)) != 0)
-            {
-                pressed.Add((bit + 1).ToString());
-            }
-        }
-
-        return string.Join(",", pressed);
+        _viewModel.PenButtonsText = _inputBackendStatusFormatter.BuildPenButtonsText(buttons);
     }
 
     private readonly record struct WintabContextInfo(
