@@ -401,9 +401,12 @@ public partial class MainWindow : Window
     {
         _config = _startupLifecycle.LoadPersistedConfig(_configStore);
         LoadConfigIntoUi(_config);
-        RefreshWacomServiceStatus();
-
-        InitializeWintab();
+        _startupLifecycle.RunPostConfigLoadShellPhase(new MainWindowPostConfigLoadShellContext(
+            GetWacomServiceStatus: () => _wacomServiceController.GetStatus(),
+            ApplyWacomServiceMenuState: RefreshWacomServiceStatus,
+            Config: _config,
+            InitializeTabletWhenReady: InitializeWintab,
+            ApplyTabletBlockedByWacomService: ApplyTabletStackUnavailableAtStartup));
 
         await _startupLifecycle.RunStartupMidiSequenceAsync(
             _midiEngine,
@@ -411,6 +414,14 @@ public partial class MainWindow : Window
             _viewModel,
             a => Dispatcher.Invoke(a),
             UpdateUiForCurrentConfig);
+    }
+
+    private void ApplyTabletStackUnavailableAtStartup(WacomServiceStatus wacom)
+    {
+        _inputBackendCoordinator.Shutdown(_wintabInputBackend);
+        PopulateTabletDeviceList();
+        InputBackendLifecycleResult blocked = _startupLifecycle.BuildTabletStackBlockedLifecycleResult(_config, wacom);
+        ApplyInputBackendLifecycleState(blocked, refreshInputBackendStatusText: true);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)

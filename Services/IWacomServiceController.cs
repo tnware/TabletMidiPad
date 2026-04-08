@@ -24,4 +24,5 @@ internal interface IWacomServiceController
 /// </summary>
 /// <param name="StatusText">Human-readable status text.</param>
 /// <param name="CanStart">Whether start action should be enabled.</param>
-internal readonly record struct WacomServiceStatus(string StatusText, bool CanStart);
+/// <param name="IsServiceRunning">Whether the Wacom Professional Service process is in the Running state.</param>
+internal readonly record struct WacomServiceStatus(string StatusText, bool CanStart, bool IsServiceRunning);

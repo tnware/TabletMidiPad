@@ -88,6 +88,90 @@ public sealed class MainWindowStartupLifecycleServiceTests
         Assert.NotNull(applied);
     }
 
+    [Fact]
+    public void ShouldProbeWintabStack_StylusMouseOnly_ProbesEvenWhenServiceStopped()
+    {
+        var cfg = new AppConfig { InputBackendMode = "Stylus/Mouse Only" };
+        var wacom = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
+
+        Assert.True(MainWindowStartupLifecycleService.ShouldProbeWintabStack(cfg, wacom));
+    }
+
+    [Fact]
+    public void ShouldProbeWintabStack_Auto_RequiresRunningService()
+    {
+        var cfg = new AppConfig { InputBackendMode = "Auto" };
+        var stopped = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
+        Assert.False(MainWindowStartupLifecycleService.ShouldProbeWintabStack(cfg, stopped));
+        var running = new WacomServiceStatus("running", CanStart: false, IsServiceRunning: true);
+        Assert.True(MainWindowStartupLifecycleService.ShouldProbeWintabStack(cfg, running));
+    }
+
+    [Fact]
+    public void RunPostConfigLoadShellPhase_WhenServiceStopped_AndAuto_CallsBlockedNotInit()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        bool init = false;
+        bool blocked = false;
+        WacomServiceStatus? menuStatus = null;
+
+        sut.RunPostConfigLoadShellPhase(new MainWindowPostConfigLoadShellContext(
+            GetWacomServiceStatus: () => new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false),
+            ApplyWacomServiceMenuState: s => menuStatus = s,
+            Config: new AppConfig { InputBackendMode = "Auto" },
+            InitializeTabletWhenReady: () => init = true,
+            ApplyTabletBlockedByWacomService: _ => blocked = true));
+
+        Assert.NotNull(menuStatus);
+        Assert.True(blocked);
+        Assert.False(init);
+    }
+
+    [Fact]
+    public void RunPostConfigLoadShellPhase_WhenServiceRunning_CallsInitNotBlocked()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        bool init = false;
+        bool blocked = false;
+
+        sut.RunPostConfigLoadShellPhase(new MainWindowPostConfigLoadShellContext(
+            GetWacomServiceStatus: () => new WacomServiceStatus("running", CanStart: false, IsServiceRunning: true),
+            ApplyWacomServiceMenuState: _ => { },
+            Config: new AppConfig { InputBackendMode = "Auto" },
+            InitializeTabletWhenReady: () => init = true,
+            ApplyTabletBlockedByWacomService: _ => blocked = true));
+
+        Assert.True(init);
+        Assert.False(blocked);
+    }
+
+    [Fact]
+    public void BuildTabletStackBlockedLifecycleResult_WintabOnly_UsesUnavailableLabel()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        var wacom = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
+        var cfg = new AppConfig { InputBackendMode = "Wintab Only" };
+
+        InputBackendLifecycleResult r = sut.BuildTabletStackBlockedLifecycleResult(cfg, wacom);
+
+        Assert.False(r.UseWintab);
+        Assert.Equal("Wintab unavailable", r.LastInputBackend);
+        Assert.Contains("not running", r.WintabDiagnostics, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildTabletStackBlockedLifecycleResult_ServiceNotFound_MentionsInstall()
+    {
+        var sut = new MainWindowStartupLifecycleService(new MainWindowLifecycleCoordinator());
+        var wacom = new WacomServiceStatus("Service: not found", CanStart: false, IsServiceRunning: false);
+        var cfg = new AppConfig { InputBackendMode = "Auto" };
+
+        InputBackendLifecycleResult r = sut.BuildTabletStackBlockedLifecycleResult(cfg, wacom);
+
+        Assert.Equal("Stylus/Mouse Fallback", r.LastInputBackend);
+        Assert.Contains("not found", r.WintabDiagnostics, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class FixedConfigStore : IConfigStore
     {
         public FixedConfigStore(AppConfig config) => Config = config;

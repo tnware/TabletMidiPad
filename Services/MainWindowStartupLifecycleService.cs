@@ -27,6 +27,79 @@ internal sealed class MainWindowStartupLifecycleService : IMainWindowStartupLife
     }
 
     /// <inheritdoc />
+    public void RunPostConfigLoadShellPhase(MainWindowPostConfigLoadShellContext context)
+    {
+        WacomServiceStatus wacom = context.GetWacomServiceStatus();
+        context.ApplyWacomServiceMenuState(wacom);
+        if (ShouldProbeWintabStack(context.Config, wacom))
+        {
+            context.InitializeTabletWhenReady();
+        }
+        else
+        {
+            context.ApplyTabletBlockedByWacomService(wacom);
+        }
+    }
+
+    /// <inheritdoc />
+    public InputBackendLifecycleResult BuildTabletStackBlockedLifecycleResult(AppConfig config, WacomServiceStatus wacom)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        string diagnostics = BuildWintabBlockedDiagnostics(wacom);
+        string mode = InputBackendModeNormalizer.Normalize(config.InputBackendMode);
+        if (string.Equals(mode, "Wintab Only", StringComparison.Ordinal))
+        {
+            return new InputBackendLifecycleResult(
+                UseWintab: false,
+                ExpressKeyCount: 0,
+                LastInputBackend: "Wintab unavailable",
+                WintabDiagnostics: diagnostics);
+        }
+
+        return new InputBackendLifecycleResult(
+            UseWintab: false,
+            ExpressKeyCount: 0,
+            LastInputBackend: "Stylus/Mouse Fallback",
+            WintabDiagnostics: diagnostics);
+    }
+
+    /// <summary>
+    /// When false, the view should not call <see cref="IWintabInputBackend.Initialize"/> for Auto/Wintab-only modes
+    /// because the Wacom service is not running.
+    /// </summary>
+    internal static bool ShouldProbeWintabStack(AppConfig config, WacomServiceStatus wacom)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        string mode = InputBackendModeNormalizer.Normalize(config.InputBackendMode);
+        if (string.Equals(mode, "Stylus/Mouse Only", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return wacom.IsServiceRunning;
+    }
+
+    private static string BuildWintabBlockedDiagnostics(WacomServiceStatus wacom)
+    {
+        if (wacom.IsServiceRunning)
+        {
+            return "Wacom service is running; tablet stack was skipped unexpectedly.";
+        }
+
+        if (wacom.CanStart)
+        {
+            return "Wacom Professional Service is not running. Start it from Device → Start Wacom Service, then use Reconnect Pen Input.";
+        }
+
+        if (wacom.StatusText.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Wacom Professional Service was not found. Install Wacom drivers to use Wintab.";
+        }
+
+        return "Wacom tablet service is unavailable (WTabletServicePro). Wintab cannot start until the service is running.";
+    }
+
+    /// <inheritdoc />
     public async Task RunStartupMidiSequenceAsync(
         IMidiEngine midiEngine,
         AppConfig config,

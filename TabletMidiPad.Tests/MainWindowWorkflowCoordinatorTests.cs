@@ -86,7 +86,7 @@ public sealed class MainWindowWorkflowCoordinatorTests
         var coordinator = new MainWindowWorkflowCoordinator();
 
         WacomServiceMenuState menu = coordinator.BuildWacomServiceMenuState(
-            new WacomServiceStatus("Service: running", CanStart: false));
+            new WacomServiceStatus("Service: running", CanStart: false, IsServiceRunning: true));
 
         Assert.Equal("Service: running", menu.Header);
         Assert.False(menu.StartEnabled);

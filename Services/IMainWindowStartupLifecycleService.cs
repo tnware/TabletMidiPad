@@ -19,6 +19,17 @@ internal interface IMainWindowStartupLifecycleService
     AppConfig LoadPersistedConfig(IConfigStore store);
 
     /// <summary>
+    /// Refreshes Wacom service menu state, then either runs full tablet initialization or applies a blocked state when
+    /// the service is not running (Wintab requires it). Stylus/mouse-only mode always runs normal coordinator init.
+    /// </summary>
+    void RunPostConfigLoadShellPhase(MainWindowPostConfigLoadShellContext context);
+
+    /// <summary>
+    /// Builds lifecycle fields when Wintab is not probed because the Wacom service is unavailable.
+    /// </summary>
+    InputBackendLifecycleResult BuildTabletStackBlockedLifecycleResult(AppConfig config, WacomServiceStatus wacom);
+
+    /// <summary>
     /// Shows the MIDI connecting UI, runs async MIDI initialization, then applies success or failure presentation on the UI thread.
     /// </summary>
     /// <param name="onMidiRoutingReady">Invoked on the UI thread after MIDI succeeds (e.g. refresh routing labels).</param>
