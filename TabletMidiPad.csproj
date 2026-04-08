@@ -30,6 +30,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="TabletMidiPad.Core\TabletMidiPad.Core.csproj" />
+  </ItemGroup>
+
   <!-- If an application icon is added to Assets\app.ico, embed it as the application icon. This is conditional
        so builds won't fail when the asset hasn't been added yet. Replace with a proper .ico when available. -->
   <PropertyGroup Condition="Exists('Assets\\app.ico')">
