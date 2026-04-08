@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,7 +16,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
     private bool _isActive;
     private bool _isLoadingUi;
-    private int _selectedZoneIndex = -1;
     private bool _useWintab;
     private int _selectedDeviceIndex = -1;
     private int _expressKeyCount;
@@ -42,7 +40,6 @@ public partial class MainWindow : Window
     private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
-    private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
     private string _lastInputBackend = "Idle";
@@ -52,45 +49,10 @@ public partial class MainWindow : Window
 
     private Canvas Pad => PadSurface.PadInputElement;
 
-    private PadInteractionConfig BuildInteractionConfig()
+    private int SelectedZoneIndex
     {
-        return new PadInteractionConfig(
-            SendPressureGlobally: _config.SendPressureGlobally,
-            AllowZoneSwitchWhilePressed: _config.AllowZoneSwitchWhilePressed,
-            MousePressureValue: _config.MousePressureValue,
-            PositionDeadZone: _config.PositionDeadZone,
-            PositionSmoothing: _config.PositionSmoothing,
-            PressureCurve: _config.PressureCurve,
-            LowerPenButtonAction: _config.LowerPenButtonAction,
-            LowerPenButtonMidiChannel: _config.LowerPenButtonMidiChannel,
-            LowerPenButtonCc: _config.LowerPenButtonCc,
-            LowerPenButtonNote: _config.LowerPenButtonNote,
-            UpperPenButtonAction: _config.UpperPenButtonAction,
-            UpperPenButtonMidiChannel: _config.UpperPenButtonMidiChannel,
-            UpperPenButtonCc: _config.UpperPenButtonCc,
-            UpperPenButtonNote: _config.UpperPenButtonNote,
-            ExpressKeys: _config.ExpressKeys.Select(k => new ExpressKeyConfigSnapshot(k.Action, k.MidiChannel, k.Cc, k.Note)).ToList());
-    }
-
-    private IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots()
-    {
-        return _config.Zones.Select(z => new ZoneSnapshot(
-            Name: z.Name,
-            Enabled: z.Enabled,
-            MidiChannel: z.MidiChannel,
-            CcX: z.CcX,
-            CcY: z.CcY,
-            CcPressure: z.CcPressure,
-            SendX: z.SendX,
-            SendY: z.SendY,
-            InvertX: z.InvertX,
-            InvertY: z.InvertY,
-            SendPressure: z.SendPressure,
-            ReleaseBehavior: z.ReleaseBehavior,
-            Left: z.Left,
-            Top: z.Top,
-            Width: z.Width,
-            Height: z.Height)).ToList();
+        get => _viewModel.SelectedZoneIndex;
+        set => _viewModel.SelectedZoneIndex = value;
     }
 
     private void ApplyInteractionResult(InteractionResult result)
@@ -140,7 +102,6 @@ public partial class MainWindow : Window
             new ZoneConfigurationService(),
             new ZoneEditorService(new ConfigValueParser()),
             new ZoneOverlayRenderer(),
-            new PadInteractionEngine(),
             new ZoneResizeService(),
             new InputFallbackService(),
             new InputInteractionOrchestrator(new PadInteractionEngine()),
@@ -166,7 +127,6 @@ public partial class MainWindow : Window
         IZoneConfigurationService zoneConfigurationService,
         IZoneEditorService zoneEditorService,
         IZoneOverlayRenderer zoneOverlayRenderer,
-        IPadInteractionEngine padInteractionEngine,
         IZoneResizeService zoneResizeService,
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
@@ -189,7 +149,6 @@ public partial class MainWindow : Window
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
         _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
-        _padInteractionEngine = padInteractionEngine ?? throw new ArgumentNullException(nameof(padInteractionEngine));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
@@ -393,10 +352,10 @@ public partial class MainWindow : Window
     private void AutoLayoutZones()
     {
         CommitCurrentZoneEdits();
-        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AutoLayout(_config, _selectedZoneIndex);
+        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AutoLayout(_config, SelectedZoneIndex);
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
-        _selectedZoneIndex = result.SelectedZoneIndex;
+        SelectedZoneIndex = result.SelectedZoneIndex;
+        _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
@@ -408,8 +367,8 @@ public partial class MainWindow : Window
         CommitCurrentZoneEdits();
         ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.AddZone(_config);
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
-        _selectedZoneIndex = result.SelectedZoneIndex;
+        SelectedZoneIndex = result.SelectedZoneIndex;
+        _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
@@ -418,15 +377,15 @@ public partial class MainWindow : Window
 
     private void RemoveZone()
     {
-        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.RemoveZone(_config, _selectedZoneIndex);
+        ZoneActionWorkflowResult result = _zoneActionWorkflowCoordinator.RemoveZone(_config, SelectedZoneIndex);
         if (!result.Changed)
         {
             return;
         }
 
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = result.SelectedZoneIndex;
-        _selectedZoneIndex = result.SelectedZoneIndex;
+        SelectedZoneIndex = result.SelectedZoneIndex;
+        _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
         SettingsResultText.Foreground = Brushes.DarkSeaGreen;
@@ -617,7 +576,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        _selectedZoneIndex = ZoneListBox.SelectedIndex;
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
     }
@@ -663,8 +621,8 @@ public partial class MainWindow : Window
         MaxZoneRowsTextBox.Text = config.MaxZoneRows.ToString();
         MaxZonesPerRowTextBox.Text = config.MaxZonesPerRow.ToString();
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = config.Zones.Count > 0 ? 0 : -1;
-        _selectedZoneIndex = ZoneListBox.SelectedIndex;
+        SelectedZoneIndex = config.Zones.Count > 0 ? 0 : -1;
+        _viewModel.NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         SyncToolbar();
 
@@ -700,9 +658,9 @@ public partial class MainWindow : Window
     {
         _isLoadingUi = true;
 
-        _zoneEditorService.LoadSelectedZoneIntoEditor(_viewModel, _config, _selectedZoneIndex);
-        ZoneChannelComboBox.SelectedItem = _selectedZoneIndex >= 0 && _selectedZoneIndex < _config.Zones.Count
-            ? _config.Zones[_selectedZoneIndex].MidiChannel
+        _zoneEditorService.LoadSelectedZoneIntoEditor(_viewModel, _config, SelectedZoneIndex);
+        ZoneChannelComboBox.SelectedItem = SelectedZoneIndex >= 0 && SelectedZoneIndex < _config.Zones.Count
+            ? _config.Zones[SelectedZoneIndex].MidiChannel
             : null;
         ZoneReleaseBehaviorComboBox.SelectedItem = _viewModel.ZoneReleaseBehavior;
 
@@ -714,12 +672,12 @@ public partial class MainWindow : Window
         _zoneEditorService.CommitCurrentZoneEdits(
             _config,
             _viewModel,
-            _selectedZoneIndex,
+            SelectedZoneIndex,
             MaxZoneRowsTextBox.Text,
             MaxZonesPerRowTextBox.Text);
 
         RefreshZoneList();
-        ZoneListBox.SelectedIndex = _selectedZoneIndex;
+        _viewModel.NotifySelectedZoneIndexChanged();
     }
 
     private void UpdateUiForCurrentConfig()
@@ -832,7 +790,7 @@ public partial class MainWindow : Window
     }
 
     private (int zone, ZoneResizeEdge edge) HitTestZoneEdge(Point pos)
-        => _zoneResizeService.HitTestZoneEdge(_config.Zones, _selectedZoneIndex, Pad.ActualWidth, Pad.ActualHeight, pos);
+        => _zoneResizeService.HitTestZoneEdge(_config.Zones, SelectedZoneIndex, Pad.ActualWidth, Pad.ActualHeight, pos);
 
     private static Cursor? ResizeEdgeToCursor(ZoneResizeEdge edge)
     {
@@ -857,11 +815,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_selectedZoneIndex != zoneIndex)
+        if (SelectedZoneIndex != zoneIndex)
         {
             CommitCurrentZoneEdits();
-            _selectedZoneIndex = zoneIndex;
-            ZoneListBox.SelectedIndex = zoneIndex;
+            SelectedZoneIndex = zoneIndex;
             LoadSelectedZoneIntoEditor();
         }
     }
@@ -869,14 +826,13 @@ public partial class MainWindow : Window
     private void SelectZoneAtPoint(Point pos)
     {
         int zoneIndex = _zoneResizeService.HitTestZoneBody(_config.Zones, Pad.ActualWidth, Pad.ActualHeight, pos);
-        if (zoneIndex < 0 || zoneIndex == _selectedZoneIndex)
+        if (zoneIndex < 0 || zoneIndex == SelectedZoneIndex)
         {
             return;
         }
 
         CommitCurrentZoneEdits();
-        _selectedZoneIndex = zoneIndex;
-        ZoneListBox.SelectedIndex = zoneIndex;
+        SelectedZoneIndex = zoneIndex;
         LoadSelectedZoneIntoEditor();
         RefreshPadZoneOverlay();
     }
@@ -980,8 +936,8 @@ public partial class MainWindow : Window
             cursorOpacityOverride));
 
         InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
-            BuildInteractionConfig(),
-            BuildZoneSnapshots(),
+            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
+            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
             _interactionState,
             input);
 
@@ -994,8 +950,8 @@ public partial class MainWindow : Window
     {
         // Release tick goes through engine so release behavior stays centralized.
         InteractionResult releaseResult = _inputInteractionOrchestrator.ProcessRelease(
-            BuildInteractionConfig(),
-            BuildZoneSnapshots(),
+            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
+            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
             _interactionState,
             _lastWintabButtons);
         ApplyInteractionResult(releaseResult);
@@ -1005,7 +961,7 @@ public partial class MainWindow : Window
     }
 
     private void RefreshPadZoneOverlay()
-        => PadSurface.RefreshZoneOverlay(_config.Zones, _lastZonePoints, _selectedZoneIndex);
+        => PadSurface.RefreshZoneOverlay(_config.Zones, _lastZonePoints, SelectedZoneIndex);
 
     private void SendCcIfChanged(int channel, int cc, int value, bool force = false)
         => _midiEngine.SendCcIfChanged(channel, cc, value, force);
@@ -1142,9 +1098,9 @@ public partial class MainWindow : Window
     {
         WintabExpressKeyBridgeOutcome outcome = _wintabInputBridge.BuildExpressKeyBridge(expressKey, _config.ExpressKeys);
         _expressKeyCount = Math.Max(_expressKeyCount, outcome.RequiredExpressKeyCount);
-        ApplyInteractionResult(_padInteractionEngine.Process(
-            BuildInteractionConfig(),
-            BuildZoneSnapshots(),
+        ApplyInteractionResult(_inputInteractionOrchestrator.ProcessTick(
+            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
+            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
             _interactionState,
             outcome.EngineInput));
         _expressKeyDiagnostics = outcome.ExpressKeyDiagnostics;

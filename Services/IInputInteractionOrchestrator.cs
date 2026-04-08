@@ -9,6 +9,16 @@ namespace TabletMidiPad.Services;
 internal interface IInputInteractionOrchestrator
 {
     /// <summary>
+    /// Builds the pad interaction configuration snapshot from persisted settings.
+    /// </summary>
+    PadInteractionConfig BuildPadInteractionConfig(AppConfig config);
+
+    /// <summary>
+    /// Builds zone snapshots for the interaction engine from persisted zone definitions.
+    /// </summary>
+    IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config);
+
+    /// <summary>
     /// Processes one interaction sample through the pad interaction engine.
     /// </summary>
     InteractionResult ProcessTick(

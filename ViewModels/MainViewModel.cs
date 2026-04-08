@@ -247,6 +247,14 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _selectedZoneIndex, value);
     }
 
+    /// <summary>
+    /// Raises <see cref="SelectedZoneIndex"/> after the zone list collection is replaced so the ListBox binding re-applies.
+    /// </summary>
+    internal void NotifySelectedZoneIndexChanged()
+    {
+        OnPropertyChanged(nameof(SelectedZoneIndex));
+    }
+
     public bool ZoneDetailsEnabled
     {
         get => _zoneDetailsEnabled;

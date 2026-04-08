@@ -60,7 +60,6 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneConfigurationService>(),
             c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
-            c.GetRequiredService<IPadInteractionEngine>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IInputFallbackService>(),
             c.GetRequiredService<IInputInteractionOrchestrator>(),
