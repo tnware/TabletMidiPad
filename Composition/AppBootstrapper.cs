@@ -36,6 +36,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IInputFallbackService>()));
         container.AddSingleton<IInputBackendStatusFormatter>(_ => new InputBackendStatusFormatter());
         container.AddSingleton<IMainWindowWorkflowCoordinator>(_ => new MainWindowWorkflowCoordinator());
+        container.AddSingleton<IMainWindowViewStateMapper>(_ => new MainWindowViewStateMapper());
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
@@ -57,7 +58,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IInputInteractionOrchestrator>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
             c.GetRequiredService<IWintabEventAdapter>(),
-            c.GetRequiredService<IMainWindowWorkflowCoordinator>()));
+            c.GetRequiredService<IMainWindowWorkflowCoordinator>(),
+            c.GetRequiredService<IMainWindowViewStateMapper>()));
 
         return container;
     }

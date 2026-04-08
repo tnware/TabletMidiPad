@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private readonly IWintabEventAdapter _wintabEventAdapter;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
+    private readonly IMainWindowViewStateMapper _viewStateMapper;
     private readonly IConfigValueParser _configValueParser;
     private readonly IPadInteractionEngine _padInteractionEngine;
     private readonly MainViewModel _viewModel;
@@ -160,7 +161,8 @@ public partial class MainWindow : Window
             new InputInteractionOrchestrator(new PadInteractionEngine(), new InputFallbackService()),
             new InputBackendStatusFormatter(),
             new WintabEventAdapter(),
-            new MainWindowWorkflowCoordinator())
+            new MainWindowWorkflowCoordinator(),
+            new MainWindowViewStateMapper())
     {
     }
 
@@ -180,7 +182,8 @@ public partial class MainWindow : Window
         IInputInteractionOrchestrator inputInteractionOrchestrator,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IWintabEventAdapter wintabEventAdapter,
-        IMainWindowWorkflowCoordinator workflowCoordinator)
+        IMainWindowWorkflowCoordinator workflowCoordinator,
+        IMainWindowViewStateMapper viewStateMapper)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -198,6 +201,8 @@ public partial class MainWindow : Window
         _wintabEventAdapter = wintabEventAdapter ?? throw new ArgumentNullException(nameof(wintabEventAdapter));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
+        _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
+        _viewStateMapper = viewStateMapper ?? throw new ArgumentNullException(nameof(viewStateMapper));
         _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) =>
@@ -740,30 +745,11 @@ public partial class MainWindow : Window
         ToolbarZoneSwitchToggle.IsChecked = _config.AllowZoneSwitchWhilePressed;
         SyncPressureSplitBorder();
         SyncInputBackendSplitBorder();
-
-        string curveShort = _config.PressureCurve switch
-        {
-            "Logarithmic" => "Log",
-            "Exponential" => "Exp",
-            _ => "Lin"
-        };
-        _viewModel.ToolbarPressureLabelText = $"Pressure ({curveShort})";
-        _viewModel.SelectedPressureCurve = _config.PressureCurve;
-
-        string backendLabel = NormalizeInputBackendMode(_config.InputBackendMode) switch
-        {
-            "Wintab Only" => "Input (Wintab)",
-            "Stylus/Mouse Only" => "Input (Mouse)",
-            _ => "Input (Auto)"
-        };
-
-        _viewModel.ToolbarInputBackendLabelText = backendLabel;
-        _viewModel.SelectedInputBackendMode = NormalizeInputBackendMode(_config.InputBackendMode) switch
-        {
-            "Wintab Only" => "Wintab",
-            "Stylus/Mouse Only" => "Mouse",
-            _ => "Auto"
-        };
+        MainWindowToolbarState toolbarState = _viewStateMapper.BuildToolbarState(_config);
+        _viewModel.ToolbarPressureLabelText = toolbarState.ToolbarPressureLabelText;
+        _viewModel.SelectedPressureCurve = toolbarState.SelectedPressureCurve;
+        _viewModel.ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;
+        _viewModel.SelectedInputBackendMode = toolbarState.SelectedInputBackendMode;
     }
 
     private void RefreshZoneList()
@@ -881,15 +867,15 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        _viewModel.StatusText = "Connected";
-        _viewModel.RoutingText = $"Send to '{_config.DawPortName}' via '{_config.AppPortName}'";
+        MainWindowConnectedState statusState = _viewStateMapper.BuildConnectedState(_config);
+        _viewModel.StatusText = statusState.StatusText;
+        _viewModel.RoutingText = statusState.RoutingText;
         UpdateInputBackendStatus();
-        _viewModel.ActiveZoneText = "Active zone: none";
-        string switchMode = _config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
-        _viewModel.ConfigSummaryText = $"{_config.Zones.Count} zone(s) configured | layout {_config.MaxZoneRows} row(s) max / {_config.MaxZonesPerRow} per row | {switchMode}";
-        _viewModel.ValueText = "X: -, Y: -, Pressure: -";
-        _viewModel.PenButtonsText = "Pen buttons: -";
-        _viewModel.ModifiersText = "Modifiers: none";
+        _viewModel.ActiveZoneText = statusState.ActiveZoneText;
+        _viewModel.ConfigSummaryText = statusState.ConfigSummaryText;
+        _viewModel.ValueText = statusState.ValueText;
+        _viewModel.PenButtonsText = statusState.PenButtonsText;
+        _viewModel.ModifiersText = statusState.ModifiersText;
     }
 
     private void ShutdownMidi() => _midiEngine.Shutdown(_config);
