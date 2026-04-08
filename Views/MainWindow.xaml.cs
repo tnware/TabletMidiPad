@@ -31,11 +31,11 @@ public partial class MainWindow : Window
 
     private static readonly MainWindowWintabInputBridge DesignerWintabInputBridge = new(new WintabEventAdapter(), DesignerInputBackendCoordinator);
 
-    private bool _isActive;
     private bool _isLoadingUi;
-    private bool _useWintab;
-    private int _expressKeyCount;
-    private string _expressKeyDiagnostics = "";
+
+    private readonly PadInputSessionState _padState = new();
+    private readonly PadInputHost _padInputHost;
+    private readonly IMainWindowPadInputSession _padInputSession;
 
     private readonly IConfigStore _configStore;
     private readonly IMidiEngine _midiEngine;
@@ -46,23 +46,17 @@ public partial class MainWindow : Window
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IZoneEditorService _zoneEditorService;
     private readonly IZoneResizeService _zoneResizeService;
-    private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
-    private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
     private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowStartupLifecycleService _startupLifecycle;
-    private readonly IMainWindowWintabInputBridge _wintabInputBridge;
     private readonly IMainWindowToolbarSession _toolbarSession;
     private readonly IZoneActionWorkflowCoordinator _zoneActionWorkflowCoordinator;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
     private AppConfig _config = AppConfig.Default;
-    private string _lastInputBackend = "Idle";
-    private string _wintabDiagnostics = "Wintab not initialized yet";
-    private uint _lastWintabButtons;
     private readonly InteractionState _interactionState = new();
 
     private Canvas Pad => PadSurface.PadInputElement;
@@ -145,21 +139,32 @@ public partial class MainWindow : Window
         _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
-        _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
+        ArgumentNullException.ThrowIfNull(inputFallbackService);
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
-        _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
+        ArgumentNullException.ThrowIfNull(inputInteractionOrchestrator);
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
-        _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
+        ArgumentNullException.ThrowIfNull(wintabInputBridge);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
         _zoneActionWorkflowCoordinator = zoneActionWorkflowCoordinator ?? throw new ArgumentNullException(nameof(zoneActionWorkflowCoordinator));
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
+        _padInputHost = new PadInputHost(this);
+        _padInputSession = new MainWindowPadInputSession(
+            _padInputHost,
+            _tabletDevicePickerSyncService,
+            _inputBackendCoordinator,
+            _lifecycleCoordinator,
+            _wintabInputBackend,
+            wintabInputBridge,
+            inputFallbackService,
+            inputInteractionOrchestrator,
+            _inputBackendStatusFormatter);
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -171,29 +176,10 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         InitializeCommands();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        _wintabInputBackend.PacketReceived += (_, e) => HandleWintabPacket(e);
-        _wintabInputBackend.ExpressKeyReceived += (_, e) => HandleExpressKeyPacket(e);
-        _wintabInputBackend.ProximityChanged += (_, e) =>
-        {
-            _wintabDiagnostics = e.Diagnostics;
-            UpdateInputBackendStatus();
-            if (!e.Entering)
-            {
-                if (_inputBackendCoordinator.ShouldReleaseOnProximityLeave(_isActive))
-                {
-                    _isActive = false;
-                    HandleRelease();
-                }
-
-                PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
-                _viewModel.ActiveZoneText = "Active zone: none";
-            }
-        };
-        _wintabInputBackend.DiagnosticsChanged += (_, diagnostics) =>
-        {
-            _wintabDiagnostics = diagnostics;
-            UpdateInputBackendStatus();
-        };
+        _wintabInputBackend.PacketReceived += (_, e) => _padInputSession.HandleWintabPacket(e);
+        _wintabInputBackend.ExpressKeyReceived += (_, e) => _padInputSession.HandleExpressKeyPacket(e);
+        _wintabInputBackend.ProximityChanged += (_, e) => _padInputSession.HandleProximityChanged(e);
+        _wintabInputBackend.DiagnosticsChanged += (_, diagnostics) => _padInputSession.OnWintabDiagnosticsChanged(diagnostics);
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
@@ -204,7 +190,7 @@ public partial class MainWindow : Window
                 _config,
                 _inputBackendCoordinator,
                 _wintabInputBackend,
-                r => ApplyInputBackendLifecycleState(r, refreshInputBackendStatusText: false));
+                r => _padInputSession.ApplyTabletLifecycle(r, refreshInputBackendStatusText: false));
         };
     }
 
@@ -281,7 +267,7 @@ public partial class MainWindow : Window
 
     private void MenuPreferences()
     {
-        int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(_expressKeyCount, _config.ExpressKeys.Count);
+        int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(_padState.ExpressKeyCount, _config.ExpressKeys.Count);
         ExpressKeyConfig.EnsureCount(_config.ExpressKeys, effectiveExpressKeyCount);
         PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(this, _config, effectiveExpressKeyCount);
         if (result is null)
@@ -316,7 +302,7 @@ public partial class MainWindow : Window
 
         if (applyResult.ShouldRebindInputBackend)
         {
-            RebindInputBackend();
+            _padInputSession.RebindInputBackend();
         }
 
         SyncToolbar();
@@ -335,7 +321,7 @@ public partial class MainWindow : Window
             RefreshWacomServiceStatus(result.RefreshedStatus);
             if (result.ShouldRebindInputBackend)
             {
-                RebindInputBackend();
+                _padInputSession.RebindInputBackend();
             }
             return;
         }
@@ -405,7 +391,7 @@ public partial class MainWindow : Window
             GetWacomServiceStatus: () => _wacomServiceController.GetStatus(),
             ApplyWacomServiceMenuState: RefreshWacomServiceStatus,
             Config: _config,
-            InitializeTabletWhenReady: InitializeWintab,
+            InitializeTabletWhenReady: () => _padInputSession.InitializeTabletInput(),
             ApplyTabletBlockedByWacomService: ApplyTabletStackUnavailableAtStartup));
 
         await _startupLifecycle.RunStartupMidiSequenceAsync(
@@ -418,10 +404,10 @@ public partial class MainWindow : Window
 
     private void ApplyTabletStackUnavailableAtStartup(WacomServiceStatus wacom)
     {
-        _inputBackendCoordinator.Shutdown(_wintabInputBackend);
-        PopulateTabletDeviceList();
+        _padInputSession.ShutdownWintabBackendOnly();
+        _padInputSession.RefreshTabletDeviceListOnly();
         InputBackendLifecycleResult blocked = _startupLifecycle.BuildTabletStackBlockedLifecycleResult(_config, wacom);
-        ApplyInputBackendLifecycleState(blocked, refreshInputBackendStatusText: true);
+        _padInputSession.ApplyTabletLifecycle(blocked, refreshInputBackendStatusText: true);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -432,7 +418,7 @@ public partial class MainWindow : Window
     private void ReconnectPenCore()
     {
         CommitCurrentZoneEdits();
-        RebindInputBackend();
+        _padInputSession.RebindInputBackend();
         SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
 
@@ -491,7 +477,7 @@ public partial class MainWindow : Window
 
         if (result.RequiresInputRebind)
         {
-            RebindInputBackend();
+            _padInputSession.RebindInputBackend();
         }
 
         SyncToolbar();
@@ -615,33 +601,13 @@ public partial class MainWindow : Window
     }
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
-    {
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        e.Handled = true;
-        _isActive = true;
-        Pad.CaptureStylus();
-        HandleStylus(e);
-    }
+        => _padInputSession.HandleStylusDown(e);
 
     private void Pad_StylusMove(object sender, StylusEventArgs e)
-    {
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        if (!_isActive) return;
-        e.Handled = true;
-        HandleStylus(e);
-    }
+        => _padInputSession.HandleStylusMove(e);
 
     private void Pad_StylusUp(object sender, StylusEventArgs e)
-    {
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        if (!_isActive) return;
-        e.Handled = true;
-        HandleStylus(e);
-        _isActive = false;
-        Pad.ReleaseStylusCapture();
-        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
-        HandleRelease();
-    }
+        => _padInputSession.HandleStylusUp(e);
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -660,10 +626,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        _isActive = true;
-        Pad.CaptureMouse();
-        HandleMouse(e);
+        _padInputSession.HandlePadMouseDownForInteraction(e);
     }
 
     private void Pad_MouseMove(object sender, MouseEventArgs e)
@@ -682,9 +645,7 @@ public partial class MainWindow : Window
         var hit = HitTestZoneEdge(pos);
         Pad.Cursor = ResizeEdgeToCursor(hit.edge);
 
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        if (!_isActive || e.LeftButton != MouseButtonState.Pressed) return;
-        HandleMouse(e);
+        _padInputSession.HandlePadMouseMoveForInteraction(e);
     }
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
@@ -699,13 +660,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_inputBackendCoordinator.IsStylusMouseFallbackSuppressed(_useWintab, _config.InputBackendMode)) return;
-        if (!_isActive) return;
-        HandleMouse(e);
-        _isActive = false;
-        Pad.ReleaseMouseCapture();
-        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
-        HandleRelease();
+        _padInputSession.HandlePadMouseUpForInteraction(e);
     }
 
     private (int zone, ZoneResizeEdge edge) HitTestZoneEdge(Point pos)
@@ -792,92 +747,6 @@ public partial class MainWindow : Window
         SetSettingsResult("Zone resized. Click Apply Settings to save.", SettingsResultKind.Success);
     }
 
-    private void HandleStylus(StylusEventArgs e)
-    {
-        MarkInputBackend("Stylus");
-        _viewModel.PenButtonsText = "Pen buttons: stylus fallback";
-        if (!_inputFallbackService.TryBuildStylusSample(
-            e,
-            Pad,
-            Pad.ActualWidth,
-            Pad.ActualHeight,
-            _config.MousePressureValue,
-            out InputFallbackSample sample))
-        {
-            return;
-        }
-
-        ProcessInteractionTick(
-            new InteractionInput(
-                XNorm: sample.XNorm,
-                YNorm: sample.YNorm,
-                Pressure: sample.Pressure127,
-                IsDown: true,
-                IsHovering: false,
-                PenButtons: 0,
-                Backend: InteractionBackend.StylusFallback),
-            sample.PixelPosition);
-    }
-
-    private void HandleMouse(MouseEventArgs e)
-    {
-        MarkInputBackend("Mouse");
-        _viewModel.PenButtonsText = "Pen buttons: mouse fallback";
-        if (!_inputFallbackService.TryBuildMouseSample(
-            e,
-            Pad,
-            Pad.ActualWidth,
-            Pad.ActualHeight,
-            _config.MousePressureValue,
-            out InputFallbackSample sample))
-        {
-            return;
-        }
-
-        ProcessInteractionTick(
-            new InteractionInput(
-                XNorm: sample.XNorm,
-                YNorm: sample.YNorm,
-                Pressure: sample.Pressure127,
-                IsDown: true,
-                IsHovering: false,
-                PenButtons: 0,
-                Backend: InteractionBackend.MouseFallback),
-            sample.PixelPosition);
-    }
-
-    private void ProcessInteractionTick(InteractionInput input, Point pixelPosition, double? cursorOpacityOverride = null)
-    {
-        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorForInteractionTick(
-            input,
-            pixelPosition,
-            cursorOpacityOverride));
-
-        InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
-            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
-            _interactionState,
-            input);
-
-        ApplyInteractionResult(result);
-
-        RefreshPadZoneOverlay();
-    }
-
-    private void HandleRelease()
-    {
-        // Release tick goes through engine so release behavior stays centralized.
-        InteractionResult releaseResult = _inputInteractionOrchestrator.ProcessRelease(
-            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
-            _interactionState,
-            _lastWintabButtons);
-        ApplyInteractionResult(releaseResult);
-        RefreshPadZoneOverlay();
-
-        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
-    }
-
     private void RefreshPadZoneOverlay()
         => PadSurface.RefreshZoneOverlay(_config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
 
@@ -900,42 +769,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InitializeWintab()
-    {
-        PopulateTabletDeviceList();
-        int tabletDeviceIndex = _viewModel.SelectedTabletDevice?.DeviceIndex >= 0
-            ? _viewModel.SelectedTabletDevice!.DeviceIndex
-            : -1;
-        InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Initialize(
-            _config.InputBackendMode,
-            _wintabInputBackend,
-            tabletDeviceIndex,
-            _expressKeyCount);
-        ApplyInputBackendLifecycleState(lifecycle, refreshInputBackendStatusText: true);
-    }
-
-    private void ApplyInputBackendLifecycleState(InputBackendLifecycleResult lifecycle, bool refreshInputBackendStatusText)
-    {
-        _useWintab = lifecycle.UseWintab;
-        _expressKeyCount = lifecycle.ExpressKeyCount;
-        _lastInputBackend = lifecycle.LastInputBackend;
-        _wintabDiagnostics = lifecycle.WintabDiagnostics;
-        if (refreshInputBackendStatusText)
-        {
-            UpdateInputBackendStatus();
-        }
-    }
-
-    private void PopulateTabletDeviceList()
-    {
-        TabletDeviceComboBox.SelectionChanged -= TabletDeviceComboBox_SelectionChanged;
-
-        int previousDeviceIndex = _viewModel.SelectedTabletDevice?.DeviceIndex ?? -1;
-        _tabletDevicePickerSyncService.Refresh(_viewModel, previousDeviceIndex);
-
-        TabletDeviceComboBox.SelectionChanged += TabletDeviceComboBox_SelectionChanged;
-    }
-
     private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (_isLoadingUi)
@@ -948,112 +781,19 @@ public partial class MainWindow : Window
             return;
         }
 
-        RebindInputBackend();
+        _padInputSession.RebindInputBackend();
     }
 
-    private void ShutdownWintab()
-    {
-        ApplyInputBackendLifecycleState(
-            _lifecycleCoordinator.ShutdownTabletInput(_inputBackendCoordinator, _wintabInputBackend),
-            refreshInputBackendStatusText: false);
-    }
-
-    // WndProc and context plumbing have been extracted to IWintabInputBackend.
-
-    // Message window creation moved to IWintabInputBackend.
-
-    // Context open/close moved to IWintabInputBackend.
-
-    // Context open for device moved to IWintabInputBackend.
-
-    // Reinitialize moved to IWintabInputBackend.
-
-    private void RebindInputBackend()
-    {
-        ResetActiveInputState();
-        ShutdownWintab();
-        InitializeWintab();
-        UpdateUiForCurrentConfig();
-    }
-
-    private void ResetActiveInputState()
-    {
-        InputBackendResetResult resetState = _inputBackendCoordinator.BuildResetState();
-        _isActive = resetState.IsActive;
-        PadSurface.ApplyCursorChrome(PadSurface.ComputeCursorAfterRelease());
-        _viewModel.ActiveZoneText = resetState.ActiveZoneText;
-        _viewModel.ValueText = resetState.ValueText;
-        _viewModel.PenButtonsText = resetState.PenButtonsText;
-        _viewModel.ModifiersText = resetState.ModifiersText;
-        HandleRelease();
-        Pad.ReleaseMouseCapture();
-        Pad.ReleaseStylusCapture();
-    }
-
-    // Express key override setup moved to IWintabInputBackend.
-
-    private void HandleExpressKeyPacket(WintabExpressKeyEventArgs expressKey)
-    {
-        WintabExpressKeyBridgeOutcome outcome = _wintabInputBridge.BuildExpressKeyBridge(expressKey, _config.ExpressKeys);
-        _expressKeyCount = Math.Max(_expressKeyCount, outcome.RequiredExpressKeyCount);
-        ApplyInteractionResult(_inputInteractionOrchestrator.ProcessTick(
-            _inputInteractionOrchestrator.BuildPadInteractionConfig(_config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_config),
-            _interactionState,
-            outcome.EngineInput));
-        _expressKeyDiagnostics = outcome.ExpressKeyDiagnostics;
-        MarkInputBackend(outcome.BackendLabel);
-        UpdateInputBackendStatus();
-    }
-
-    private void HandleWintabPacket(WintabPacketEventArgs packet)
-    {
-        if (!_wintabInputBridge.TryBuildPacketBridge(
-            packet,
-            Pad.ActualWidth,
-            Pad.ActualHeight,
-            _isActive,
-            out WintabPacketBridgeOutcome bridge))
-        {
-            return;
-        }
-
-        MarkInputBackend(bridge.BackendLabel);
-        UpdatePenButtonsDebug(bridge.PenButtons);
-
-        _wintabDiagnostics = bridge.PacketDiagnostics;
-        UpdateInputBackendStatus();
-
-        WintabPacketFlowResult flow = bridge.Flow;
-        if (flow.ReleaseBeforeTickIfWasActive)
-        {
-            _isActive = false;
-            HandleRelease();
-        }
-
-        _isActive = flow.IsActiveAfter;
-        ProcessInteractionTick(flow.TickInput, flow.PixelPosition, flow.CursorOpacity);
-    }
-
-    private static bool IsPromotedStylusMouseEvent(MouseEventArgs e)
-    {
-        return e.StylusDevice is not null;
-    }
-
-    private void MarkInputBackend(string backend)
-    {
-        _lastInputBackend = backend;
-        UpdateInputBackendStatus();
-    }
+    private static bool IsPromotedStylusMouseEvent(MouseEventArgs e) => e.StylusDevice is not null;
 
     private void UpdateInputBackendStatus()
     {
         _viewModel.InputBackendText = _inputBackendStatusFormatter.BuildStatusText(
-            _lastInputBackend,
-            _useWintab,
+            _padState.LastInputBackend,
+            _padState.UseWintab,
             _wintabInputBackend.Contexts.Count,
-            _wintabDiagnostics,
-            _expressKeyDiagnostics);
+            _padState.WintabDiagnostics,
+            _padState.ExpressKeyDiagnostics);
     }
 
     private void RefreshWacomServiceStatus()
@@ -1074,10 +814,46 @@ public partial class MainWindow : Window
         _viewModel.SettingsResultKind = kind;
     }
 
-    private void UpdatePenButtonsDebug(uint buttons)
+    private sealed class PadInputHost : IMainWindowPadInputSessionHost
     {
-        _lastWintabButtons = buttons;
-        _viewModel.PenButtonsText = _inputBackendStatusFormatter.BuildPenButtonsText(buttons);
-    }
+        private readonly MainWindow _w;
 
+        public PadInputHost(MainWindow window) => _w = window;
+
+        public Canvas Pad => _w.Pad;
+
+        public IPadInputChromeSurface PadChrome => _w.PadSurface;
+
+        public AppConfig Config => _w._config;
+
+        public MainViewModel ViewModel => _w._viewModel;
+
+        public InteractionState InteractionState => _w._interactionState;
+
+        public IPadInteractionOutcomeApplier OutcomeApplier => _w._interactionOutcomeApplier;
+
+        public PadInputSessionState PadState => _w._padState;
+
+        public int SelectedZoneIndex
+        {
+            get => _w.SelectedZoneIndex;
+            set => _w.SelectedZoneIndex = value;
+        }
+
+        public bool IsLoadingUi => _w._isLoadingUi;
+
+        public void ApplyInteractionResult(InteractionResult result) => _w.ApplyInteractionResult(result);
+
+        public void RefreshPadZoneOverlay() => _w.RefreshPadZoneOverlay();
+
+        public void UpdateInputBackendStatus() => _w.UpdateInputBackendStatus();
+
+        public void OnRebindCompletedRefreshRouting() => _w.UpdateUiForCurrentConfig();
+
+        public void BeginPopulateTabletDeviceList()
+            => _w.TabletDeviceComboBox.SelectionChanged -= _w.TabletDeviceComboBox_SelectionChanged;
+
+        public void EndPopulateTabletDeviceList()
+            => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
+    }
 }

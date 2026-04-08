@@ -13,7 +13,7 @@ namespace TabletMidiPad.Views;
 /// <summary>
 /// Hosts the interactive pad surface, zone overlay, and cursor chrome; resolves overlay theme from application resources.
 /// </summary>
-public partial class PadInteractionSurface : UserControl
+public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
 {
     private static readonly string[] ZonePaletteColorKeys =
     {
@@ -181,4 +181,16 @@ public partial class PadInteractionSurface : UserControl
     private void Pad_MouseMove(object sender, MouseEventArgs e) => PadMouseMove?.Invoke(sender, e);
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e) => PadMouseUp?.Invoke(sender, e);
+
+    CursorTickChrome IPadInputChromeSurface.ComputeCursorForInteractionTick(
+        InteractionInput input,
+        Point pixelPosition,
+        double? opacityOverride)
+        => ComputeCursorForInteractionTick(input, pixelPosition, opacityOverride);
+
+    CursorTickChrome IPadInputChromeSurface.ComputeCursorAfterRelease()
+        => ComputeCursorAfterRelease();
+
+    void IPadInputChromeSurface.ApplyCursorChrome(CursorTickChrome chrome)
+        => ApplyCursorChrome(chrome);
 }
