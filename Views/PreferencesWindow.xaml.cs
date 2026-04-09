@@ -37,6 +37,7 @@ internal partial class PreferencesWindow : Window
     public bool SendPressureGlobally => _viewModel.SendPressureGlobally;
     public bool AllowZoneSwitchWhilePressed => _viewModel.AllowZoneSwitchWhilePressed;
     public bool AllowPageSwitchWhilePressed => _viewModel.AllowPageSwitchWhilePressed;
+    public bool DestroyVirtualMidiOnExit => _viewModel.DestroyVirtualMidiOnExit;
     public bool WrapPageNavigation => _viewModel.WrapPageNavigation;
     public ZoneOverlayStyle ZoneOverlayStyle { get; private set; } = ZoneOverlayStyle.Plain;
 
@@ -123,6 +124,7 @@ internal partial class PreferencesWindow : Window
         _viewModel.SendPressureGlobally = config.SendPressureGlobally;
         _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
         _viewModel.AllowPageSwitchWhilePressed = config.AllowPageSwitchWhilePressed;
+        _viewModel.DestroyVirtualMidiOnExit = config.DestroyVirtualMidiOnExit;
         _viewModel.WrapPageNavigation = config.WrapPageNavigation;
         SelectZoneOverlayStyle(config.ZoneOverlayStyle);
         _viewModel.MidiLifecycleStatusText = string.Empty;

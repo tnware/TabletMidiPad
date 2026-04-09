@@ -84,6 +84,7 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
             SendPressureGlobally = preferencesWindow.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = preferencesWindow.AllowZoneSwitchWhilePressed,
             AllowPageSwitchWhilePressed = preferencesWindow.AllowPageSwitchWhilePressed,
+            DestroyVirtualMidiOnExit = preferencesWindow.DestroyVirtualMidiOnExit,
             WrapPageNavigation = preferencesWindow.WrapPageNavigation,
             ExpressKeys = preferencesWindow.GetExpressKeyConfigs(),
             ZoneOverlayStyle = preferencesWindow.ZoneOverlayStyle

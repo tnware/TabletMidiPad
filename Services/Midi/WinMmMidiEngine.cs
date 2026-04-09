@@ -65,8 +65,13 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         {
             lock (_sync)
             {
-                // Persist loopback endpoints across app sessions; only release this process handle.
                 CloseMidiOut();
+                _lastSentValues.Clear();
+
+                if (config.DestroyVirtualMidiOnExit)
+                {
+                    RemoveLoopbackPair(config);
+                }
             }
         }
         catch

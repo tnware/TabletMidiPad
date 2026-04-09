@@ -31,6 +31,7 @@ public sealed partial class AppConfig
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
     public bool AllowPageSwitchWhilePressed { get; set; }
+    public bool DestroyVirtualMidiOnExit { get; set; }
     public bool WrapPageNavigation { get; set; } = true;
     public List<PageConfig> Pages { get; set; } = new() { PageConfig.CreateDefault(1) };
     public int MaxZoneRows { get; set; } = 2;

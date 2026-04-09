@@ -330,7 +330,7 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE71D;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Application" VerticalAlignment="Center"/>
+                        <TextBlock Text="MIDI" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
@@ -385,10 +385,27 @@
                                            Margin="0,8,0,0"
                                            Text="{Binding MidiLifecycleStatusText}"
                                            TextWrapping="Wrap"/>
+                                <CheckBox Name="DestroyVirtualMidiOnExitCheckBox"
+                                          Margin="0,12,0,0"
+                                          Content="Destroy virtual MIDI devices on application close"
+                                          IsChecked="{Binding DestroyVirtualMidiOnExit}"/>
                             </StackPanel>
                         </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18" Margin="0,16,0,0">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE713;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Application" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <StackPanel>
+                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
                             <StackPanel>
                                 <TextBlock Text="Application Behavior" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
                                 <TextBlock Text="Global rules that affect how zones behave." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>

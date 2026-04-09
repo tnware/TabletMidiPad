@@ -34,7 +34,8 @@ internal interface IMidiEngine
     Task RestartAsync(AppConfig config, Action<string>? onProgress = null);
 
     /// <summary>
-    /// Closes MIDI output for app shutdown without deleting loopback endpoints.
+    /// Closes MIDI output for app shutdown and optionally removes loopback endpoints
+    /// when configured by user preference.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
     void Shutdown(AppConfig config);

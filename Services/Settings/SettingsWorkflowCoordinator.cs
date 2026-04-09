@@ -64,6 +64,7 @@ internal sealed class SettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
         config.SendPressureGlobally = result.SendPressureGlobally;
         config.AllowZoneSwitchWhilePressed = result.AllowZoneSwitchWhilePressed;
         config.AllowPageSwitchWhilePressed = result.AllowPageSwitchWhilePressed;
+        config.DestroyVirtualMidiOnExit = result.DestroyVirtualMidiOnExit;
         config.WrapPageNavigation = result.WrapPageNavigation;
         config.ExpressKeys = result.ExpressKeys;
         config.ZoneOverlayStyle = result.ZoneOverlayStyle;

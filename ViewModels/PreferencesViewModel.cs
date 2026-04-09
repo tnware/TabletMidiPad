@@ -27,6 +27,7 @@ internal sealed class PreferencesViewModel : ViewModelBase
     private bool _sendPressureGlobally = true;
     private bool _allowZoneSwitchWhilePressed = true;
     private bool _allowPageSwitchWhilePressed;
+    private bool _destroyVirtualMidiOnExit;
     private bool _wrapPageNavigation = true;
     private string _midiLifecycleStatusText = string.Empty;
     private bool _isMidiLifecycleBusy;
@@ -143,6 +144,12 @@ internal sealed class PreferencesViewModel : ViewModelBase
     {
         get => _allowPageSwitchWhilePressed;
         set => SetProperty(ref _allowPageSwitchWhilePressed, value);
+    }
+
+    public bool DestroyVirtualMidiOnExit
+    {
+        get => _destroyVirtualMidiOnExit;
+        set => SetProperty(ref _destroyVirtualMidiOnExit, value);
     }
 
     public bool WrapPageNavigation

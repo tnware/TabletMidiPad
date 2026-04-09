@@ -68,6 +68,7 @@ public sealed class SettingsWorkflowCoordinatorTests
             SendPressureGlobally = true,
             AllowZoneSwitchWhilePressed = true,
             AllowPageSwitchWhilePressed = false,
+            DestroyVirtualMidiOnExit = true,
             WrapPageNavigation = true,
             ExpressKeys = [],
             ZoneOverlayStyle = ZoneOverlayStyle.Plain
@@ -78,6 +79,7 @@ public sealed class SettingsWorkflowCoordinatorTests
         Assert.True(apply.SaveSucceeded);
         Assert.True(apply.ShouldRestartMidi);
         Assert.True(apply.ShouldRebindInputBackend);
+        Assert.True(config.DestroyVirtualMidiOnExit);
     }
 
     [Fact]
@@ -134,6 +136,7 @@ public sealed class SettingsWorkflowCoordinatorTests
             SendPressureGlobally = config.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed,
             AllowPageSwitchWhilePressed = config.AllowPageSwitchWhilePressed,
+            DestroyVirtualMidiOnExit = config.DestroyVirtualMidiOnExit,
             WrapPageNavigation = config.WrapPageNavigation,
             ExpressKeys = [.. config.ExpressKeys],
             ZoneOverlayStyle = config.ZoneOverlayStyle,

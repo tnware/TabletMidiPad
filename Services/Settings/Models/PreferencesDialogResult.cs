@@ -24,6 +24,7 @@ internal sealed class PreferencesDialogResult
     public required bool SendPressureGlobally { get; init; }
     public required bool AllowZoneSwitchWhilePressed { get; init; }
     public required bool AllowPageSwitchWhilePressed { get; init; }
+    public required bool DestroyVirtualMidiOnExit { get; init; }
     public required bool WrapPageNavigation { get; init; }
     public required List<ExpressKeyConfig> ExpressKeys { get; init; }
     public required ZoneOverlayStyle ZoneOverlayStyle { get; init; }
