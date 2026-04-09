@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="TabletMidiPad.Tests/TabletMidiPad.Tests.csproj" />
+  </Folder>
+  <Project Path="TabletMidiPad.Core/TabletMidiPad.Core.csproj" />
+  <Project Path="TabletMidiPad.csproj" DefaultStartup="true" />
+</Solution>
