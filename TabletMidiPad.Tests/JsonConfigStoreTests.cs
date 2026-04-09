@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Xunit;
 
 namespace TabletMidiPad.Tests;
@@ -10,7 +8,7 @@ namespace TabletMidiPad.Tests;
 public sealed class JsonConfigStoreTests
 {
     [Fact]
-    public void RoundTrip_PreservesCoreFields()
+    public void RoundTripPreservesCoreFields()
     {
         string path = Path.Combine(Path.GetTempPath(), $"tabletmidipad_test_{Guid.NewGuid():N}.json");
         try
@@ -51,7 +49,7 @@ public sealed class JsonConfigStoreTests
     }
 
     [Fact]
-    public void Load_MissingFile_ReturnsDefault()
+    public void LoadMissingFileReturnsDefault()
     {
         string path = Path.Combine(Path.GetTempPath(), $"tabletmidipad_missing_{Guid.NewGuid():N}.json");
         var store = new JsonConfigStore(path);

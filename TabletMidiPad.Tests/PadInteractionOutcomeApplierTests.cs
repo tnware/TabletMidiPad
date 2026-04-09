@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
@@ -9,7 +8,7 @@ namespace TabletMidiPad.Tests;
 public sealed class PadInteractionOutcomeApplierTests
 {
     [Fact]
-    public void Apply_SendsCcAndNoteThroughMidiEngine()
+    public void ApplySendsCcAndNoteThroughMidiEngine()
     {
         var engine = new StubMidiEngine();
         var sut = new PadInteractionOutcomeApplier(engine);
@@ -43,7 +42,7 @@ public sealed class PadInteractionOutcomeApplierTests
     }
 
     [Fact]
-    public void Apply_BuildsLastZoneMarkersFromState()
+    public void ApplyBuildsLastZoneMarkersFromState()
     {
         var engine = new StubMidiEngine();
         var sut = new PadInteractionOutcomeApplier(engine);
@@ -67,16 +66,16 @@ public sealed class PadInteractionOutcomeApplierTests
     }
 
     [Fact]
-    public void Constructor_NullEngine_Throws()
+    public void ConstructorNullEngineThrows()
     {
-        Assert.Throws<System.ArgumentNullException>(() => new PadInteractionOutcomeApplier(null!));
+        Assert.Throws<ArgumentNullException>(() => new PadInteractionOutcomeApplier(null!));
     }
 
     private sealed class StubMidiEngine : IMidiEngine
     {
-        public List<(int ch, int cc, int val, bool force)> CcCalls { get; } = new();
+        public List<(int ch, int cc, int val, bool force)> CcCalls { get; } = [];
 
-        public List<(int ch, int note, bool on, int vel, bool force)> NoteCalls { get; } = new();
+        public List<(int ch, int note, bool on, int vel, bool force)> NoteCalls { get; } = [];
 
         public bool IsReady => true;
 
@@ -84,8 +83,8 @@ public sealed class PadInteractionOutcomeApplierTests
         {
         }
 
-        public System.Threading.Tasks.Task InitializeAsync(AppConfig config, System.Action<string>? onProgress = null)
-            => System.Threading.Tasks.Task.CompletedTask;
+        public Task InitializeAsync(AppConfig config, Action<string>? onProgress = null)
+            => Task.CompletedTask;
 
         public void Restart(AppConfig config)
         {

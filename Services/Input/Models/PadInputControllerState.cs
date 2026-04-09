@@ -5,11 +5,11 @@ namespace TabletMidiPad.Services.Input.Models;
 /// </summary>
 internal sealed class PadInputControllerState
 {
-    public bool IsActive;
+    public bool IsActive { get; set; }
 
-    public bool UseWintab;
+    public bool UseWintab { get; set; }
 
-    public int ExpressKeyCount;
+    public int ExpressKeyCount { get; set; }
 
     public string LastInputBackend { get; set; } = "Idle";
 
@@ -17,5 +17,5 @@ internal sealed class PadInputControllerState
 
     public string ExpressKeyDiagnostics { get; set; } = string.Empty;
 
-    public uint LastWintabButtons;
+    public uint LastWintabButtons { get; set; }
 }

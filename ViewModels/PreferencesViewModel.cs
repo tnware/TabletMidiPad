@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -149,8 +150,8 @@ internal sealed class PreferencesViewModel : ViewModelBase
             {
                 Action = PenButtonActions.None,
                 MidiChannelText = "1",
-                CcText = Math.Clamp(70 + index, 0, 127).ToString(),
-                NoteText = Math.Clamp(36 + index, 0, 127).ToString()
+                CcText = Math.Clamp(70 + index, 0, 127).ToString(CultureInfo.InvariantCulture),
+                NoteText = Math.Clamp(36 + index, 0, 127).ToString(CultureInfo.InvariantCulture)
             });
         }
     }

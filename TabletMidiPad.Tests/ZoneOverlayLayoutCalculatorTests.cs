@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TabletMidiPad.Core.Overlay;
 using Xunit;
 
@@ -7,9 +6,9 @@ namespace TabletMidiPad.Tests;
 public sealed class ZoneOverlayLayoutCalculatorTests
 {
     [Fact]
-    public void BuildLayout_MapsZoneToPixelBounds()
+    public void BuildLayoutMapsZoneToPixelBounds()
     {
-        var zones = new[]
+        ZoneOverlayZoneSnapshot[] zones = new[]
         {
             new ZoneOverlayZoneSnapshot(
                 SendX: true,
@@ -35,9 +34,9 @@ public sealed class ZoneOverlayLayoutCalculatorTests
     }
 
     [Fact]
-    public void BuildLayout_UsesHalfMarkerWhenAxisDisabled()
+    public void BuildLayoutUsesHalfMarkerWhenAxisDisabled()
     {
-        var zones = new[]
+        ZoneOverlayZoneSnapshot[] zones = new[]
         {
             new ZoneOverlayZoneSnapshot(
                 SendX: false,
@@ -61,7 +60,7 @@ public sealed class ZoneOverlayLayoutCalculatorTests
 
         ZoneOverlayLayoutEntry item = Assert.Single(items);
         Assert.NotNull(item.MarkerCenterPx);
-        Assert.Equal(50, item.MarkerCenterPx!.Value.x); // X disabled => 0.5
-        Assert.Equal(20, item.MarkerCenterPx!.Value.y); // Y enabled => 0.2
+        Assert.Equal(50, item.MarkerCenterPx.Value.x); // X disabled => 0.5
+        Assert.Equal(20, item.MarkerCenterPx.Value.y); // Y enabled => 0.2
     }
 }

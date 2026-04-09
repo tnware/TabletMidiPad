@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
-using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
 
 namespace TabletMidiPad.Services.Pad;
@@ -27,8 +24,8 @@ internal sealed class PadPresentationCoordinator : IPadPresentationCoordinator
         return new CursorTickChrome(
             ShouldApply: true,
             Visibility: Visibility.Visible,
-            Left: pixelPosition.X - cursorDotWidth / 2,
-            Top: pixelPosition.Y - cursorDotHeight / 2,
+            Left: pixelPosition.X - (cursorDotWidth / 2),
+            Top: pixelPosition.Y - (cursorDotHeight / 2),
             Opacity: opacityOverride);
     }
 
@@ -52,7 +49,7 @@ internal sealed class PadPresentationCoordinator : IPadPresentationCoordinator
         double padHeight,
         PadOverlayTheme theme)
     {
-        IReadOnlyList<ZoneOverlayZone> overlayZones = zones
+        IReadOnlyList<ZoneOverlayZone> overlayZones = [.. zones
             .Select(zone => new ZoneOverlayZone(
                 Name: zone.Name,
                 Enabled: zone.Enabled,
@@ -62,10 +59,9 @@ internal sealed class PadPresentationCoordinator : IPadPresentationCoordinator
                 Left: zone.Left,
                 Top: zone.Top,
                 Width: zone.Width,
-                Height: zone.Height))
-            .ToList();
+                Height: zone.Height))];
 
-        var lastByIndex = new Dictionary<int, (double x, double y)>();
+        var lastByIndex = new Dictionary<int, (double X, double Y)>();
         for (int index = 0; index < zones.Count; index++)
         {
             ZoneConfig zone = zones[index];

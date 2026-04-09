@@ -11,7 +11,10 @@ public partial class MainWindow
     {
         private readonly MainWindow _w;
 
-        public PadInputViewHost(MainWindow window) => _w = window;
+        public PadInputViewHost(MainWindow window)
+        {
+            _w = window;
+        }
 
         public Canvas Pad => _w.Pad;
 
@@ -54,7 +57,10 @@ public partial class MainWindow
     {
         private readonly MainWindow _w;
 
-        public ZonePadViewHost(MainWindow window) => _w = window;
+        public ZonePadViewHost(MainWindow window)
+        {
+            _w = window;
+        }
 
         public AppConfig Config => _w.Config;
 
@@ -83,7 +89,10 @@ public partial class MainWindow
     {
         private readonly MainWindow _w;
 
-        public SettingsWorkflowViewHost(MainWindow window) => _w = window;
+        public SettingsWorkflowViewHost(MainWindow window)
+        {
+            _w = window;
+        }
 
         public Window OwnerWindow => _w;
 
@@ -106,7 +115,10 @@ public partial class MainWindow
     {
         private readonly MainWindow _w;
 
-        public MainShellCommandHost(MainWindow window) => _w = window;
+        public MainShellCommandHost(MainWindow window)
+        {
+            _w = window;
+        }
 
         public void CommitCurrentZoneEdits() => _w._viewModel.ZoneEditor.CommitCurrentZoneEdits();
 
@@ -136,7 +148,10 @@ public partial class MainWindow
     {
         private readonly MainWindow _w;
 
-        public StartupViewHost(MainWindow window) => _w = window;
+        public StartupViewHost(MainWindow window)
+        {
+            _w = window;
+        }
 
         public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
 

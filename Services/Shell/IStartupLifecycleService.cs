@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Services.Shell;

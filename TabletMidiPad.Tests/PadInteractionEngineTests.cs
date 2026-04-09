@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 using Xunit;
 
@@ -11,7 +10,7 @@ public sealed class PadInteractionEngineTests
     [InlineData("Linear", 127, 127)]
     [InlineData("Logarithmic", 64, 90)] // sqrt(64/127)*127 ~= 90
     [InlineData("Exponential", 64, 32)] // (64/127)^2*127 ~= 32
-    public void PressureCurve_MatchesExpectedMapping(string curve, int inputPressure, int expected)
+    public void PressureCurveMatchesExpectedMapping(string curve, int inputPressure, int expected)
     {
         var engine = new PadInteractionEngine();
         var config = new PadInteractionConfig(
@@ -31,7 +30,7 @@ public sealed class PadInteractionEngineTests
             UpperPenButtonNote: 61,
             ExpressKeys: new List<ExpressKeyConfigSnapshot>());
 
-        var zones = new[]
+        ZoneSnapshot[] zones = new[]
         {
             new ZoneSnapshot(
                 Name: "Z",
@@ -72,7 +71,7 @@ public sealed class PadInteractionEngineTests
     }
 
     [Fact]
-    public void ReleaseBehavior_ResetAll_SendsXYAndPressureZeros()
+    public void ReleaseBehaviorResetAllSendsXYAndPressureZeros()
     {
         var engine = new PadInteractionEngine();
         var config = new PadInteractionConfig(
@@ -92,7 +91,7 @@ public sealed class PadInteractionEngineTests
             UpperPenButtonNote: 61,
             ExpressKeys: new List<ExpressKeyConfigSnapshot>());
 
-        var zones = new[]
+        ZoneSnapshot[] zones = new[]
         {
             new ZoneSnapshot(
                 Name: "Z",
@@ -148,7 +147,7 @@ public sealed class PadInteractionEngineTests
     }
 
     [Fact]
-    public void PenButton_CcMomentary_EmitsOnPressAndOffOnRelease()
+    public void PenButtonCcMomentaryEmitsOnPressAndOffOnRelease()
     {
         var engine = new PadInteractionEngine();
         var config = new PadInteractionConfig(
@@ -168,7 +167,7 @@ public sealed class PadInteractionEngineTests
             UpperPenButtonNote: 61,
             ExpressKeys: new List<ExpressKeyConfigSnapshot>());
 
-        var zones = new[]
+        ZoneSnapshot[] zones = new[]
         {
             new ZoneSnapshot(
                 Name: "Z",

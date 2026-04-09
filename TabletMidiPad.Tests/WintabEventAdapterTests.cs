@@ -5,14 +5,14 @@ namespace TabletMidiPad.Tests;
 public sealed class WintabEventAdapterTests
 {
     [Fact]
-    public void BuildExpressKeyUpdate_UsesConfiguredActionAndEncodesPressedState()
+    public void BuildExpressKeyUpdateUsesConfiguredActionAndEncodesPressedState()
     {
         var adapter = new WintabEventAdapter();
         var eventArgs = new WintabExpressKeyEventArgs(
             Control: 1,
             IsPressed: true,
             Diagnostics: "diag");
-        var configured = new[]
+        ExpressKeyConfig[] configured = new[]
         {
             new ExpressKeyConfig { Action = PenButtonActions.None },
             new ExpressKeyConfig { Action = PenButtonActions.CcToggle },
@@ -30,7 +30,7 @@ public sealed class WintabEventAdapterTests
     }
 
     [Fact]
-    public void TryBuildPacketUpdate_ReturnsFalseWhenPadDimensionsInvalid()
+    public void TryBuildPacketUpdateReturnsFalseWhenPadDimensionsInvalid()
     {
         var adapter = new WintabEventAdapter();
         var packet = new WintabPacketEventArgs(
@@ -50,7 +50,7 @@ public sealed class WintabEventAdapterTests
     }
 
     [Fact]
-    public void TryBuildPacketUpdate_MapsFieldsAndHoverOpacity()
+    public void TryBuildPacketUpdateMapsFieldsAndHoverOpacity()
     {
         var adapter = new WintabEventAdapter();
         var packet = new WintabPacketEventArgs(

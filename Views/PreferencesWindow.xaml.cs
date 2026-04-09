@@ -1,5 +1,4 @@
-using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -89,19 +88,19 @@ internal partial class PreferencesWindow : Window
         _viewModel.DawPortName = config.DawPortName;
         _viewModel.AppPortName = config.AppPortName;
         _viewModel.AssociationId = config.LoopbackAssociationId;
-        _viewModel.MousePressureText = config.MousePressureValue.ToString();
-        _viewModel.PositionDeadZoneText = config.PositionDeadZone.ToString("0.###");
-        _viewModel.PositionSmoothingText = config.PositionSmoothing.ToString("0.##");
+        _viewModel.MousePressureText = config.MousePressureValue.ToString(CultureInfo.InvariantCulture);
+        _viewModel.PositionDeadZoneText = config.PositionDeadZone.ToString("0.###", CultureInfo.InvariantCulture);
+        _viewModel.PositionSmoothingText = config.PositionSmoothing.ToString("0.##", CultureInfo.InvariantCulture);
         _viewModel.PressureCurve = config.PressureCurve;
         _viewModel.InputBackendMode = InputBackendModeNormalizer.Normalize(config.InputBackendMode);
         _viewModel.LowerPenButtonAction = _configValueParser.NormalizePenButtonAction(config.LowerPenButtonAction);
         SetMidiChannelComboSelection(LowerPenButtonMidiChannelComboBox, config.LowerPenButtonMidiChannel);
-        _viewModel.LowerPenButtonCcText = config.LowerPenButtonCc.ToString();
-        _viewModel.LowerPenButtonNoteText = config.LowerPenButtonNote.ToString();
+        _viewModel.LowerPenButtonCcText = config.LowerPenButtonCc.ToString(CultureInfo.InvariantCulture);
+        _viewModel.LowerPenButtonNoteText = config.LowerPenButtonNote.ToString(CultureInfo.InvariantCulture);
         _viewModel.UpperPenButtonAction = _configValueParser.NormalizePenButtonAction(config.UpperPenButtonAction);
         SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, config.UpperPenButtonMidiChannel);
-        _viewModel.UpperPenButtonCcText = config.UpperPenButtonCc.ToString();
-        _viewModel.UpperPenButtonNoteText = config.UpperPenButtonNote.ToString();
+        _viewModel.UpperPenButtonCcText = config.UpperPenButtonCc.ToString(CultureInfo.InvariantCulture);
+        _viewModel.UpperPenButtonNoteText = config.UpperPenButtonNote.ToString(CultureInfo.InvariantCulture);
         _viewModel.SendPressureGlobally = config.SendPressureGlobally;
         _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
 
@@ -109,12 +108,12 @@ internal partial class PreferencesWindow : Window
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);
         for (int i = 0; i < _viewModel.ExpressKeys.Count && i < config.ExpressKeys.Count; i++)
         {
-            var ek = config.ExpressKeys[i];
-            var row = _viewModel.ExpressKeys[i];
+            ExpressKeyConfig ek = config.ExpressKeys[i];
+            ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
             row.Action = _configValueParser.NormalizePenButtonAction(ek.Action);
-            row.MidiChannelText = Math.Clamp(ek.MidiChannel, 1, 16).ToString();
-            row.CcText = Math.Clamp(ek.Cc, 0, 127).ToString();
-            row.NoteText = Math.Clamp(ek.Note, 0, 127).ToString();
+            row.MidiChannelText = Math.Clamp(ek.MidiChannel, 1, 16).ToString(CultureInfo.InvariantCulture);
+            row.CcText = Math.Clamp(ek.Cc, 0, 127).ToString(CultureInfo.InvariantCulture);
+            row.NoteText = Math.Clamp(ek.Note, 0, 127).ToString(CultureInfo.InvariantCulture);
         }
     }
 
@@ -123,7 +122,7 @@ internal partial class PreferencesWindow : Window
         var list = new List<ExpressKeyConfig>();
         for (int i = 0; i < _viewModel.ExpressKeys.Count; i++)
         {
-            var row = _viewModel.ExpressKeys[i];
+            ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
             list.Add(new ExpressKeyConfig
             {
                 Action = _configValueParser.NormalizePenButtonAction(row.Action),
@@ -162,43 +161,53 @@ internal partial class PreferencesWindow : Window
     private void MidiCcNoteStepper_Decrease_Click(object sender, RoutedEventArgs e)
     {
         if (sender is RepeatButton { Tag: TextBox tb })
+        {
             AdjustMidiCcOrNote(tb, -1);
+        }
     }
 
     private void MidiCcNoteStepper_Increase_Click(object sender, RoutedEventArgs e)
     {
         if (sender is RepeatButton { Tag: TextBox tb })
+        {
             AdjustMidiCcOrNote(tb, 1);
+        }
     }
 
     private static void AdjustMidiCcOrNote(TextBox textBox, int delta)
     {
         int current = int.TryParse(textBox.Text, out int v) ? v : 0;
         int next = Math.Clamp(current + delta, 0, 127);
-        textBox.Text = next.ToString();
+        textBox.Text = next.ToString(CultureInfo.InvariantCulture);
     }
 
     private static void PopulateMidiChannelCombo(ComboBox comboBox)
     {
         comboBox.Items.Clear();
         for (int channel = 1; channel <= 16; channel++)
+        {
             comboBox.Items.Add(channel);
+        }
     }
 
     private static void SetMidiChannelComboSelection(ComboBox comboBox, int channel)
     {
         int clamped = Math.Clamp(channel, 1, 16);
         comboBox.SelectedItem = clamped;
-        comboBox.Text = clamped.ToString();
+        comboBox.Text = clamped.ToString(CultureInfo.InvariantCulture);
     }
 
     private int ReadMidiChannelFromCombo(ComboBox comboBox, string fieldName)
     {
         if (comboBox.SelectedItem is int ch && ch is >= 1 and <= 16)
+        {
             return ch;
+        }
 
         if (int.TryParse(comboBox.Text?.Trim(), out int parsed))
-            return _configValueParser.ReadInt(parsed.ToString(), 1, 16, fieldName);
+        {
+            return _configValueParser.ReadInt(parsed.ToString(CultureInfo.InvariantCulture), 1, 16, fieldName);
+        }
 
         // Treat empty/unset combo text as the default MIDI channel rather than hard-failing.
         return 1;
@@ -228,7 +237,7 @@ internal partial class PreferencesWindow : Window
 
         for (int i = 0; i < _viewModel.ExpressKeys.Count; i++)
         {
-            var row = _viewModel.ExpressKeys[i];
+            ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
             _ = _configValueParser.NormalizePenButtonAction(row.Action);
             ReadMidiChannelText(row.MidiChannelText, $"ExpressKey {i + 1} MIDI Channel");
             _ = _configValueParser.ReadInt(row.CcText, 0, 127, $"ExpressKey {i + 1} CC");
@@ -254,7 +263,7 @@ internal partial class PreferencesWindow : Window
 
     private void PopulatePenButtonActionList()
     {
-        foreach (var comboBox in new[] { LowerPenButtonActionComboBox, UpperPenButtonActionComboBox })
+        foreach (ComboBox? comboBox in new[] { LowerPenButtonActionComboBox, UpperPenButtonActionComboBox })
         {
             PopulateActionComboBox(comboBox);
         }
@@ -278,7 +287,9 @@ internal partial class PreferencesWindow : Window
     private void BuildExpressKeyRows()
     {
         if (_expressKeyCount == 0)
+        {
             return;
+        }
 
         ExpressKeysPanel.Children.Clear();
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);

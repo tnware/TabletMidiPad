@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 
 namespace TabletMidiPad;
@@ -464,7 +463,7 @@ internal static class WintabInterop
             if (!WTExtGet(context, extensionTag, buffer))
                 return false;
 
-            var ret = Marshal.PtrToStructure<ExtensionProperty>(buffer);
+            ExtensionProperty ret = Marshal.PtrToStructure<ExtensionProperty>(buffer);
             result = BitConverter.ToUInt32(ret.Data, 0);
             return true;
         }

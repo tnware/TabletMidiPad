@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 using Xunit;
 
@@ -9,7 +8,7 @@ public sealed class WintabInputBridgeTests
     private readonly WintabInputBridge _sut = new(new WintabEventAdapter(), new InputBackendCoordinator());
 
     [Fact]
-    public void TryBuildPacketBridge_InvalidPad_ReturnsFalse()
+    public void TryBuildPacketBridgeInvalidPadReturnsFalse()
     {
         var packet = new WintabPacketEventArgs(
             ContextHandle: 0,
@@ -28,7 +27,7 @@ public sealed class WintabInputBridgeTests
     }
 
     [Fact]
-    public void BuildExpressKeyBridge_MatchesEncodedInput()
+    public void BuildExpressKeyBridgeMatchesEncodedInput()
     {
         var expressKey = new WintabExpressKeyEventArgs(Control: 0, IsPressed: true, Diagnostics: "x");
         var keys = new List<ExpressKeyConfig> { new() { Action = PenButtonActions.None } };
@@ -37,7 +36,7 @@ public sealed class WintabInputBridgeTests
 
         Assert.Equal(1, outcome.RequiredExpressKeyCount);
         Assert.Equal(InteractionBackend.ExpressKey, outcome.EngineInput.Backend);
-        Assert.Contains("pressed", outcome.ExpressKeyDiagnostics, System.StringComparison.Ordinal);
+        Assert.Contains("pressed", outcome.ExpressKeyDiagnostics, StringComparison.Ordinal);
         Assert.Equal("Wintab EK0", outcome.BackendLabel);
     }
 }

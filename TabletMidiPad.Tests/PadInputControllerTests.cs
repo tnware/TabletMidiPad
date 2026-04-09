@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,7 +17,7 @@ public sealed class PadInputControllerTests
         MidiMessages: Array.Empty<MidiMessage>());
 
     [Fact]
-    public void RebindInputBackend_ShutsDownWintabBeforeInitialize_AndRefreshesDeviceList()
+    public void RebindInputBackendShutsDownWintabBeforeInitializeAndRefreshesDeviceList()
     {
         RunSta(() =>
         {
@@ -42,7 +39,7 @@ public sealed class PadInputControllerTests
     }
 
     [Fact]
-    public void InitializeTabletInput_StylusMouseOnly_SetsPadStateUseWintabFalse()
+    public void InitializeTabletInputStylusMouseOnlySetsPadStateUseWintabFalse()
     {
         RunSta(() =>
         {
@@ -58,7 +55,7 @@ public sealed class PadInputControllerTests
     }
 
     [Fact]
-    public void InitializeTabletInput_AutoWithActiveBackend_SetsPadStateUseWintabTrue()
+    public void InitializeTabletInputAutoWithActiveBackendSetsPadStateUseWintabTrue()
     {
         RunSta(() =>
         {
@@ -74,7 +71,7 @@ public sealed class PadInputControllerTests
     }
 
     [Fact]
-    public void ApplyTabletLifecycle_CopiesResultIntoPadState()
+    public void ApplyTabletLifecycleCopiesResultIntoPadState()
     {
         RunSta(() =>
         {
@@ -160,7 +157,7 @@ public sealed class PadInputControllerTests
 
         public InteractionState InteractionState { get; } = new();
 
-        public IPadInteractionOutcomeApplier OutcomeApplier { get; } = null!;
+        public IPadInteractionOutcomeApplier OutcomeApplier => throw new NotSupportedException();
 
         public PadInputControllerState PadState { get; } = new();
 
@@ -218,19 +215,35 @@ public sealed class PadInputControllerTests
 
     private sealed class SequencedWintabBackend : IWintabInputBackend
     {
-        public List<string> Sequence { get; } = new();
+        public List<string> Sequence { get; } = [];
 
         public bool Active { get; set; }
 
         public int ExpressKeyCount { get; set; }
 
-        public event EventHandler<WintabPacketEventArgs>? PacketReceived;
+        public event EventHandler<WintabPacketEventArgs>? PacketReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
+        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabProximityEventArgs>? ProximityChanged;
+        public event EventHandler<WintabProximityEventArgs>? ProximityChanged
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<string>? DiagnosticsChanged;
+        public event EventHandler<string>? DiagnosticsChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool IsActive => Active;
 
@@ -299,7 +312,23 @@ public sealed class PadInputControllerTests
 
     private sealed class StubInputInteractionOrchestrator : IInputInteractionOrchestrator
     {
-        public PadInteractionConfig BuildPadInteractionConfig(AppConfig config) => default;
+        public PadInteractionConfig BuildPadInteractionConfig(AppConfig config)
+            => new(
+                SendPressureGlobally: false,
+                AllowZoneSwitchWhilePressed: false,
+                MousePressureValue: 0,
+                PositionDeadZone: 0,
+                PositionSmoothing: 0,
+                PressureCurve: "Linear",
+                LowerPenButtonAction: PenButtonActions.None,
+                LowerPenButtonMidiChannel: 1,
+                LowerPenButtonCc: 0,
+                LowerPenButtonNote: 0,
+                UpperPenButtonAction: PenButtonActions.None,
+                UpperPenButtonMidiChannel: 1,
+                UpperPenButtonCc: 0,
+                UpperPenButtonNote: 0,
+                ExpressKeys: []);
 
         public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config) => Array.Empty<ZoneSnapshot>();
 

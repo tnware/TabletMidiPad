@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace TabletMidiPad.Services.Settings.Models;
 
 /// <summary>

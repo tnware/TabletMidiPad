@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using TabletMidiPad.ViewModels;
 using Xunit;
 
@@ -8,13 +6,13 @@ namespace TabletMidiPad.Tests;
 public sealed class TabletDevicePickerSyncServiceTests
 {
     [Fact]
-    public void Constructor_NullWintab_Throws()
+    public void ConstructorNullWintabThrows()
     {
         Assert.Throws<ArgumentNullException>(() => new TabletDevicePickerSyncService(null!));
     }
 
     [Fact]
-    public void Refresh_NullViewModel_Throws()
+    public void RefreshNullViewModelThrows()
     {
         var sut = new TabletDevicePickerSyncService(new EmptyDevicesWintab());
 
@@ -22,7 +20,7 @@ public sealed class TabletDevicePickerSyncServiceTests
     }
 
     [Fact]
-    public void Refresh_NoDevices_AddsPlaceholderAndDisablesPicker()
+    public void RefreshNoDevicesAddsPlaceholderAndDisablesPicker()
     {
         var sut = new TabletDevicePickerSyncService(new EmptyDevicesWintab());
         var vm = new MainViewModel();
@@ -37,7 +35,7 @@ public sealed class TabletDevicePickerSyncServiceTests
     }
 
     [Fact]
-    public void Refresh_WithDevices_SelectsFirstWhenNoPriorMatch()
+    public void RefreshWithDevicesSelectsFirstWhenNoPriorMatch()
     {
         var wintab = new FixedDevicesWintab(
             new WintabTabletDevice(0, "A"),
@@ -53,7 +51,7 @@ public sealed class TabletDevicePickerSyncServiceTests
     }
 
     [Fact]
-    public void Refresh_WithDevices_ReSelectsMatchingDeviceIndex()
+    public void RefreshWithDevicesReSelectsMatchingDeviceIndex()
     {
         var wintab = new FixedDevicesWintab(
             new WintabTabletDevice(0, "A"),
@@ -69,13 +67,29 @@ public sealed class TabletDevicePickerSyncServiceTests
 
     private sealed class EmptyDevicesWintab : IWintabInputBackend
     {
-        public event EventHandler<WintabPacketEventArgs>? PacketReceived;
+        public event EventHandler<WintabPacketEventArgs>? PacketReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
+        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabProximityEventArgs>? ProximityChanged;
+        public event EventHandler<WintabProximityEventArgs>? ProximityChanged
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<string>? DiagnosticsChanged;
+        public event EventHandler<string>? DiagnosticsChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool IsActive => false;
 
@@ -106,15 +120,34 @@ public sealed class TabletDevicePickerSyncServiceTests
     {
         private readonly WintabTabletDevice[] _devices;
 
-        public FixedDevicesWintab(params WintabTabletDevice[] devices) => _devices = devices;
+        public FixedDevicesWintab(params WintabTabletDevice[] devices)
+        {
+            _devices = devices;
+        }
 
-        public event EventHandler<WintabPacketEventArgs>? PacketReceived;
+        public event EventHandler<WintabPacketEventArgs>? PacketReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
+        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabProximityEventArgs>? ProximityChanged;
+        public event EventHandler<WintabProximityEventArgs>? ProximityChanged
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<string>? DiagnosticsChanged;
+        public event EventHandler<string>? DiagnosticsChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool IsActive => false;
 

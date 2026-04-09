@@ -1,9 +1,6 @@
-using System;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Services.Input;
 
@@ -86,7 +83,7 @@ internal sealed class PadInputController : IPadInputController
         RefreshTabletDeviceListOnly();
 
         int tabletDeviceIndex = _host.ViewModel.SelectedTabletDevice?.DeviceIndex >= 0
-            ? _host.ViewModel.SelectedTabletDevice!.DeviceIndex
+            ? _host.ViewModel.SelectedTabletDevice.DeviceIndex
             : -1;
         InputBackendLifecycleResult lifecycle = _inputBackendCoordinator.Initialize(
             _host.Config.InputBackendMode,

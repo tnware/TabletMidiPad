@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -18,7 +17,7 @@ internal static class WindowChromeTheme
     /// <summary>
     /// BGR color ref matching <c>ThemeResources</c> <c>ColorWindow</c> (#FF060A07).
     /// </summary>
-    private const int WindowFrameColorRef = unchecked((int)0x00070A06);
+    private const int WindowFrameColorRef = unchecked(0x00070A06);
 
     [DllImport("dwmapi.dll", PreserveSig = true)]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);

@@ -6,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class ZoneEditorServiceTests
 {
     [Fact]
-    public void CommitCurrentZoneEdits_WritesValidatedValuesFromViewModel()
+    public void CommitCurrentZoneEditsWritesValidatedValuesFromViewModel()
     {
         var parser = new ConfigValueParser();
         var sut = new ZoneEditorService(parser);
@@ -50,7 +50,7 @@ public sealed class ZoneEditorServiceTests
     }
 
     [Fact]
-    public void LoadSelectedZoneIntoEditor_LoadsMidiChannelAndReleaseBehavior()
+    public void LoadSelectedZoneIntoEditorLoadsMidiChannelAndReleaseBehavior()
     {
         var parser = new ConfigValueParser();
         var sut = new ZoneEditorService(parser);
@@ -73,11 +73,11 @@ public sealed class ZoneEditorServiceTests
     }
 
     [Fact]
-    public void LoadSelectedZoneIntoEditor_NoSelection_ClearsEditor()
+    public void LoadSelectedZoneIntoEditorNoSelectionClearsEditor()
     {
         var parser = new ConfigValueParser();
         var sut = new ZoneEditorService(parser);
-        var config = AppConfig.Default;
+        AppConfig config = AppConfig.Default;
         var vm = new TestZoneEditorState { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
 
         sut.LoadSelectedZoneIntoEditor(vm, config, -1);
@@ -88,11 +88,11 @@ public sealed class ZoneEditorServiceTests
 
     private sealed class TestZoneEditorState : IZoneEditorState
     {
-        public System.Collections.ObjectModel.ObservableCollection<int> MidiChannels { get; } = new();
+        public System.Collections.ObjectModel.ObservableCollection<int> MidiChannels { get; } = [];
 
-        public System.Collections.ObjectModel.ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
+        public System.Collections.ObjectModel.ObservableCollection<string> ReleaseBehaviorOptions { get; } = [];
 
-        public System.Collections.ObjectModel.ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
+        public System.Collections.ObjectModel.ObservableCollection<ZoneListItemViewModel> Zones { get; } = [];
 
         public string MaxZoneRowsText { get; set; } = string.Empty;
 

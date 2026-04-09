@@ -1,4 +1,3 @@
-using System.Windows;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Services.Zone;

@@ -1,12 +1,11 @@
 using Xunit;
-using System.Collections.Generic;
 
 namespace TabletMidiPad.Tests;
 
 public sealed class RuntimeConfigServiceTests
 {
     [Fact]
-    public void Load_ReplacesCurrentFromStore()
+    public void LoadReplacesCurrentFromStore()
     {
         var expected = new AppConfig { DawPortName = "Loaded" };
         var store = new RecordingConfigStore { LoadedConfig = expected };
@@ -19,10 +18,10 @@ public sealed class RuntimeConfigServiceTests
     }
 
     [Fact]
-    public void Replace_NormalizesAndPublishesCurrent()
+    public void ReplaceNormalizesAndPublishesCurrent()
     {
         var sut = new RuntimeConfigService(new RecordingConfigStore());
-        var config = new AppConfig { Zones = new List<ZoneConfig>() };
+        var config = new AppConfig { Zones = [] };
 
         sut.Replace(config);
 
@@ -30,7 +29,7 @@ public sealed class RuntimeConfigServiceTests
     }
 
     [Fact]
-    public void SaveCurrent_WritesCurrentConfig()
+    public void SaveCurrentWritesCurrentConfig()
     {
         var store = new RecordingConfigStore();
         var sut = new RuntimeConfigService(store);

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Interop;
 
 namespace TabletMidiPad.Services.Input;
@@ -13,8 +10,8 @@ internal sealed class WintabInputBackend : IWintabInputBackend
 {
     private readonly IAppTrace _trace;
 
-    private HwndSource? _messageSource;
     private readonly Dictionary<uint, WintabContextInfo> _contexts = new();
+    private HwndSource? _messageSource;
     private int _packetMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
     private int _packetExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
     private int _contextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
@@ -180,7 +177,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
         {
             try
             {
-                var defaultCtx = WintabInterop.GetDefaultDigitizingContext();
+                WintabInterop.LogContext defaultCtx = WintabInterop.GetDefaultDigitizingContext();
                 deviceIndex = (int)defaultCtx.Device;
             }
             catch
@@ -205,9 +202,9 @@ internal sealed class WintabInputBackend : IWintabInputBackend
             return 0;
         }
 
-        var xAxis = WintabInterop.GetXAxis(deviceIndex);
-        var yAxis = WintabInterop.GetYAxis(deviceIndex);
-        var pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
+        WintabInterop.Axis xAxis = WintabInterop.GetXAxis(deviceIndex);
+        WintabInterop.Axis yAxis = WintabInterop.GetYAxis(deviceIndex);
+        WintabInterop.Axis pressureAxis = WintabInterop.GetPressureAxis(deviceIndex);
 
         if (xAxis.Max <= xAxis.Min || yAxis.Max <= yAxis.Min)
         {

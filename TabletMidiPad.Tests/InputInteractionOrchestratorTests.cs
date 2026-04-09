@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 using Xunit;
 
@@ -8,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class InputInteractionOrchestratorTests
 {
     [Fact]
-    public void ProcessTick_DelegatesToPadInteractionEngine()
+    public void ProcessTickDelegatesToPadInteractionEngine()
     {
         var expected = new InteractionResult(
             ActiveZoneIndex: 0,
@@ -19,8 +17,8 @@ public sealed class InputInteractionOrchestratorTests
         var engine = new StubPadInteractionEngine(expected);
         var sut = new InputInteractionOrchestrator(engine);
 
-        var config = BuildConfig();
-        var zones = BuildZones();
+        PadInteractionConfig config = BuildConfig();
+        IReadOnlyList<ZoneSnapshot> zones = BuildZones();
         var state = new InteractionState();
         var input = new InteractionInput(0.5, 0.5, 40, true, false, 7, InteractionBackend.Wintab);
 
@@ -34,7 +32,7 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void ProcessRelease_UsesUnknownBackendAndProvidedButtons()
+    public void ProcessReleaseUsesUnknownBackendAndProvidedButtons()
     {
         var expected = new InteractionResult(
             ActiveZoneIndex: -1,
@@ -45,8 +43,8 @@ public sealed class InputInteractionOrchestratorTests
         var engine = new StubPadInteractionEngine(expected);
         var sut = new InputInteractionOrchestrator(engine);
 
-        var config = BuildConfig();
-        var zones = BuildZones();
+        PadInteractionConfig config = BuildConfig();
+        IReadOnlyList<ZoneSnapshot> zones = BuildZones();
         var state = new InteractionState();
 
         InteractionResult actual = sut.ProcessRelease(config, zones, state, 0x0022u);
@@ -59,13 +57,13 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void Constructor_NullEngine_Throws()
+    public void ConstructorNullEngineThrows()
     {
-        Assert.Throws<System.ArgumentNullException>(() => new InputInteractionOrchestrator(null!));
+        Assert.Throws<ArgumentNullException>(() => new InputInteractionOrchestrator(null!));
     }
 
     [Fact]
-    public void BuildPadInteractionConfig_NullAppConfig_Throws()
+    public void BuildPadInteractionConfigNullAppConfigThrows()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
 
@@ -73,7 +71,7 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void BuildPadInteractionConfig_MapsAppConfig()
+    public void BuildPadInteractionConfigMapsAppConfig()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
         var app = new AppConfig
@@ -122,7 +120,7 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void BuildZoneSnapshots_NullAppConfig_Throws()
+    public void BuildZoneSnapshotsNullAppConfigThrows()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
 
@@ -130,13 +128,13 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void BuildZoneSnapshots_MapsZones()
+    public void BuildZoneSnapshotsMapsZones()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
         var app = new AppConfig
         {
-            Zones = new List<ZoneConfig>
-            {
+            Zones =
+            [
                 new ZoneConfig
                 {
                     Name = "A",
@@ -156,7 +154,7 @@ public sealed class InputInteractionOrchestratorTests
                     Width = 0.3,
                     Height = 0.4,
                 },
-            },
+            ],
         };
 
         IReadOnlyList<ZoneSnapshot> zones = sut.BuildZoneSnapshots(app);

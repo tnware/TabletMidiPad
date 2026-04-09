@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Text.Json;
 
@@ -10,6 +9,10 @@ namespace TabletMidiPad.Services.Config;
 internal sealed class JsonConfigStore : IConfigStore
 {
     private readonly string _path;
+    private static readonly JsonSerializerOptions WriteIndentedOptions = new()
+    {
+        WriteIndented = true
+    };
 
     public JsonConfigStore(string path)
     {
@@ -26,7 +29,7 @@ internal sealed class JsonConfigStore : IConfigStore
         try
         {
             string json = File.ReadAllText(_path);
-            var config = JsonSerializer.Deserialize<AppConfig>(json);
+            AppConfig? config = JsonSerializer.Deserialize<AppConfig>(json);
             if (config is null)
             {
                 return AppConfig.Default;
@@ -43,13 +46,7 @@ internal sealed class JsonConfigStore : IConfigStore
     public void Save(AppConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-
-        File.WriteAllText(_path, JsonSerializer.Serialize(config, options));
+        File.WriteAllText(_path, JsonSerializer.Serialize(config, WriteIndentedOptions));
     }
 }
 

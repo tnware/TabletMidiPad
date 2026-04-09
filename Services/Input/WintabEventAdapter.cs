@@ -1,5 +1,3 @@
-using TabletMidiPad.Core.Interaction;
-
 namespace TabletMidiPad.Services.Input;
 
 /// <summary>

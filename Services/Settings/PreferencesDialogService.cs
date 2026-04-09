@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;

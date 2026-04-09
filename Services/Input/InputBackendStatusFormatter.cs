@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace TabletMidiPad.Services.Input;
 
 /// <summary>
@@ -47,12 +49,12 @@ internal sealed class InputBackendStatusFormatter : IInputBackendStatusFormatter
             return "none";
         }
 
-        var pressed = new System.Collections.Generic.List<string>();
+        var pressed = new List<string>();
         for (int bit = 0; bit < 16; bit++)
         {
             if ((buttonMask & (1u << bit)) != 0)
             {
-                pressed.Add((bit + 1).ToString());
+                pressed.Add((bit + 1).ToString(CultureInfo.InvariantCulture));
             }
         }
 

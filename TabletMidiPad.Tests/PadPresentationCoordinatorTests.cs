@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
@@ -11,7 +10,7 @@ public sealed class PadPresentationCoordinatorTests
     private readonly PadPresentationCoordinator _sut = new();
 
     [Fact]
-    public void ComputeCursorForInteractionTick_WhenNotHoveringOrDown_DoesNotApply()
+    public void ComputeCursorForInteractionTickWhenNotHoveringOrDownDoesNotApply()
     {
         var input = new InteractionInput(0.5, 0.5, 0, false, false, 0, InteractionBackend.Wintab);
 
@@ -26,7 +25,7 @@ public sealed class PadPresentationCoordinatorTests
     }
 
     [Fact]
-    public void ComputeCursorForInteractionTick_WhenDown_AppliesPositionAndOpacity()
+    public void ComputeCursorForInteractionTickWhenDownAppliesPositionAndOpacity()
     {
         var input = new InteractionInput(0.5, 0.5, 64, true, false, 0, InteractionBackend.MouseFallback);
 
@@ -45,7 +44,7 @@ public sealed class PadPresentationCoordinatorTests
     }
 
     [Fact]
-    public void ComputeCursorAfterRelease_CollapsesAndSetsOpacity()
+    public void ComputeCursorAfterReleaseCollapsesAndSetsOpacity()
     {
         CursorTickChrome chrome = _sut.ComputeCursorAfterRelease();
 
@@ -55,7 +54,7 @@ public sealed class PadPresentationCoordinatorTests
     }
 
     [Fact]
-    public void BuildZoneOverlayRequest_MapsZonesAndLastPoints()
+    public void BuildZoneOverlayRequestMapsZonesAndLastPoints()
     {
         var zones = new List<ZoneConfig>
         {
@@ -67,7 +66,7 @@ public sealed class PadPresentationCoordinatorTests
             [zones[0]] = new Point(0.1, 0.2),
         };
         var theme = new PadOverlayTheme(
-            ZonePalette: new[] { Colors.Red, Colors.Blue },
+            ZonePalette: [Colors.Red, Colors.Blue],
             ColorWindow: Colors.Black,
             TextPrimaryBrush: Brushes.White,
             TextMutedBrush: Brushes.Gray,

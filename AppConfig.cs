@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -7,6 +5,11 @@ namespace TabletMidiPad;
 
 public sealed partial class AppConfig
 {
+    private static readonly JsonSerializerOptions JsonWriteOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public string AppPortName { get; set; } = "Tablet XY (App)";
     public string DawPortName { get; set; } = "Tablet XY (DAW)";
     public string LoopbackAssociationId { get; set; } = "{7d6e1f6b-6b0d-4d6c-a1f3-44ddefb7df4d}";
@@ -51,7 +54,7 @@ public sealed partial class AppConfig
 
         if (config.Zones is null || config.Zones.Count == 0)
         {
-            config.Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() };
+            config.Zones = new() { ZoneConfig.CreateDefault() };
         }
 
         if (string.IsNullOrWhiteSpace(config.UpperPenButtonAction) && !string.IsNullOrWhiteSpace(config.PenButtonAction))
@@ -62,7 +65,7 @@ public sealed partial class AppConfig
             config.UpperPenButtonNote = config.PenButtonNote;
         }
 
-        config.ExpressKeys ??= new List<ExpressKeyConfig>();
+        config.ExpressKeys ??= new();
 
         // Migrate legacy single-key settings.
         if (config.ExpressKeys.Count == 0 && !string.IsNullOrWhiteSpace(config.ExpressKeyAction))
@@ -79,7 +82,7 @@ public sealed partial class AppConfig
             }
         }
 
-        foreach (var zone in config.Zones)
+        foreach (ZoneConfig zone in config.Zones)
         {
             if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
             {
@@ -103,7 +106,7 @@ public sealed partial class AppConfig
         try
         {
             string json = File.ReadAllText(path);
-            var config = JsonSerializer.Deserialize<AppConfig>(json);
+            AppConfig? config = JsonSerializer.Deserialize<AppConfig>(json);
             if (config is null)
             {
                 return Default;
@@ -119,12 +122,7 @@ public sealed partial class AppConfig
     public void Save()
     {
         string path = GetConfigPath();
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-
-        File.WriteAllText(path, JsonSerializer.Serialize(this, options));
+        File.WriteAllText(path, JsonSerializer.Serialize(this, JsonWriteOptions));
     }
 }
 
@@ -171,7 +169,9 @@ public sealed class ExpressKeyConfig
     public static void EnsureCount(List<ExpressKeyConfig> list, int count)
     {
         while (list.Count < count)
+        {
             list.Add(CreateDefault(list.Count));
+        }
     }
 }
 

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
