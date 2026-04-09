@@ -644,4 +644,59 @@ public sealed class PadInteractionEngineTests
         Assert.Equal(12, pressure.Number);
         Assert.Equal(96, pressure.Value);
     }
+
+    [Fact]
+    public void EnablePressureActionDoesNotGatePressureWhenNotHeld()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.EnablePressure,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "P",
+                Enabled: true,
+                MidiChannel: 1,
+                CcX: 10,
+                CcY: 11,
+                CcPressure: 12,
+                SendX: false,
+                SendY: false,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0),
+        };
+
+        var state = new InteractionState();
+        InteractionResult result = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.5, 0.5, 80, true, false, 0, InteractionBackend.Wintab));
+
+        MidiMessage pressure = Assert.Single(result.MidiMessages);
+        Assert.Equal(MidiMessageKind.ControlChange, pressure.Kind);
+        Assert.Equal(12, pressure.Number);
+        Assert.Equal(80, pressure.Value);
+    }
 }

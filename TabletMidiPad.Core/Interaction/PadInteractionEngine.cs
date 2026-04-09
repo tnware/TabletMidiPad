@@ -222,15 +222,12 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             sendPressure = false;
         }
 
-        bool pressureEnabledByButton =
+        bool enablePressureHeld =
             (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
             (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
-        bool anyEnablePressureAction =
-            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
-            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
-        if (anyEnablePressureAction)
+        if (enablePressureHeld)
         {
-            sendPressure = sendPressure && pressureEnabledByButton;
+            sendPressure = true;
         }
 
         bool sendX = ShouldSendAxisCc(zone, zone.SendX, ZoneMappingAssistTargets.CcX);
@@ -312,15 +309,12 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             sendPressure = false;
         }
 
-        bool pressureEnabledByButton =
+        bool enablePressureHeld =
             (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
             (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
-        bool anyEnablePressureAction =
-            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
-            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
-        if (anyEnablePressureAction)
+        if (enablePressureHeld)
         {
-            sendPressure = sendPressure && pressureEnabledByButton;
+            sendPressure = true;
         }
 
         bool allowScaleBreathCc = zone.ScaleBreathSendCc;
@@ -403,15 +397,12 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             sendPressure = false;
         }
 
-        bool pressureEnabledByButton =
+        bool enablePressureHeld =
             (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
             (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
-        bool anyEnablePressureAction =
-            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
-            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
-        if (anyEnablePressureAction)
+        if (enablePressureHeld)
         {
-            sendPressure = sendPressure && pressureEnabledByButton;
+            sendPressure = true;
         }
 
         bool allowScaleGridCc = zone.ScaleGridSendCc;
