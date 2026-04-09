@@ -138,27 +138,27 @@
             <MenuItem Header="_File"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Save Settings"
-                          Command="{Binding SaveSettingsCommand}"
+                          Command="{Binding ShellCommands.SaveSettingsCommand}"
                           InputGestureText="Ctrl+S"/>
                 <MenuItem Header="_Reset to Defaults"
-                          Command="{Binding ResetDefaultsCommand}"/>
+                          Command="{Binding ShellCommands.ResetDefaultsCommand}"/>
                 <Separator/>
                 <MenuItem Header="_Preferences..."
-                          Command="{Binding OpenPreferencesCommand}"/>
+                          Command="{Binding ShellCommands.OpenPreferencesCommand}"/>
                 <Separator/>
                 <MenuItem Header="E_xit"
-                          Command="{Binding ExitCommand}"/>
+                          Command="{Binding ShellCommands.ExitCommand}"/>
             </MenuItem>
             <MenuItem Header="_Device"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Refresh Wacom Status"
                           Name="MenuRefreshWacom"
-                          Command="{Binding RefreshWacomStatusCommand}"/>
+                          Command="{Binding ShellCommands.RefreshWacomStatusCommand}"/>
                 <MenuItem Header="Reconnect _Pen Input"
-                          Command="{Binding ReconnectPenCommand}"/>
+                          Command="{Binding ShellCommands.ReconnectPenCommand}"/>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
-                          Command="{Binding StartWacomServiceCommand}"
+                          Command="{Binding ShellCommands.StartWacomServiceCommand}"
                           IsEnabled="{Binding IsWacomServiceStartEnabled}"/>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
@@ -168,7 +168,7 @@
             <MenuItem Header="_Help"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_About"
-                          Command="{Binding AboutCommand}"/>
+                          Command="{Binding ShellCommands.AboutCommand}"/>
             </MenuItem>
         </Menu>
 
@@ -252,7 +252,7 @@
                         DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Save"
-                        Command="{Binding SaveSettingsCommand}"/>
+                        Command="{Binding ShellCommands.SaveSettingsCommand}"/>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Add Zone"
@@ -521,7 +521,7 @@
                           SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
                         Content="Reconnect"
-                        Command="{Binding ReconnectPenCommand}"/>
+                        Command="{Binding ShellCommands.ReconnectPenCommand}"/>
 
             </StackPanel>
 
@@ -919,7 +919,7 @@
 
                         <Button Margin="0,14,0,0"
                                 Padding="10,7"
-                                Command="{Binding SaveSettingsCommand}"
+                                Command="{Binding ShellCommands.SaveSettingsCommand}"
                                 Content="Apply Settings"/>
 
                         <TextBlock Name="SettingsResultText"

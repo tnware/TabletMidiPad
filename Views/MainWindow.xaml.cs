@@ -15,7 +15,6 @@ public partial class MainWindow : Window
     private readonly PadInputHost _padInputHost;
     private readonly IPadInputController _padInputSession;
     private readonly IZonePadController _zonePadSession;
-    private readonly ISettingsWorkflow _settingsSession;
     private readonly StartupHost _startupHost;
 
     private readonly IRuntimeConfigService _runtimeConfig;
@@ -25,7 +24,6 @@ public partial class MainWindow : Window
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
     private readonly IWorkflowCoordinator _workflowCoordinator;
     private readonly IInputBackendCoordinator _inputBackendCoordinator;
-    private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly ILifecycleCoordinator _lifecycleCoordinator;
     private readonly IStartupLifecycleService _startupLifecycle;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
@@ -81,7 +79,7 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(inputInteractionOrchestrator);
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
-        _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
+        ArgumentNullException.ThrowIfNull(wacomServiceWorkflowCoordinator);
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         ArgumentNullException.ThrowIfNull(wintabInputBridge);
@@ -89,15 +87,6 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(mainViewModelFactory);
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
-        _viewModel = mainViewModelFactory.Create(new MainViewModelActions(
-            SaveSettings,
-            ResetDefaults,
-            OpenPreferences,
-            Close,
-            RefreshWacomServiceStatus,
-            ReconnectPenCore,
-            () => _ = StartWacomServiceAsync(),
-            MenuAbout));
         _padInputHost = new PadInputHost(this);
         _padInputSession = new PadInputController(
             _padInputHost,
@@ -112,7 +101,7 @@ public partial class MainWindow : Window
         _zonePadSession = new ZonePadController(
             new ZonePadHost(this),
             zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService)));
-        _settingsSession = new SettingsWorkflow(
+        ISettingsWorkflow settingsWorkflow = new SettingsWorkflow(
             new SettingsSessionHost(this),
             _workflowCoordinator,
             preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService)),
@@ -121,6 +110,14 @@ public partial class MainWindow : Window
             _midiEngine,
             _padInputSession);
         _startupHost = new StartupHost(this);
+        var shellCommandController = new MainShellCommandController(
+            new MainShellCommandHost(this),
+            settingsWorkflow,
+            wacomServiceWorkflowCoordinator,
+            _wacomServiceController,
+            _workflowCoordinator,
+            _padInputSession);
+        _viewModel = mainViewModelFactory.Create(new MainShellCommandsViewModel(shellCommandController));
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
         _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
         _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
@@ -188,41 +185,6 @@ public partial class MainWindow : Window
         await InitializeAppAsync();
     }
 
-    private async Task StartWacomServiceAsync()
-    {
-        WacomServiceWorkflowState startingState = _wacomServiceWorkflowCoordinator.BuildStartingState();
-        _viewModel.IsWacomServiceStartEnabled = startingState.StartEnabled;
-        _viewModel.WacomServiceStatusHeader = startingState.StatusHeader;
-
-        WacomServiceStartResult result = await Task.Run(() => _wacomServiceWorkflowCoordinator.Start(_wacomServiceController));
-        if (result.Started)
-        {
-            RefreshWacomServiceStatus(result.RefreshedStatus);
-            if (result.ShouldRebindInputBackend)
-            {
-                _padInputSession.RebindInputBackend();
-            }
-
-            return;
-        }
-
-        if (!string.IsNullOrWhiteSpace(result.FailureStatusHeader))
-        {
-            _viewModel.WacomServiceStatusHeader = result.FailureStatusHeader;
-        }
-
-        RefreshWacomServiceStatus(result.RefreshedStatus);
-    }
-
-    private void MenuAbout()
-    {
-        MessageBox.Show(
-            "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
-            "About Tablet MIDI Pad",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
-    }
-
     private async Task InitializeAppAsync()
     {
         await _startupLifecycle.RunColdStartAsync(
@@ -235,20 +197,7 @@ public partial class MainWindow : Window
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        SaveSettings();
-    }
-
-    private void SaveSettings() => _settingsSession?.ApplySettings();
-
-    private void ResetDefaults() => _settingsSession?.ResetToDefaultsAndApply();
-
-    private void OpenPreferences() => _settingsSession?.RunPreferencesFlow();
-
-    private void ReconnectPenCore()
-    {
-        _viewModel.ZoneEditor.CommitCurrentZoneEdits();
-        _padInputSession.RebindInputBackend();
-        SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
+        _viewModel.ShellCommands.SaveSettingsCommand.Execute(null);
     }
 
     private void ToolbarPressureCurveDropdown_Click(object sender, RoutedEventArgs e)
@@ -379,11 +328,6 @@ public partial class MainWindow : Window
             _padState.ExpressKeyDiagnostics);
     }
 
-    private void RefreshWacomServiceStatus()
-    {
-        RefreshWacomServiceStatus(_wacomServiceController.GetStatus());
-    }
-
     private void RefreshWacomServiceStatus(WacomServiceStatus status)
     {
         WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
@@ -395,7 +339,6 @@ public partial class MainWindow : Window
     {
         _viewModel.ZoneEditor.LoadConfigIntoUi();
         SyncToolbar();
-        UpdateUiForCurrentConfig();
         RefreshPadZoneOverlay();
     }
 

@@ -18,16 +18,6 @@ internal interface IWorkflowCoordinator
     WorkflowSaveResult ValidateAndSave(AppConfig config);
 
     /// <summary>
-    /// Validates the current in-memory config and persists it to disk (Apply Settings flow).
-    /// </summary>
-    WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store);
-
-    /// <summary>
-    /// Persists the current config to disk after in-memory mutations (e.g. preferences apply).
-    /// </summary>
-    WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store);
-
-    /// <summary>
     /// Applies preferences result values into config and returns follow-up action decisions.
     /// </summary>
     PreferencesWorkflowResult ApplyPreferences(

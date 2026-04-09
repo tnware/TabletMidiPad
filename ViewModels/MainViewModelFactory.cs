@@ -25,7 +25,7 @@ internal sealed class MainViewModelFactory : IMainViewModelFactory
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
     }
 
-    public MainViewModel Create(MainViewModelActions actions)
+    public MainViewModel Create(MainShellCommandsViewModel shellCommands)
     {
         ZoneEditorViewModel zoneEditor = new(_runtimeConfig, _zoneEditorService);
         ZoneListViewModel zoneList = new(_runtimeConfig, _zoneActionWorkflowCoordinator, zoneEditor);
@@ -34,13 +34,6 @@ internal sealed class MainViewModelFactory : IMainViewModelFactory
             zoneList,
             zoneEditor,
             toolbar,
-            actions.SaveSettings,
-            actions.ResetDefaults,
-            actions.OpenPreferences,
-            actions.Exit,
-            actions.RefreshWacomStatus,
-            actions.ReconnectPen,
-            actions.StartWacomService,
-            actions.ShowAbout);
+            shellCommands);
     }
 }

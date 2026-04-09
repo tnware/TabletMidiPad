@@ -1,7 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Windows.Input;
 using TabletMidiPad;
+using TabletMidiPad.Services;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -37,14 +37,7 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
                 new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService())),
             new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService()),
             new ToolbarViewModel(new DesignRuntimeConfigService(), new DesignToolbarSession(), new DesignWorkflowCoordinator()),
-            saveSettings: () => { },
-            resetDefaults: () => { },
-            openPreferences: () => { },
-            exit: () => { },
-            refreshWacomStatus: () => { },
-            reconnectPen: () => { },
-            startWacomService: () => { },
-            showAbout: () => { })
+            new MainShellCommandsViewModel(new DesignMainShellCommandController()))
     {
     }
 
@@ -52,26 +45,12 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
         ZoneListViewModel zoneList,
         ZoneEditorViewModel zoneEditor,
         ToolbarViewModel toolbar,
-        Action saveSettings,
-        Action resetDefaults,
-        Action openPreferences,
-        Action exit,
-        Action refreshWacomStatus,
-        Action reconnectPen,
-        Action startWacomService,
-        Action showAbout)
+        MainShellCommandsViewModel shellCommands)
     {
         ZoneList = zoneList ?? throw new ArgumentNullException(nameof(zoneList));
         ZoneEditor = zoneEditor ?? throw new ArgumentNullException(nameof(zoneEditor));
         Toolbar = toolbar ?? throw new ArgumentNullException(nameof(toolbar));
-        SaveSettingsCommand = new DelegateCommand(saveSettings ?? throw new ArgumentNullException(nameof(saveSettings)));
-        ResetDefaultsCommand = new DelegateCommand(resetDefaults ?? throw new ArgumentNullException(nameof(resetDefaults)));
-        OpenPreferencesCommand = new DelegateCommand(openPreferences ?? throw new ArgumentNullException(nameof(openPreferences)));
-        ExitCommand = new DelegateCommand(exit ?? throw new ArgumentNullException(nameof(exit)));
-        RefreshWacomStatusCommand = new DelegateCommand(refreshWacomStatus ?? throw new ArgumentNullException(nameof(refreshWacomStatus)));
-        ReconnectPenCommand = new DelegateCommand(reconnectPen ?? throw new ArgumentNullException(nameof(reconnectPen)));
-        StartWacomServiceCommand = new DelegateCommand(startWacomService ?? throw new ArgumentNullException(nameof(startWacomService)));
-        AboutCommand = new DelegateCommand(showAbout ?? throw new ArgumentNullException(nameof(showAbout)));
+        ShellCommands = shellCommands ?? throw new ArgumentNullException(nameof(shellCommands));
     }
 
     public ZoneListViewModel ZoneList { get; }
@@ -214,21 +193,7 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
         set => Toolbar.IsInputBackendMouseChecked = value;
     }
 
-    public ICommand SaveSettingsCommand { get; }
-
-    public ICommand ResetDefaultsCommand { get; }
-
-    public ICommand OpenPreferencesCommand { get; }
-
-    public ICommand ExitCommand { get; }
-
-    public ICommand RefreshWacomStatusCommand { get; }
-
-    public ICommand ReconnectPenCommand { get; }
-
-    public ICommand StartWacomServiceCommand { get; }
-
-    public ICommand AboutCommand { get; }
+    public MainShellCommandsViewModel ShellCommands { get; }
 
     public string StatusText
     {
@@ -489,10 +454,6 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
 
         public Services.WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
 
-        public Services.WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, Services.IConfigStore store) => new(true, null);
-
-        public Services.WorkflowSaveResult PersistConfigToDisk(AppConfig config, Services.IConfigStore store) => new(true, null);
-
         public Services.PreferencesWorkflowResult ApplyPreferences(AppConfig config, Services.PreferencesDialogResult result, IntPtr midiOutHandle)
             => new(true, null, false, false);
 
@@ -503,5 +464,40 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
 
         public Services.ConnectedState BuildConnectedState(AppConfig config)
             => new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+    }
+
+    private sealed class DesignMainShellCommandController : IMainShellCommandController
+    {
+        public void SaveSettings()
+        {
+        }
+
+        public void ResetDefaults()
+        {
+        }
+
+        public void OpenPreferences()
+        {
+        }
+
+        public void Exit()
+        {
+        }
+
+        public void RefreshWacomStatus()
+        {
+        }
+
+        public void ReconnectPen()
+        {
+        }
+
+        public void StartWacomService()
+        {
+        }
+
+        public void ShowAbout()
+        {
+        }
     }
 }

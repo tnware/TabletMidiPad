@@ -134,17 +134,11 @@ public sealed class SettingsWorkflowTests
     {
         public WorkflowSaveResult ValidateAndSaveResult { get; set; } = new(true, null);
 
-        public WorkflowSaveResult PersistConfigToDiskResult { get; set; } = new(true, null);
-
         public PreferencesWorkflowResult ApplyPreferencesResult { get; set; } = new(true, null, false, false);
 
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
         public WorkflowSaveResult ValidateAndSave(AppConfig config) => ValidateAndSaveResult;
-
-        public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => ValidateAndSaveResult;
-
-        public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store) => PersistConfigToDiskResult;
 
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => ApplyPreferencesResult;
@@ -178,10 +172,6 @@ public sealed class SettingsWorkflowTests
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
         public WorkflowSaveResult ValidateAndSave(AppConfig config) => throw new System.InvalidOperationException("boom");
-
-        public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => throw new System.InvalidOperationException("boom");
-
-        public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store) => throw new System.NotImplementedException();
 
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => throw new NotImplementedException();

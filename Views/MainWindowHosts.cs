@@ -103,6 +103,36 @@ public partial class MainWindow
         public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
     }
 
+    private sealed class MainShellCommandHost : IMainShellCommandHost
+    {
+        private readonly MainWindow _w;
+
+        public MainShellCommandHost(MainWindow window) => _w = window;
+
+        public void CommitCurrentZoneEdits() => _w._viewModel.ZoneEditor.CommitCurrentZoneEdits();
+
+        public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
+
+        public void SetWacomServiceState(string statusHeader, bool startEnabled)
+        {
+            _w._viewModel.WacomServiceStatusHeader = statusHeader;
+            _w._viewModel.IsWacomServiceStartEnabled = startEnabled;
+        }
+
+        public void SetWacomServiceStatusHeader(string statusHeader) => _w._viewModel.WacomServiceStatusHeader = statusHeader;
+
+        public void CloseShell() => _w.Close();
+
+        public void ShowAboutDialog()
+        {
+            MessageBox.Show(
+                "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
+                "About Tablet MIDI Pad",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
     private sealed class StartupHost : IStartupShellHost
     {
         private readonly MainWindow _w;
