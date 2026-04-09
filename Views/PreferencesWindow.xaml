@@ -32,24 +32,37 @@
                         <Grid x:Name="TabControlRoot"
                               ClipToBounds="False"
                               KeyboardNavigation.TabNavigation="Local">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <!-- Headers in their own row so tab content never paints over pill bottoms. -->
-                            <TabPanel x:Name="HeaderPanel"
-                                      Grid.Row="0"
-                                      Panel.ZIndex="1"
-                                      IsItemsHost="True"
-                                      Background="Transparent"
-                                      Margin="0,0,0,10"/>
-                            <Border Grid.Row="1"
-                                    Background="Transparent"
-                                    ClipToBounds="False">
-                                <ContentPresenter x:Name="PART_SelectedContentHost"
-                                                  Margin="0"
-                                                  ContentSource="SelectedContent"/>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource SurfaceBrush}"
+                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                    BorderThickness="0,0,1,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel x:Name="HeaderPanel"
+                                              IsItemsHost="True"
+                                              Background="Transparent"
+                                              Margin="12,48,12,12"/>
+                                </ScrollViewer>
                             </Border>
+
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Margin="32,38,32,18">
+                                    <TextBlock Text="Preferences" Foreground="{StaticResource TextPrimaryBrush}" FontSize="28" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Separate application routing from device behavior and hardware controls." Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  Grid.Row="1"
+                                                  Margin="32,0,32,0"
+                                                  ContentSource="SelectedContent"/>
+                            </Grid>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -58,34 +71,47 @@
 
         <Style TargetType="TabItem">
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-            <Setter Property="Padding" Value="14,9"/>
-            <Setter Property="Margin" Value="0,0,8,2"/>
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              RecognizesAccessKey="True"
-                                              ContentSource="Header"/>
-                        </Border>
+                        <Grid x:Name="RootGrid" Margin="{TemplateBinding Margin}">
+                            <Border x:Name="TabBorder"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="6"
+                                    SnapsToDevicePixels="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Rectangle x:Name="SelectionIndicator"
+                                               Fill="{StaticResource AccentBrush}"
+                                               Width="3" Height="16"
+                                               VerticalAlignment="Center"
+                                               RadiusX="1.5" RadiusY="1.5"
+                                               Visibility="Hidden"/>
+                                    <ContentPresenter Grid.Column="1"
+                                                      Margin="{TemplateBinding Padding}"
+                                                      HorizontalAlignment="Left"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True"
+                                                      ContentSource="Header"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentSurfaceBrush}"/>
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
+                                <Setter TargetName="SelectionIndicator" Property="Visibility" Value="Visible"/>
                                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource PanelBorderStrongBrush}"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -203,20 +229,20 @@
         </Style>
     </Window.Resources>
 
-    <Grid Margin="22">
+    <Grid Margin="0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Text="Preferences" Foreground="{StaticResource TextPrimaryBrush}" FontSize="24" FontWeight="SemiBold"/>
-            <TextBlock Text="Separate application routing from device behavior and hardware controls." Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0"/>
-        </StackPanel>
-
-        <TabControl Grid.Row="1">
-            <TabItem Header="Application">
+        <TabControl Grid.Row="0">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE71D;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Application" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
                               HorizontalContentAlignment="Stretch">
                     <StackPanel>
@@ -286,7 +312,13 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Input Device">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE729;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Input Device" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
                               HorizontalContentAlignment="Stretch">
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
@@ -371,7 +403,13 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Pen Buttons">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7ED;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Pen Buttons" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
                               HorizontalContentAlignment="Stretch">
                     <Grid>
@@ -534,7 +572,13 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Express Keys">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7AC;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Express Keys" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
                               HorizontalContentAlignment="Stretch">
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
@@ -547,7 +591,13 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Appearance">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE790;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
+                        <TextBlock Text="Appearance" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer Margin="0,14,0,0"
                               HorizontalContentAlignment="Stretch">
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
@@ -561,13 +611,12 @@
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="2"
-                Margin="0,18,0,0"
+        <Border Grid.Row="1"
+                Margin="0"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="16"
-                Padding="16">
+                BorderThickness="0,1,0,0"
+                Padding="22,16">
             <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
