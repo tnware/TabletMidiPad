@@ -6,7 +6,6 @@
         xmlns:views="clr-namespace:TabletMidiPad.Views"
         xmlns:vm="clr-namespace:TabletMidiPad.ViewModels"
         mc:Ignorable="d"
-        d:IsDesignTimeCreatable="False"
         Title="Tablet MIDI Pad"
         Width="1280"
         Height="780"
@@ -89,16 +88,20 @@
                         <Border x:Name="Border"
                                 Background="Transparent"
                                 CornerRadius="8"
-                                Padding="24,8,32,8">
+                                Padding="12,8,32,8">
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="18"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <ContentPresenter Grid.Column="0"
+                                                  ContentSource="Icon"
+                                                  VerticalAlignment="Center"/>
+                                <ContentPresenter Grid.Column="1"
                                                   ContentSource="Header"
                                                   RecognizesAccessKey="True"/>
-                                <TextBlock Grid.Column="1"
+                                <TextBlock Grid.Column="2"
                                            Text="{TemplateBinding InputGestureText}"
                                            Foreground="{StaticResource TextSoftBrush}"
                                            Margin="24,0,0,0"
@@ -139,36 +142,72 @@
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Save Settings"
                           Command="{Binding ShellCommands.SaveSettingsCommand}"
-                          InputGestureText="Ctrl+S"/>
+                          InputGestureText="Ctrl+S">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE74E;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Reset to Defaults"
-                          Command="{Binding ShellCommands.ResetDefaultsCommand}"/>
+                          Command="{Binding ShellCommands.ResetDefaultsCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE777;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Preferences..."
-                          Command="{Binding ShellCommands.OpenPreferencesCommand}"/>
+                          Command="{Binding ShellCommands.OpenPreferencesCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE713;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="E_xit"
-                          Command="{Binding ShellCommands.ExitCommand}"/>
+                          Command="{Binding ShellCommands.ExitCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE711;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Device"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_Refresh Wacom Status"
                           Name="MenuRefreshWacom"
-                          Command="{Binding ShellCommands.RefreshWacomStatusCommand}"/>
+                          Command="{Binding ShellCommands.RefreshWacomStatusCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE72C;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="Reconnect _Pen Input"
-                          Command="{Binding ShellCommands.ReconnectPenCommand}"/>
+                          Command="{Binding ShellCommands.ReconnectPenCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE72C;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Start Wacom Service"
                           Name="MenuStartWacomService"
                           Command="{Binding ShellCommands.StartWacomServiceCommand}"
-                          IsEnabled="{Binding IsWacomServiceStartEnabled}"/>
+                          IsEnabled="{Binding IsWacomServiceStartEnabled}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE768;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Name="MenuWacomServiceStatus"
                           Header="{Binding WacomServiceStatusHeader}"
-                          IsEnabled="False"/>
+                          IsEnabled="False">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xEA1F;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Help"
                       Style="{StaticResource TopLevelMenuItemWithSub}">
                 <MenuItem Header="_About"
-                          Command="{Binding ShellCommands.AboutCommand}"/>
+                          Command="{Binding ShellCommands.AboutCommand}">
+                    <MenuItem.Icon>
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xEA1F;"/>
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 
@@ -251,15 +290,36 @@
             <StackPanel Orientation="Horizontal"
                         DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
-                        Content="Save"
-                        Command="{Binding ShellCommands.SaveSettingsCommand}"/>
+                        Command="{Binding ShellCommands.SaveSettingsCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE74E;"/>
+                        <TextBlock Text="Save"/>
+                    </StackPanel>
+                </Button>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"
-                        Content="Add Zone"
-                        Command="{Binding ZoneList.AddZoneCommand}"/>
+                        Command="{Binding ZoneList.AddZoneCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE710;"/>
+                        <TextBlock Text="Add Zone"/>
+                    </StackPanel>
+                </Button>
                 <Button Style="{StaticResource ToolbarButton}"
-                        Content="Auto Tile"
-                        Command="{Binding ZoneList.AutoLayoutCommand}"/>
+                        Command="{Binding ZoneList.AutoLayoutCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xECA5;"/>
+                        <TextBlock Text="Auto Tile"/>
+                    </StackPanel>
+                </Button>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <!-- Pressure split button: toggle + curve dropdown -->
                 <Border x:Name="PressureSplitBorder"
@@ -300,9 +360,15 @@
                                     </Setter>
                                 </Style>
                             </ToggleButton.Style>
-                            <TextBlock Name="ToolbarPressureLabel"
-                                       Text="{Binding Toolbar.ToolbarPressureLabelText}"
-                                       FontSize="11"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                           FontSize="12"
+                                           Margin="0,0,6,0"
+                                           Text="&#xE76D;"/>
+                                <TextBlock Name="ToolbarPressureLabel"
+                                           Text="{Binding Toolbar.ToolbarPressureLabelText}"
+                                           FontSize="11"/>
+                            </StackPanel>
                         </ToggleButton>
                         <Border Width="1"
                                 Background="{StaticResource PanelBorderBrush}"
@@ -421,9 +487,15 @@
                                 Style="{StaticResource ToolbarButton}"
                                 Padding="8,4"
                                 Command="{Binding Toolbar.CycleInputBackendCommand}">
-                            <TextBlock Name="ToolbarInputBackendLabel"
-                                       Text="{Binding Toolbar.ToolbarInputBackendLabelText}"
-                                       FontSize="11"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                           FontSize="12"
+                                           Margin="0,0,6,0"
+                                           Text="&#xE7C9;"/>
+                                <TextBlock Name="ToolbarInputBackendLabel"
+                                           Text="{Binding Toolbar.ToolbarInputBackendLabelText}"
+                                           FontSize="11"/>
+                            </StackPanel>
                         </Button>
                         <Border Width="1"
                                 Margin="2,3"
@@ -431,9 +503,10 @@
                         <Button Style="{StaticResource ToolbarButton}"
                                 Padding="6,4"
                                 Click="ToolbarInputBackendDropdown_Click">
-                    <TextBlock Text="▾"
-                                        FontSize="11"
-                                        Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                       Text="&#xE70D;"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
                             <Button.ContextMenu>
                                 <ContextMenu Name="InputBackendMenu"
                                              Background="{StaticResource SurfaceRaisedBrush}"
@@ -508,8 +581,15 @@
                 </Border>
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
                               Style="{StaticResource ToolbarToggle}"
-                              Content="Latch On Enter"
-                              IsChecked="{Binding Toolbar.AllowZoneSwitchWhilePressed, Mode=TwoWay}"/>
+                              IsChecked="{Binding Toolbar.AllowZoneSwitchWhilePressed, Mode=TwoWay}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="12"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE718;"/>
+                        <TextBlock Text="Latch On Enter"/>
+                    </StackPanel>
+                </ToggleButton>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <ComboBox Name="TabletDeviceComboBox"
                           MinWidth="120"
@@ -520,8 +600,15 @@
                           IsEnabled="{Binding IsTabletDevicePickerEnabled}"
                           SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
                 <Button Style="{StaticResource ToolbarButton}"
-                        Content="Reconnect"
-                        Command="{Binding ShellCommands.ReconnectPenCommand}"/>
+                        Command="{Binding ShellCommands.ReconnectPenCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE72C;"/>
+                        <TextBlock Text="Reconnect"/>
+                    </StackPanel>
+                </Button>
 
             </StackPanel>
 
@@ -711,21 +798,30 @@
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Add zone"
                                     Command="{Binding ZoneList.AddZoneCommand}"
-                                    Content="+"/>
+                                    Content="&#xE710;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
 
                             <Button Name="RemoveZoneButton"
                                     Grid.Column="2"
                                     Style="{StaticResource ZoneIconButtonStyle}"
                                     ToolTip="Remove selected zone"
                                     Command="{Binding ZoneList.RemoveZoneCommand}"
-                                    Content="−"/>
+                                    Content="&#xE74D;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
 
                             <Button Name="AutoLayoutButton"
                                     Grid.Column="4"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     MinWidth="86"
-                                    Command="{Binding ZoneList.AutoLayoutCommand}"
-                                    Content="Auto Tile"/>
+                                    Command="{Binding ZoneList.AutoLayoutCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                               FontSize="13"
+                                               Margin="0,0,6,0"
+                                               Text="&#xECA5;"/>
+                                    <TextBlock Text="Auto Tile"/>
+                                </StackPanel>
+                            </Button>
                         </Grid>
 
                         <!-- Selected zone properties -->
@@ -919,8 +1015,15 @@
 
                         <Button Margin="0,14,0,0"
                                 Padding="10,7"
-                                Command="{Binding ShellCommands.SaveSettingsCommand}"
-                                Content="Apply Settings"/>
+                                Command="{Binding ShellCommands.SaveSettingsCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                           FontSize="13"
+                                           Margin="0,0,6,0"
+                                           Text="&#xE713;"/>
+                                <TextBlock Text="Apply Settings"/>
+                            </StackPanel>
+                        </Button>
 
                         <TextBlock Name="SettingsResultText"
                                    Margin="0,8,0,0"
