@@ -13,10 +13,10 @@ public sealed class StartupLifecycleServiceTests
     public void LoadPersistedConfig_DelegatesToLifecycleCoordinator()
     {
         var inner = new LifecycleCoordinator();
-        var sut = new StartupLifecycleService(inner);
-        var store = new FixedConfigStore(new AppConfig { DawPortName = "X" });
+        var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { DawPortName = "X" }));
+        var sut = new StartupLifecycleService(inner, runtime);
 
-        AppConfig loaded = sut.LoadPersistedConfig(store);
+        AppConfig loaded = sut.LoadPersistedConfig();
 
         Assert.Equal("X", loaded.DawPortName);
     }
@@ -24,8 +24,8 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public async Task RunColdStartAsync_ReplacesConfigLoadsUiShellThenMidi_WhenWacomRunning()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
-        var store = new FixedConfigStore(new AppConfig { DawPortName = "ColdStart" });
+        var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { DawPortName = "ColdStart" }));
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), runtime);
         var host = new RecordingStartupHost
         {
             StatusToReturn = new WacomServiceStatus("running", CanStart: false, IsServiceRunning: true),
@@ -34,13 +34,12 @@ public sealed class StartupLifecycleServiceTests
         var engine = new RecordingMidiEngine { Succeed = true };
         bool routingReady = false;
 
-        await sut.RunColdStartAsync(store, host, engine, vm, a => a.Invoke(), () => routingReady = true);
+        await sut.RunColdStartAsync(host, engine, vm, a => a.Invoke(), () => routingReady = true);
 
-        Assert.Equal("ColdStart", host.Config.DawPortName);
+        Assert.Equal("ColdStart", runtime.Current.DawPortName);
         Assert.Equal(
             new[]
             {
-                nameof(RecordingStartupHost.ReplaceRuntimeConfig),
                 nameof(RecordingStartupHost.LoadConfigIntoUi),
                 nameof(RecordingStartupHost.GetWacomServiceStatus),
                 nameof(RecordingStartupHost.ApplyWacomServiceMenuState),
@@ -55,8 +54,8 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public async Task RunColdStartAsync_WhenWacomStoppedAuto_AppliesBlockedNotTabletInit()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
-        var store = new FixedConfigStore(new AppConfig { InputBackendMode = "Auto" });
+        var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { InputBackendMode = "Auto" }));
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), runtime);
         var host = new RecordingStartupHost
         {
             StatusToReturn = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false),
@@ -64,7 +63,7 @@ public sealed class StartupLifecycleServiceTests
         var vm = new MainViewModel();
         var engine = new RecordingMidiEngine { Succeed = true };
 
-        await sut.RunColdStartAsync(store, host, engine, vm, a => a.Invoke(), () => { });
+        await sut.RunColdStartAsync(host, engine, vm, a => a.Invoke(), () => { });
 
         Assert.Contains(nameof(RecordingStartupHost.ApplyTabletStackBlockedAtStartup), host.CallOrder);
         Assert.DoesNotContain(nameof(RecordingStartupHost.InitializeTabletInput), host.CallOrder);
@@ -74,7 +73,7 @@ public sealed class StartupLifecycleServiceTests
     public async Task RunStartupMidiSequenceAsync_OnSuccess_CallsRoutingReadyAndHidesMidiPanel()
     {
         var inner = new LifecycleCoordinator();
-        var sut = new StartupLifecycleService(inner);
+        var sut = new StartupLifecycleService(inner, new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         var vm = new MainViewModel();
         var engine = new RecordingMidiEngine { Succeed = true };
         bool routingReady = false;
@@ -95,7 +94,7 @@ public sealed class StartupLifecycleServiceTests
     public async Task RunStartupMidiSequenceAsync_OnFailure_SetsErrorPresentation()
     {
         var inner = new LifecycleCoordinator();
-        var sut = new StartupLifecycleService(inner);
+        var sut = new StartupLifecycleService(inner, new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         var vm = new MainViewModel();
         var engine = new RecordingMidiEngine { Succeed = false, ErrorMessage = "port missing" };
 
@@ -117,7 +116,7 @@ public sealed class StartupLifecycleServiceTests
     public void ShutdownForExit_ShutsDownMidiTablet_AppliesState_DisposesBackend()
     {
         var inner = new LifecycleCoordinator();
-        var sut = new StartupLifecycleService(inner);
+        var sut = new StartupLifecycleService(inner, new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         var midi = new RecordingMidiEngine { Succeed = true };
         var wintab = new RecordingWintabBackend();
         var inputCoord = new RecordingInputBackendCoordinator();
@@ -159,7 +158,7 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public void RunPostConfigLoadShellPhase_WhenServiceStopped_AndAuto_CallsBlockedNotInit()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         bool init = false;
         bool blocked = false;
         WacomServiceStatus? menuStatus = null;
@@ -179,7 +178,7 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public void RunPostConfigLoadShellPhase_WhenServiceRunning_CallsInitNotBlocked()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         bool init = false;
         bool blocked = false;
 
@@ -197,7 +196,7 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public void BuildTabletStackBlockedLifecycleResult_WintabOnly_UsesUnavailableLabel()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         var wacom = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
         var cfg = new AppConfig { InputBackendMode = "Wintab Only" };
 
@@ -211,7 +210,7 @@ public sealed class StartupLifecycleServiceTests
     [Fact]
     public void BuildTabletStackBlockedLifecycleResult_ServiceNotFound_MentionsInstall()
     {
-        var sut = new StartupLifecycleService(new LifecycleCoordinator());
+        var sut = new StartupLifecycleService(new LifecycleCoordinator(), new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)));
         var wacom = new WacomServiceStatus("Service: not found", CanStart: false, IsServiceRunning: false);
         var cfg = new AppConfig { InputBackendMode = "Auto" };
 
@@ -225,17 +224,9 @@ public sealed class StartupLifecycleServiceTests
     {
         public List<string> CallOrder { get; } = new();
 
-        public AppConfig Config { get; private set; } = AppConfig.Default;
-
         public WacomServiceStatus StatusToReturn { get; init; } = new("running", CanStart: false, IsServiceRunning: true);
 
-        public void ReplaceRuntimeConfig(AppConfig config)
-        {
-            CallOrder.Add(nameof(ReplaceRuntimeConfig));
-            Config = config;
-        }
-
-        public void LoadConfigIntoUi(AppConfig config)
+        public void LoadConfigIntoUi()
         {
             CallOrder.Add(nameof(LoadConfigIntoUi));
         }

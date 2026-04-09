@@ -47,7 +47,8 @@ internal static class AppBootstrapper
         container.AddSingleton<IWacomServiceWorkflowCoordinator>(_ => new WacomServiceWorkflowCoordinator());
         container.AddSingleton<ILifecycleCoordinator>(_ => new LifecycleCoordinator());
         container.AddSingleton<IStartupLifecycleService>(c => new StartupLifecycleService(
-            c.GetRequiredService<ILifecycleCoordinator>()));
+            c.GetRequiredService<ILifecycleCoordinator>(),
+            c.GetRequiredService<IRuntimeConfigService>()));
         container.AddSingleton<IWintabInputBridge>(c => new WintabInputBridge(
             c.GetRequiredService<IWintabEventAdapter>(),
             c.GetRequiredService<IInputBackendCoordinator>()));
@@ -59,6 +60,12 @@ internal static class AppBootstrapper
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
         container.AddSingleton<IPadInteractionOutcomeApplier>(c => new PadInteractionOutcomeApplier(
             c.GetRequiredService<IMidiEngine>()));
+        container.AddSingleton<IMainViewModelFactory>(c => new MainViewModelFactory(
+            c.GetRequiredService<IRuntimeConfigService>(),
+            c.GetRequiredService<IZoneEditorService>(),
+            c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
+            c.GetRequiredService<IToolbarConfigService>(),
+            c.GetRequiredService<IWorkflowCoordinator>()));
 
         container.AddTransient(CreateMainWindow);
 
@@ -78,7 +85,6 @@ internal static class AppBootstrapper
     private static MainWindow CreateMainWindow(SimpleContainer c)
     {
         return new MainWindow(
-            c.GetRequiredService<IConfigStore>(),
             c.GetRequiredService<IRuntimeConfigService>(),
             c.GetRequiredService<IMidiEngine>(),
             c.GetRequiredService<IWacomServiceController>(),
@@ -86,7 +92,6 @@ internal static class AppBootstrapper
             c.GetRequiredService<ITabletDevicePickerSyncService>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
-            c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IInputFallbackService>(),
@@ -99,9 +104,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IStartupLifecycleService>(),
             c.GetRequiredService<IWintabInputBridge>(),
             c.GetRequiredService<IPadPresentationCoordinator>(),
-            c.GetRequiredService<IToolbarConfigService>(),
-            c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
+            c.GetRequiredService<IMainViewModelFactory>(),
             c.GetRequiredService<IPadInteractionOutcomeApplier>());
     }
 }
-

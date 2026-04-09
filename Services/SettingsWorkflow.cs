@@ -12,7 +12,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     private readonly IWorkflowCoordinator _workflowCoordinator;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
-    private readonly IConfigStore _configStore;
+    private readonly IRuntimeConfigService _runtimeConfig;
     private readonly IMidiEngine _midiEngine;
     private readonly IPadInputController _padInputSession;
 
@@ -24,7 +24,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         IWorkflowCoordinator workflowCoordinator,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
-        IConfigStore configStore,
+        IRuntimeConfigService runtimeConfig,
         IMidiEngine midiEngine,
         IPadInputController padInputSession)
     {
@@ -32,7 +32,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
         _preferencesDialogService = preferencesDialogService ?? throw new ArgumentNullException(nameof(preferencesDialogService));
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
-        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
+        _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _padInputSession = padInputSession ?? throw new ArgumentNullException(nameof(padInputSession));
     }
@@ -43,7 +43,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         try
         {
             _host.CommitCurrentZoneEdits();
-            WorkflowSaveResult persistResult = _workflowCoordinator.ApplySettingsAndPersist(_host.Config, _configStore);
+            WorkflowSaveResult persistResult = ValidateAndPersistCurrentConfig();
             if (!persistResult.Success)
             {
                 _host.SetSettingsResult(persistResult.ErrorMessage ?? "Settings could not be applied.", SettingsResultKind.Error);
@@ -65,11 +65,11 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     {
         int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(
             _host.PadState.ExpressKeyCount,
-            _host.Config.ExpressKeys.Count);
-        ExpressKeyConfig.EnsureCount(_host.Config.ExpressKeys, effectiveExpressKeyCount);
+            _runtimeConfig.Current.ExpressKeys.Count);
+        ExpressKeyConfig.EnsureCount(_runtimeConfig.Current.ExpressKeys, effectiveExpressKeyCount);
         PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(
             _host.OwnerWindow,
-            _host.Config,
+            _runtimeConfig.Current,
             effectiveExpressKeyCount);
         if (result is null)
         {
@@ -77,14 +77,14 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         }
 
         _host.CommitCurrentZoneEdits();
-        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_host.Config, result, IntPtr.Zero);
+        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_runtimeConfig.Current, result, IntPtr.Zero);
         if (!applyResult.SaveSucceeded)
         {
             _host.SetSettingsResult(applyResult.ErrorMessage ?? "Preferences could not be applied.", SettingsResultKind.Error);
             return;
         }
 
-        WorkflowSaveResult persistResult = _workflowCoordinator.PersistConfigToDisk(_host.Config, _configStore);
+        WorkflowSaveResult persistResult = ValidateAndPersistCurrentConfig();
         if (!persistResult.Success)
         {
             _host.SetSettingsResult(persistResult.ErrorMessage ?? "Preferences could not be saved.", SettingsResultKind.Error);
@@ -113,17 +113,36 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     /// <inheritdoc />
     public void ResetToDefaultsAndApply()
     {
-        _host.ReplaceConfig(AppConfig.Default);
-        _zoneConfigurationService.AutoTileZones(_host.Config);
-        _host.LoadConfigIntoUi(_host.Config);
+        _runtimeConfig.ResetToDefaults();
+        _zoneConfigurationService.AutoTileZones(_runtimeConfig.Current);
+        _host.LoadConfigIntoUi();
         ApplySettings();
     }
 
     private void RestartMidi()
     {
-        _midiEngine.Restart(_host.Config);
+        _midiEngine.Restart(_runtimeConfig.Current);
         _midiEngine.ClearCachedValues();
         _host.UpdateUiForCurrentConfig();
         _host.RefreshPadZoneOverlay();
+    }
+
+    private WorkflowSaveResult ValidateAndPersistCurrentConfig()
+    {
+        WorkflowSaveResult validation = _workflowCoordinator.ValidateAndSave(_runtimeConfig.Current);
+        if (!validation.Success)
+        {
+            return validation;
+        }
+
+        try
+        {
+            _runtimeConfig.SaveCurrent();
+            return new WorkflowSaveResult(true, null);
+        }
+        catch (Exception ex)
+        {
+            return new WorkflowSaveResult(false, ex.Message);
+        }
     }
 }

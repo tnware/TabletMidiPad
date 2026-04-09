@@ -10,51 +10,49 @@ namespace TabletMidiPad.Services;
 internal sealed class StartupLifecycleService : IStartupLifecycleService
 {
     private readonly ILifecycleCoordinator _lifecycleCoordinator;
+    private readonly IRuntimeConfigService _runtimeConfig;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StartupLifecycleService"/> class.
     /// </summary>
-    public StartupLifecycleService(ILifecycleCoordinator lifecycleCoordinator)
+    public StartupLifecycleService(ILifecycleCoordinator lifecycleCoordinator, IRuntimeConfigService runtimeConfig)
     {
         _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
+        _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
     }
 
     /// <inheritdoc />
-    public AppConfig LoadPersistedConfig(IConfigStore store)
+    public AppConfig LoadPersistedConfig()
     {
-        ArgumentNullException.ThrowIfNull(store);
-        return _lifecycleCoordinator.LoadStartupConfig(store);
+        return _lifecycleCoordinator.LoadStartupConfig(new RuntimeConfigStore(_runtimeConfig));
     }
 
     /// <inheritdoc />
     public async Task RunColdStartAsync(
-        IConfigStore configStore,
         IStartupShellHost host,
         IMidiEngine midiEngine,
         MainViewModel viewModel,
         Action<Action> marshalToUiThread,
         Action onMidiRoutingReady)
     {
-        ArgumentNullException.ThrowIfNull(configStore);
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(midiEngine);
         ArgumentNullException.ThrowIfNull(viewModel);
         ArgumentNullException.ThrowIfNull(marshalToUiThread);
         ArgumentNullException.ThrowIfNull(onMidiRoutingReady);
 
-        AppConfig config = LoadPersistedConfig(configStore);
-        host.ReplaceRuntimeConfig(config);
-        host.LoadConfigIntoUi(host.Config);
+        LoadPersistedConfig();
+        host.LoadConfigIntoUi();
         RunPostConfigLoadShellPhase(new StartupShellContext(
             GetWacomServiceStatus: host.GetWacomServiceStatus,
             ApplyWacomServiceMenuState: host.ApplyWacomServiceMenuState,
-            Config: host.Config,
+            Config: _runtimeConfig.Current,
             InitializeTabletWhenReady: host.InitializeTabletInput,
             ApplyTabletBlockedByWacomService: host.ApplyTabletStackBlockedAtStartup));
 
         await RunStartupMidiSequenceAsync(
             midiEngine,
-            host.Config,
+            _runtimeConfig.Current,
             viewModel,
             marshalToUiThread,
             onMidiRoutingReady);
@@ -199,5 +197,23 @@ internal sealed class StartupLifecycleService : IStartupLifecycleService
             wintabBackend);
         applyTabletShutdownState(tabletShutdown);
         wintabBackend.Dispose();
+    }
+
+    private sealed class RuntimeConfigStore : IConfigStore
+    {
+        private readonly IRuntimeConfigService _runtimeConfig;
+
+        public RuntimeConfigStore(IRuntimeConfigService runtimeConfig)
+        {
+            _runtimeConfig = runtimeConfig;
+        }
+
+        public AppConfig Load() => _runtimeConfig.Load();
+
+        public void Save(AppConfig config)
+        {
+            _runtimeConfig.Replace(config);
+            _runtimeConfig.SaveCurrent();
+        }
     }
 }

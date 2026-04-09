@@ -13,7 +13,7 @@ public sealed class SettingsWorkflowTests
     public void ApplySettings_WhenPersistFails_SetsErrorAndSkipsUiRefresh()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ApplySettingsAndPersistResult = new WorkflowSaveResult(false, "bad") };
+        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(false, "bad") };
         var sut = CreateController(host, workflow);
 
         sut.ApplySettings();
@@ -30,7 +30,7 @@ public sealed class SettingsWorkflowTests
     public void ApplySettings_WhenPersistSucceeds_RefreshesUiAndSuccessMessage()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ApplySettingsAndPersistResult = new WorkflowSaveResult(true, null) };
+        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
         var sut = CreateController(host, workflow);
 
         sut.ApplySettings();
@@ -61,7 +61,7 @@ public sealed class SettingsWorkflowTests
     public void ResetToDefaultsAndApply_ReplacesConfigAutoTilesLoadsAndApplies()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ApplySettingsAndPersistResult = new WorkflowSaveResult(true, null) };
+        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
         var zones = new RecordingZoneConfigurationService();
         var sut = CreateController(host, workflow, zones);
 
@@ -79,12 +79,14 @@ public sealed class SettingsWorkflowTests
         IWorkflowCoordinator workflow,
         RecordingZoneConfigurationService? zones = null)
     {
+        var runtime = new RuntimeConfigService(new MemoryConfigStore());
+        runtime.Replace(host.Config);
         return new SettingsWorkflow(
             host,
             workflow,
             new StubPreferencesDialogService(),
             zones ?? new RecordingZoneConfigurationService(),
-            new MemoryConfigStore(),
+            runtime,
             new StubMidiEngine(),
             new StubPadInputController());
     }
@@ -111,12 +113,6 @@ public sealed class SettingsWorkflowTests
 
         public List<(string Message, SettingsResultKind Kind)> SettingsResults { get; } = new();
 
-        public void ReplaceConfig(AppConfig config)
-        {
-            ReplaceConfigCount++;
-            Config = config;
-        }
-
         public void CommitCurrentZoneEdits() => CommitCurrentZoneEditsCount++;
 
         public void SetSettingsResult(string message, SettingsResultKind kind) => SettingsResults.Add((message, kind));
@@ -127,16 +123,16 @@ public sealed class SettingsWorkflowTests
 
         public void SyncToolbar() => SyncToolbarCount++;
 
-        public void LoadConfigIntoUi(AppConfig config)
+        public void LoadConfigIntoUi()
         {
             LoadConfigIntoUiCount++;
-            Config = config;
+            ReplaceConfigCount++;
         }
     }
 
     private sealed class StubWorkflowCoordinator : IWorkflowCoordinator
     {
-        public WorkflowSaveResult ApplySettingsAndPersistResult { get; set; } = new(true, null);
+        public WorkflowSaveResult ValidateAndSaveResult { get; set; } = new(true, null);
 
         public WorkflowSaveResult PersistConfigToDiskResult { get; set; } = new(true, null);
 
@@ -144,9 +140,9 @@ public sealed class SettingsWorkflowTests
 
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
-        public WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
+        public WorkflowSaveResult ValidateAndSave(AppConfig config) => ValidateAndSaveResult;
 
-        public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => ApplySettingsAndPersistResult;
+        public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => ValidateAndSaveResult;
 
         public WorkflowSaveResult PersistConfigToDisk(AppConfig config, IConfigStore store) => PersistConfigToDiskResult;
 
@@ -181,7 +177,7 @@ public sealed class SettingsWorkflowTests
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
-        public WorkflowSaveResult ValidateAndSave(AppConfig config) => throw new System.NotImplementedException();
+        public WorkflowSaveResult ValidateAndSave(AppConfig config) => throw new System.InvalidOperationException("boom");
 
         public WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, IConfigStore store) => throw new System.InvalidOperationException("boom");
 

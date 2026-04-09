@@ -7,19 +7,9 @@ namespace TabletMidiPad.Services;
 internal interface IStartupShellHost
 {
     /// <summary>
-    /// Installs the loaded runtime configuration (replaces the window's active <see cref="AppConfig"/> reference).
+    /// Pushes the active runtime configuration into bound editors, zone list, toolbar, and overlay.
     /// </summary>
-    void ReplaceRuntimeConfig(AppConfig config);
-
-    /// <summary>
-    /// Current runtime configuration after <see cref="ReplaceRuntimeConfig"/>.
-    /// </summary>
-    AppConfig Config { get; }
-
-    /// <summary>
-    /// Pushes the given configuration into bound editors, zone list, toolbar, and overlay.
-    /// </summary>
-    void LoadConfigIntoUi(AppConfig config);
+    void LoadConfigIntoUi();
 
     /// <summary>
     /// Reads Wacom Professional Service state for startup shell decisions.

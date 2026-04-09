@@ -88,10 +88,6 @@ public partial class MainWindow
 
         public Window OwnerWindow => _w;
 
-        public AppConfig Config => _w.Config;
-
-        public void ReplaceConfig(AppConfig config) => _w._runtimeConfig.Replace(config);
-
         public PadInputControllerState PadState => _w._padState;
 
         public void CommitCurrentZoneEdits() => _w._viewModel.ZoneEditor.CommitCurrentZoneEdits();
@@ -104,7 +100,7 @@ public partial class MainWindow
 
         public void SyncToolbar() => _w.SyncToolbar();
 
-        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi();
+        public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
     }
 
     private sealed class StartupHost : IStartupShellHost
@@ -113,11 +109,7 @@ public partial class MainWindow
 
         public StartupHost(MainWindow window) => _w = window;
 
-        public AppConfig Config => _w.Config;
-
-        public void ReplaceRuntimeConfig(AppConfig config) => _w._runtimeConfig.Replace(config);
-
-        public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi();
+        public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
 
         public WacomServiceStatus GetWacomServiceStatus() => _w._wacomServiceController.GetStatus();
 
