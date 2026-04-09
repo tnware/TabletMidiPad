@@ -13,7 +13,7 @@ internal interface ISettingsWorkflow
     /// <summary>
     /// Preferences dialog, apply, persist, MIDI restart or UI refresh, optional input rebind, toolbar sync.
     /// </summary>
-    void RunPreferencesFlow();
+    Task RunPreferencesFlow();
 
     /// <summary>
     /// Reset config to defaults, auto-tile zones, reload UI, then <see cref="ApplySettings"/>.

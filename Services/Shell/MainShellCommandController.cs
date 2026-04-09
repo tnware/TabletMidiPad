@@ -34,7 +34,7 @@ internal sealed class MainShellCommandController : IMainShellCommandController
 
     public void ResetDefaults() => _settingsWorkflow.ResetToDefaultsAndApply();
 
-    public void OpenPreferences() => _settingsWorkflow.RunPreferencesFlow();
+    public void OpenPreferences() => _ = _settingsWorkflow.RunPreferencesFlow();
 
     public void Exit() => _host.CloseShell();
 

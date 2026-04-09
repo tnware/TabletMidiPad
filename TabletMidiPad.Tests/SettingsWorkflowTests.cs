@@ -194,6 +194,8 @@ public sealed class SettingsWorkflowTests
         {
         }
 
+        public Task RestartAsync(AppConfig config) => Task.CompletedTask;
+
         public void Shutdown(AppConfig config)
         {
         }

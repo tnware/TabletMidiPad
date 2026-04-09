@@ -60,7 +60,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     }
 
     /// <inheritdoc />
-    public void RunPreferencesFlow()
+    public async Task RunPreferencesFlow()
     {
         int effectiveExpressKeyCount = _workflowCoordinator.GetEffectiveExpressKeyCount(
             _host.PadState.ExpressKeyCount,
@@ -76,7 +76,10 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         }
 
         _host.CommitCurrentZoneEdits();
-        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_runtimeConfig.Current, result, IntPtr.Zero);
+
+        // Pass the current MIDI readiness so the coordinator only restarts when routing actually changed.
+        IntPtr midiReadiness = _midiEngine.IsReady ? new IntPtr(1) : IntPtr.Zero;
+        PreferencesWorkflowResult applyResult = _workflowCoordinator.ApplyPreferences(_runtimeConfig.Current, result, midiReadiness);
         if (!applyResult.SaveSucceeded)
         {
             _host.SetSettingsResult(applyResult.ErrorMessage ?? "Preferences could not be applied.", SettingsResultKind.Error);
@@ -92,13 +95,21 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
 
         if (applyResult.ShouldRestartMidi)
         {
-            RestartMidi();
+            _host.SetSettingsResult("Preferences saved. Reconnecting MIDI\u2026", SettingsResultKind.Success);
+            try
+            {
+                await _midiEngine.RestartAsync(_runtimeConfig.Current);
+                _midiEngine.ClearCachedValues();
+            }
+            catch (Exception ex)
+            {
+                _host.SetSettingsResult(ex.Message, SettingsResultKind.Error);
+                return;
+            }
         }
-        else
-        {
-            _host.UpdateUiForCurrentConfig();
-            _host.RefreshPadZoneOverlay();
-        }
+
+        _host.UpdateUiForCurrentConfig();
+        _host.RefreshPadZoneOverlay();
 
         if (applyResult.ShouldRebindInputBackend)
         {
@@ -116,14 +127,6 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         _zoneConfigurationService.AutoTileZones(_runtimeConfig.Current);
         _host.LoadConfigIntoUi();
         ApplySettings();
-    }
-
-    private void RestartMidi()
-    {
-        _midiEngine.Restart(_runtimeConfig.Current);
-        _midiEngine.ClearCachedValues();
-        _host.UpdateUiForCurrentConfig();
-        _host.RefreshPadZoneOverlay();
     }
 
     private WorkflowSaveResult ValidateAndPersistCurrentConfig()

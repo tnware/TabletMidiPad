@@ -309,6 +309,8 @@ public sealed class StartupLifecycleServiceTests
         {
         }
 
+        public Task RestartAsync(AppConfig config) => Task.CompletedTask;
+
         public void SendCcIfChanged(int channel, int cc, int value, bool force = false)
         {
         }

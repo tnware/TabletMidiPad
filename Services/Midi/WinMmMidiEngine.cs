@@ -43,6 +43,11 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         Initialize(config);
     }
 
+    public Task RestartAsync(AppConfig config)
+    {
+        return InitializeAsync(config);
+    }
+
     public void Shutdown(AppConfig config)
     {
         try

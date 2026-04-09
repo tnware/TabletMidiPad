@@ -90,6 +90,8 @@ public sealed class PadInteractionOutcomeApplierTests
         {
         }
 
+        public Task RestartAsync(AppConfig config) => Task.CompletedTask;
+
         public void Shutdown(AppConfig config)
         {
         }

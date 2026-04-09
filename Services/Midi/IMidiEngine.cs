@@ -27,6 +27,12 @@ internal interface IMidiEngine
     void Restart(AppConfig config);
 
     /// <summary>
+    /// Closes and re-opens routing/output from the current config without blocking the caller.
+    /// </summary>
+    /// <param name="config">Current runtime config.</param>
+    Task RestartAsync(AppConfig config);
+
+    /// <summary>
     /// Shuts down MIDI output and removes loopback endpoints.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
