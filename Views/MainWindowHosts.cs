@@ -8,11 +8,11 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow
 {
-    private sealed class PadInputHost : IPadInputControllerHost
+    private sealed class PadInputViewHost : IPadInputControllerHost
     {
         private readonly MainWindow _w;
 
-        public PadInputHost(MainWindow window) => _w = window;
+        public PadInputViewHost(MainWindow window) => _w = window;
 
         public Canvas Pad => _w.Pad;
 
@@ -51,11 +51,11 @@ public partial class MainWindow
             => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
     }
 
-    private sealed class ZonePadHost : IZonePadControllerHost
+    private sealed class ZonePadViewHost : IZonePadControllerHost
     {
         private readonly MainWindow _w;
 
-        public ZonePadHost(MainWindow window) => _w = window;
+        public ZonePadViewHost(MainWindow window) => _w = window;
 
         public AppConfig Config => _w.Config;
 
@@ -80,11 +80,11 @@ public partial class MainWindow
         public void ClearPadCursor() => _w.Pad.Cursor = null;
     }
 
-    private sealed class SettingsSessionHost : ISettingsWorkflowHost
+    private sealed class SettingsWorkflowViewHost : ISettingsWorkflowHost
     {
         private readonly MainWindow _w;
 
-        public SettingsSessionHost(MainWindow window) => _w = window;
+        public SettingsWorkflowViewHost(MainWindow window) => _w = window;
 
         public Window OwnerWindow => _w;
 
@@ -133,11 +133,11 @@ public partial class MainWindow
         }
     }
 
-    private sealed class StartupHost : IStartupShellHost
+    private sealed class StartupViewHost : IStartupShellHost
     {
         private readonly MainWindow _w;
 
-        public StartupHost(MainWindow window) => _w = window;
+        public StartupViewHost(MainWindow window) => _w = window;
 
         public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
 
