@@ -1,4 +1,3 @@
-using System;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Services.Settings;

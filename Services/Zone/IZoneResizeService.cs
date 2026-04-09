@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Windows;
 
 namespace TabletMidiPad.Services.Zone;
@@ -11,7 +10,7 @@ internal interface IZoneResizeService
     /// <summary>
     /// Performs edge hit-testing for the currently selected zone.
     /// </summary>
-    (int zoneIndex, ZoneResizeEdge edge) HitTestZoneEdge(
+    (int ZoneIndex, ZoneResizeEdge Edge) HitTestZoneEdge(
         IReadOnlyList<ZoneConfig> zones,
         int selectedZoneIndex,
         double padWidth,
@@ -50,7 +49,7 @@ internal interface IZoneResizeService
 /// <summary>
 /// Bit flags for zone edges/corners used by hit-testing and drag-resize.
 /// </summary>
-[System.Flags]
+[Flags]
 internal enum ZoneResizeEdge
 {
     None = 0,

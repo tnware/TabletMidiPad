@@ -1,5 +1,3 @@
-using System;
-
 namespace TabletMidiPad.Services.Wacom;
 
 /// <summary>

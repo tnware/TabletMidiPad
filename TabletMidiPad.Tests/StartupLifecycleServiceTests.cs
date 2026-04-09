@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using TabletMidiPad.ViewModels;
 using Xunit;
 
@@ -9,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class StartupLifecycleServiceTests
 {
     [Fact]
-    public void LoadPersistedConfig_LoadsFromRuntimeConfigService()
+    public void LoadPersistedConfigLoadsFromRuntimeConfigService()
     {
         var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { DawPortName = "X" }));
         var sut = new StartupLifecycleService(runtime, new InputBackendCoordinator());
@@ -20,7 +17,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public async Task RunColdStartAsync_ReplacesConfigLoadsUiShellThenMidi_WhenWacomRunning()
+    public async Task RunColdStartAsyncReplacesConfigLoadsUiShellThenMidiWhenWacomRunning()
     {
         var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { DawPortName = "ColdStart" }));
         var sut = new StartupLifecycleService(runtime, new InputBackendCoordinator());
@@ -50,7 +47,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public async Task RunColdStartAsync_WhenWacomStoppedAuto_AppliesBlockedNotTabletInit()
+    public async Task RunColdStartAsyncWhenWacomStoppedAutoAppliesBlockedNotTabletInit()
     {
         var runtime = new RuntimeConfigService(new FixedConfigStore(new AppConfig { InputBackendMode = "Auto" }));
         var sut = new StartupLifecycleService(runtime, new InputBackendCoordinator());
@@ -68,7 +65,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public async Task RunStartupMidiSequenceAsync_OnSuccess_CallsRoutingReadyAndHidesMidiPanel()
+    public async Task RunStartupMidiSequenceAsyncOnSuccessCallsRoutingReadyAndHidesMidiPanel()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -90,7 +87,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public async Task RunStartupMidiSequenceAsync_OnFailure_SetsErrorPresentation()
+    public async Task RunStartupMidiSequenceAsyncOnFailureSetsErrorPresentation()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -113,7 +110,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void ShutdownForExit_ShutsDownMidiTablet_AppliesState_DisposesBackend()
+    public void ShutdownForExitShutsDownMidiTabletAppliesStateDisposesBackend()
     {
         var inputCoord = new RecordingInputBackendCoordinator();
         var sut = new StartupLifecycleService(
@@ -122,7 +119,7 @@ public sealed class StartupLifecycleServiceTests
         var midi = new RecordingMidiEngine { Succeed = true };
         var wintab = new RecordingWintabBackend();
         InputBackendLifecycleResult? applied = null;
-        var config = AppConfig.Default;
+        AppConfig config = AppConfig.Default;
 
         sut.ShutdownForExit(
             midi,
@@ -137,7 +134,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void ShouldProbeWintabStack_StylusMouseOnly_ProbesEvenWhenServiceStopped()
+    public void ShouldProbeWintabStackStylusMouseOnlyProbesEvenWhenServiceStopped()
     {
         var cfg = new AppConfig { InputBackendMode = "Stylus/Mouse Only" };
         var wacom = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
@@ -146,7 +143,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void ShouldProbeWintabStack_Auto_RequiresRunningService()
+    public void ShouldProbeWintabStackAutoRequiresRunningService()
     {
         var cfg = new AppConfig { InputBackendMode = "Auto" };
         var stopped = new WacomServiceStatus("stopped", CanStart: true, IsServiceRunning: false);
@@ -156,7 +153,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void RunPostConfigLoadShellPhase_WhenServiceStopped_AndAuto_CallsBlockedNotInit()
+    public void RunPostConfigLoadShellPhaseWhenServiceStoppedAndAutoCallsBlockedNotInit()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -178,7 +175,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void RunPostConfigLoadShellPhase_WhenServiceRunning_CallsInitNotBlocked()
+    public void RunPostConfigLoadShellPhaseWhenServiceRunningCallsInitNotBlocked()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -198,7 +195,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void BuildTabletStackBlockedLifecycleResult_WintabOnly_UsesUnavailableLabel()
+    public void BuildTabletStackBlockedLifecycleResultWintabOnlyUsesUnavailableLabel()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -214,7 +211,7 @@ public sealed class StartupLifecycleServiceTests
     }
 
     [Fact]
-    public void BuildTabletStackBlockedLifecycleResult_ServiceNotFound_MentionsInstall()
+    public void BuildTabletStackBlockedLifecycleResultServiceNotFoundMentionsInstall()
     {
         var sut = new StartupLifecycleService(
             new RuntimeConfigService(new FixedConfigStore(AppConfig.Default)),
@@ -230,7 +227,7 @@ public sealed class StartupLifecycleServiceTests
 
     private sealed class RecordingStartupHost : IStartupShellHost
     {
-        public List<string> CallOrder { get; } = new();
+        public List<string> CallOrder { get; } = [];
 
         public WacomServiceStatus StatusToReturn { get; init; } = new("running", CanStart: false, IsServiceRunning: true);
 
@@ -263,7 +260,10 @@ public sealed class StartupLifecycleServiceTests
 
     private sealed class FixedConfigStore : IConfigStore
     {
-        public FixedConfigStore(AppConfig config) => Config = config;
+        public FixedConfigStore(AppConfig config)
+        {
+            Config = config;
+        }
 
         public AppConfig Config { get; }
 
@@ -324,13 +324,29 @@ public sealed class StartupLifecycleServiceTests
     {
         public bool DisposeCalled { get; private set; }
 
-        public event EventHandler<WintabPacketEventArgs>? PacketReceived;
+        public event EventHandler<WintabPacketEventArgs>? PacketReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
+        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabProximityEventArgs>? ProximityChanged;
+        public event EventHandler<WintabProximityEventArgs>? ProximityChanged
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<string>? DiagnosticsChanged;
+        public event EventHandler<string>? DiagnosticsChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool IsActive => false;
 

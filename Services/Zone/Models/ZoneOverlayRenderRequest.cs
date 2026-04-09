@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Windows.Media;
 
 namespace TabletMidiPad.Services.Zone.Models;
@@ -11,7 +10,7 @@ public sealed record ZoneOverlayRenderRequest(
     double PadHeight,
     IReadOnlyList<ZoneOverlayZone> Zones,
     int SelectedZoneIndex,
-    IReadOnlyDictionary<int, (double x, double y)> LastLocalByZoneIndex,
+    IReadOnlyDictionary<int, (double X, double Y)> LastLocalByZoneIndex,
     IReadOnlyList<Color> ZonePalette,
     Color ColorWindow,
     Brush TextPrimaryBrush,

@@ -1,9 +1,4 @@
-using System;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.Services.Input.Models;
-using TabletMidiPad.Services.Midi;
-using TabletMidiPad.Services.UiProjection.Models;
-using TabletMidiPad.Services.Zone.Models;
 using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;
 
@@ -35,7 +30,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IWintabEventAdapter>(_ => new WintabEventAdapter());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
-        container.AddTransient<PreferencesViewModel>(_ => new PreferencesViewModel());
+        container.AddTransient(_ => new PreferencesViewModel());
         container.AddSingleton<IPreferencesDialogService>(c => new PreferencesDialogService(
             c.GetRequiredService<IConfigValueParser>(),
             () => c.GetRequiredService<PreferencesViewModel>()));

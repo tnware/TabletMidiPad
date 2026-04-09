@@ -6,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class ZoneListViewModelTests
 {
     [Fact]
-    public void AddZone_CommitsEditorRefreshesSelectionAndPublishesEffects()
+    public void AddZoneCommitsEditorRefreshesSelectionAndPublishesEffects()
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);

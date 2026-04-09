@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 
 namespace TabletMidiPad.Services.Zone;
@@ -30,8 +27,8 @@ internal sealed class ZoneResizeService : IZoneResizeService
             double insetY = Math.Min(ZoneSelectionInset, Math.Max(0.0, (zone.Height / 2.0) - 0.001));
             double zl = (zone.Left + insetX) * padWidth;
             double zt = (zone.Top + insetY) * padHeight;
-            double zr = ((zone.Left + zone.Width) - insetX) * padWidth;
-            double zb = ((zone.Top + zone.Height) - insetY) * padHeight;
+            double zr = (zone.Left + zone.Width - insetX) * padWidth;
+            double zb = (zone.Top + zone.Height - insetY) * padHeight;
 
             if (positionPx.X >= zl && positionPx.X <= zr && positionPx.Y >= zt && positionPx.Y <= zb)
             {
@@ -43,7 +40,7 @@ internal sealed class ZoneResizeService : IZoneResizeService
     }
 
     /// <inheritdoc />
-    public (int zoneIndex, ZoneResizeEdge edge) HitTestZoneEdge(
+    public (int ZoneIndex, ZoneResizeEdge Edge) HitTestZoneEdge(
         IReadOnlyList<ZoneConfig> zones,
         int selectedZoneIndex,
         double padWidth,
@@ -66,8 +63,8 @@ internal sealed class ZoneResizeService : IZoneResizeService
         double zr = (zone.Left + zone.Width) * padWidth;
         double zb = (zone.Top + zone.Height) * padHeight;
 
-        if (positionPx.X < zl - ResizeHitMargin || positionPx.X > zr + ResizeHitMargin ||
-            positionPx.Y < zt - ResizeHitMargin || positionPx.Y > zb + ResizeHitMargin)
+        if ((positionPx.X < (zl - ResizeHitMargin)) || (positionPx.X > (zr + ResizeHitMargin)) ||
+            (positionPx.Y < (zt - ResizeHitMargin)) || (positionPx.Y > (zb + ResizeHitMargin)))
         {
             return (-1, ZoneResizeEdge.None);
         }
@@ -148,7 +145,7 @@ internal sealed class ZoneResizeService : IZoneResizeService
         if ((session.Edge & ZoneResizeEdge.Left) != 0)
         {
             newLeft = Snap(Math.Clamp(session.OriginalLeft + dxNorm, 0.0, session.OriginalLeft + session.OriginalWidth - MinSize), SnapStep);
-            newWidth = (session.OriginalLeft + session.OriginalWidth) - newLeft;
+            newWidth = session.OriginalLeft + session.OriginalWidth - newLeft;
         }
         else if ((session.Edge & ZoneResizeEdge.Right) != 0)
         {
@@ -159,7 +156,7 @@ internal sealed class ZoneResizeService : IZoneResizeService
         if ((session.Edge & ZoneResizeEdge.Top) != 0)
         {
             newTop = Snap(Math.Clamp(session.OriginalTop + dyNorm, 0.0, session.OriginalTop + session.OriginalHeight - MinSize), SnapStep);
-            newHeight = (session.OriginalTop + session.OriginalHeight) - newTop;
+            newHeight = session.OriginalTop + session.OriginalHeight - newTop;
         }
         else if ((session.Edge & ZoneResizeEdge.Bottom) != 0)
         {
@@ -196,7 +193,7 @@ internal sealed class ZoneResizeService : IZoneResizeService
     }
 
     /// <inheritdoc />
-    public bool CanResizeZoneTo(IReadOnlyList<ZoneConfig> zones, int zoneIndex, double left, double top, double width, double height)
+    public static bool CanResizeZoneTo(IReadOnlyList<ZoneConfig> zones, int zoneIndex, double left, double top, double width, double height)
     {
         if (width < MinSize || height < MinSize)
         {
@@ -208,14 +205,14 @@ internal sealed class ZoneResizeService : IZoneResizeService
             return false;
         }
 
-        foreach ((ZoneConfig zone, int index) other in zones.Select((zone, index) => (zone, index)))
+        foreach ((ZoneConfig Zone, int Index) other in zones.Select((zone, index) => (zone, index)))
         {
-            if (other.index == zoneIndex)
+            if (other.Index == zoneIndex)
             {
                 continue;
             }
 
-            if (ZonesOverlap(left, top, width, height, other.zone.Left, other.zone.Top, other.zone.Width, other.zone.Height))
+            if (ZonesOverlap(left, top, width, height, other.Zone.Left, other.Zone.Top, other.Zone.Width, other.Zone.Height))
             {
                 return false;
             }

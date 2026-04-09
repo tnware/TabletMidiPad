@@ -1,6 +1,3 @@
-using System;
-using System.Threading.Tasks;
-
 namespace TabletMidiPad.Services.Midi;
 
 internal interface IMidiEngine

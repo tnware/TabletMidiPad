@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -191,8 +192,8 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     {
         AppConfig config = _runtimeConfig.Current;
         IsLoadingUi = true;
-        MaxZoneRowsText = config.MaxZoneRows.ToString();
-        MaxZonesPerRowText = config.MaxZonesPerRow.ToString();
+        MaxZoneRowsText = config.MaxZoneRows.ToString(CultureInfo.InvariantCulture);
+        MaxZonesPerRowText = config.MaxZonesPerRow.ToString(CultureInfo.InvariantCulture);
         RefreshZoneList();
         SelectedZoneIndex = config.Zones.Count > 0 ? 0 : -1;
         NotifySelectedZoneIndexChanged();

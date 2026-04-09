@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Xunit;
 
 namespace TabletMidiPad.Tests;
@@ -6,15 +5,15 @@ namespace TabletMidiPad.Tests;
 public sealed class ZoneActionWorkflowCoordinatorTests
 {
     [Fact]
-    public void AutoLayout_UsesConfigurationService_AndKeepsSelectionInRange()
+    public void AutoLayoutUsesConfigurationServiceAndKeepsSelectionInRange()
     {
         var config = new AppConfig
         {
-            Zones = new List<ZoneConfig>
-            {
+            Zones =
+            [
                 new(),
                 new(),
-            },
+            ],
         };
         var service = new StubZoneConfigurationService();
         var coordinator = new ZoneActionWorkflowCoordinator(service);
@@ -28,11 +27,11 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void AddZone_AddsConfiguredZone_AndSelectsNewZone()
+    public void AddZoneAddsConfiguredZoneAndSelectsNewZone()
     {
         var config = new AppConfig
         {
-            Zones = new List<ZoneConfig> { new() },
+            Zones = [new()],
         };
         var service = new StubZoneConfigurationService { NextCcStart = 40 };
         var coordinator = new ZoneActionWorkflowCoordinator(service);
@@ -50,11 +49,11 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void RemoveZone_InvalidSelection_ReturnsUnchanged()
+    public void RemoveZoneInvalidSelectionReturnsUnchanged()
     {
         var config = new AppConfig
         {
-            Zones = new List<ZoneConfig> { new() },
+            Zones = [new()],
         };
         var coordinator = new ZoneActionWorkflowCoordinator(new StubZoneConfigurationService());
 
@@ -66,17 +65,17 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void RemoveZone_LastZone_ReplacesWithDefault()
+    public void RemoveZoneLastZoneReplacesWithDefault()
     {
         var config = new AppConfig
         {
-            Zones = new List<ZoneConfig>
-            {
+            Zones =
+            [
                 new()
                 {
                     Name = "Only",
                 },
-            },
+            ],
         };
         var service = new StubZoneConfigurationService();
         var coordinator = new ZoneActionWorkflowCoordinator(service);

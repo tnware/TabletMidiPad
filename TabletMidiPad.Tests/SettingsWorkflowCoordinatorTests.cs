@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Xunit;
 
 namespace TabletMidiPad.Tests;
@@ -7,7 +5,7 @@ namespace TabletMidiPad.Tests;
 public sealed class SettingsWorkflowCoordinatorTests
 {
     [Fact]
-    public void GetEffectiveExpressKeyCount_ReturnsMaxConfiguredOrDetected()
+    public void GetEffectiveExpressKeyCountReturnsMaxConfiguredOrDetected()
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
 
@@ -17,12 +15,12 @@ public sealed class SettingsWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void ValidateAndSave_ReturnsFailureForOutOfBoundsZone()
+    public void ValidateAndSaveReturnsFailureForOutOfBoundsZone()
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
-        var config = AppConfig.Default;
-        config.Zones = new List<ZoneConfig>
-        {
+        AppConfig config = AppConfig.Default;
+        config.Zones =
+        [
             new()
             {
                 Name = "Bad",
@@ -31,7 +29,7 @@ public sealed class SettingsWorkflowCoordinatorTests
                 Left = 0.2,
                 Top = 0.2
             }
-        };
+        ];
 
         WorkflowSaveResult result = coordinator.ValidateAndSave(config);
 
@@ -40,10 +38,10 @@ public sealed class SettingsWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void ApplyPreferences_DetectsRoutingAndInputBackendChanges()
+    public void ApplyPreferencesDetectsRoutingAndInputBackendChanges()
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
-        var config = AppConfig.Default;
+        AppConfig config = AppConfig.Default;
         config.AppPortName = "Old App";
         config.DawPortName = "Old Daw";
         config.LoopbackAssociationId = "{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}";
@@ -69,7 +67,7 @@ public sealed class SettingsWorkflowCoordinatorTests
             UpperPenButtonNote = 61,
             SendPressureGlobally = true,
             AllowZoneSwitchWhilePressed = true,
-            ExpressKeys = new List<ExpressKeyConfig>()
+            ExpressKeys = []
         };
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(config, result, IntPtr.Zero);
@@ -83,8 +81,8 @@ public sealed class SettingsWorkflowCoordinatorTests
     public void ApplyPreferencesWhenZonesInvalidReturnsSaveFailed()
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
-        var config = AppConfig.Default;
-        config.Zones = new List<ZoneConfig>();
+        AppConfig config = AppConfig.Default;
+        config.Zones = [];
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(config, PreferencesMatching(config), IntPtr.Zero);
 
@@ -98,7 +96,7 @@ public sealed class SettingsWorkflowCoordinatorTests
     public void ApplyPreferencesWhenUnchangedWithOpenMidiDoesNotFlagRestartOrRebind()
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
-        var config = AppConfig.Default;
+        AppConfig config = AppConfig.Default;
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(
             config,
@@ -132,7 +130,7 @@ public sealed class SettingsWorkflowCoordinatorTests
             UpperPenButtonNote = config.UpperPenButtonNote,
             SendPressureGlobally = config.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed,
-            ExpressKeys = new List<ExpressKeyConfig>(config.ExpressKeys),
+            ExpressKeys = [.. config.ExpressKeys],
         };
     }
 

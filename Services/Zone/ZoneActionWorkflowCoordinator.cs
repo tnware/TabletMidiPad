@@ -22,7 +22,7 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
         _zoneConfigurationService.AutoTileZones(config);
         int nextSelection = config.Zones.Count == 0
             ? -1
-            : System.Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
+            : Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
         return new ZoneActionWorkflowResult(
             Changed: true,
             SelectedZoneIndex: nextSelection,
@@ -80,7 +80,7 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
         }
 
         _zoneConfigurationService.AutoTileZones(config);
-        int nextSelection = System.Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
+        int nextSelection = Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
         return new ZoneActionWorkflowResult(
             Changed: true,
             SelectedZoneIndex: nextSelection,

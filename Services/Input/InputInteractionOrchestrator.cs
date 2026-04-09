@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using TabletMidiPad.Core.Interaction;
 
 namespace TabletMidiPad.Services.Input;
@@ -39,16 +36,14 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
             UpperPenButtonMidiChannel: config.UpperPenButtonMidiChannel,
             UpperPenButtonCc: config.UpperPenButtonCc,
             UpperPenButtonNote: config.UpperPenButtonNote,
-            ExpressKeys: config.ExpressKeys
-                .Select(k => new ExpressKeyConfigSnapshot(k.Action, k.MidiChannel, k.Cc, k.Note))
-                .ToList());
+            ExpressKeys: [.. config.ExpressKeys.Select(k => new ExpressKeyConfigSnapshot(k.Action, k.MidiChannel, k.Cc, k.Note))]);
     }
 
     /// <inheritdoc />
     public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        return config.Zones
+        return [.. config.Zones
             .Select(z => new ZoneSnapshot(
                 Name: z.Name,
                 Enabled: z.Enabled,
@@ -65,8 +60,7 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
                 Left: z.Left,
                 Top: z.Top,
                 Width: z.Width,
-                Height: z.Height))
-            .ToList();
+                Height: z.Height))];
     }
 
     /// <inheritdoc />

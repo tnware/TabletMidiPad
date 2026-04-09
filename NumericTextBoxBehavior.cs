@@ -67,7 +67,7 @@ public static class NumericTextBoxBehavior
             return;
         }
 
-        string pasted = (string)e.DataObject.GetData(typeof(string))!;
+        string pasted = (string)e.DataObject.GetData(typeof(string));
         if (!IsTextAllowed(textBox, pasted))
         {
             e.CancelCommand();

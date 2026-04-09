@@ -26,13 +26,13 @@ internal sealed class ZonePadController : IZonePadController
     public bool TryHandleMouseDown(Point position)
     {
         SelectZoneAtPoint(position);
-        (int zone, ZoneResizeEdge edge) hit = HitTestZoneEdge(position);
-        if (hit.zone < 0)
+        (int Zone, ZoneResizeEdge Edge) = HitTestZoneEdge(position);
+        if (Zone < 0)
         {
             return false;
         }
 
-        StartZoneResize(hit.zone, hit.edge, position);
+        StartZoneResize(Zone, Edge, position);
         return _isResizingZone;
     }
 
@@ -46,7 +46,8 @@ internal sealed class ZonePadController : IZonePadController
             return true;
         }
 
-        cursorKind = ZonePadResizeCursors.FromResizeEdge(HitTestZoneEdge(position).edge);
+        (int _, ZoneResizeEdge edge) = HitTestZoneEdge(position);
+        cursorKind = ZonePadResizeCursors.FromResizeEdge(edge);
         return false;
     }
 

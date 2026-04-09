@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
@@ -13,7 +9,7 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
     /// <inheritdoc />
     public int GetNextAvailableCcStart(AppConfig config)
     {
-        IReadOnlyList<ZoneConfig> zones = config.Zones;
+        List<ZoneConfig> zones = config.Zones;
         var used = new HashSet<int>(
             zones.SelectMany(zone => new[] { zone.CcX, zone.CcY, zone.CcPressure }));
 
@@ -43,7 +39,7 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
     /// <inheritdoc />
     public void AutoTileZones(AppConfig config)
     {
-        IList<ZoneConfig> zones = config.Zones;
+        List<ZoneConfig> zones = config.Zones;
         if (zones.Count == 0)
         {
             return;
@@ -62,7 +58,7 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
         for (int index = 0; index < count; index++)
         {
             int row = index / maxPerRow;
-            int colsInThisRow = Math.Min(maxPerRow, count - row * maxPerRow);
+            int colsInThisRow = Math.Min(maxPerRow, count - (row * maxPerRow));
             int column = index % maxPerRow;
             double cellWidth = 1.0 / colsInThisRow;
 

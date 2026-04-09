@@ -5,7 +5,7 @@ namespace TabletMidiPad.Tests;
 public sealed class UiStateProjectionServiceTests
 {
     [Fact]
-    public void BuildWacomServiceMenuState_MapsFieldsDirectly()
+    public void BuildWacomServiceMenuStateMapsFieldsDirectly()
     {
         var projection = new UiStateProjectionService();
 
@@ -17,7 +17,7 @@ public sealed class UiStateProjectionServiceTests
     }
 
     [Fact]
-    public void BuildToolbarState_MapsAutoInputAndCurveLabels()
+    public void BuildToolbarStateMapsAutoInputAndCurveLabels()
     {
         var projection = new UiStateProjectionService();
         var config = new AppConfig
@@ -41,7 +41,7 @@ public sealed class UiStateProjectionServiceTests
     }
 
     [Fact]
-    public void BuildToolbarState_NormalizesInputBackendAliases_AndMapsCheckmarks()
+    public void BuildToolbarStateNormalizesInputBackendAliasesAndMapsCheckmarks()
     {
         var projection = new UiStateProjectionService();
         var config = new AppConfig
@@ -60,7 +60,7 @@ public sealed class UiStateProjectionServiceTests
     }
 
     [Fact]
-    public void BuildConnectedState_PreservesSummaryAndBaselineTexts()
+    public void BuildConnectedStatePreservesSummaryAndBaselineTexts()
     {
         var projection = new UiStateProjectionService();
         var config = new AppConfig

@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel;
 
 namespace TabletMidiPad.Services.Wacom;
@@ -40,10 +39,11 @@ internal sealed class WacomServiceWorkflowCoordinator : IWacomServiceWorkflowCoo
         }
 
         WacomServiceStatus refreshed = serviceController.GetStatus();
+        string? failureHeader = started ? null : $"Service: {failureText ?? "failed to start"}";
         return new WacomServiceStartResult(
             Started: started,
             ShouldRebindInputBackend: started,
-            FailureStatusHeader: started ? null : $"Service: {(failureText ?? "failed to start")}",
+            FailureStatusHeader: failureHeader,
             RefreshedStatus: refreshed);
     }
 

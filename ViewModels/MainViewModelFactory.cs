@@ -1,5 +1,3 @@
-using System;
-
 namespace TabletMidiPad.ViewModels;
 
 internal sealed class MainViewModelFactory : IMainViewModelFactory

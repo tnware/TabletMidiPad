@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,15 +11,14 @@ namespace TabletMidiPad.Views;
 /// </summary>
 public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
 {
-    private static readonly string[] ZonePaletteColorKeys =
-    {
+    private static readonly string[] ZonePaletteColorKeys = [
         "ZonePalette1Color",
         "ZonePalette2Color",
         "ZonePalette3Color",
         "ZonePalette4Color",
         "ZonePalette5Color",
         "ZonePalette6Color",
-    };
+    ];
 
     private IPadPresentationCoordinator? _presentationCoordinator;
     private IZoneOverlayRenderer? _zoneOverlayRenderer;
@@ -112,7 +108,7 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
         EnsureServices();
 
         var theme = new PadOverlayTheme(
-            ZonePalette: Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor).ToList(),
+            ZonePalette: [.. Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor)],
             ColorWindow: ThemeColor("ColorWindow", Colors.Black),
             TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),
             TextMutedBrush: ThemeBrush("TextMutedBrush", Brushes.Gainsboro),

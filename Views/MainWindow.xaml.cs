@@ -1,13 +1,7 @@
-using System;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.Services.Input.Models;
-using TabletMidiPad.Services.Midi;
-using TabletMidiPad.Services.UiProjection.Models;
-using TabletMidiPad.Services.Zone.Models;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Views;
@@ -16,7 +10,7 @@ public partial class MainWindow : Window
 {
     private readonly PadInputControllerState _padState = new();
     private readonly IPadInputController _padInputSession;
-    private readonly IZonePadController _zonePadSession;
+    private readonly ZonePadController _zonePadSession;
     private readonly StartupViewHost _startupHost;
 
     private readonly IRuntimeConfigService _runtimeConfig;
@@ -44,7 +38,7 @@ public partial class MainWindow : Window
         => _interactionOutcomeApplier.Apply(result, _interactionState, Config, _viewModel);
 
     /// <summary>
-    /// Application entry constructs the window via <see cref="TabletMidiPad.Composition.AppBootstrapper.CreateApplicationShell"/>.
+    /// Application entry constructs the window via <see cref="Composition.AppBootstrapper.CreateApplicationShell"/>.
     /// </summary>
     internal MainWindow(
         IRuntimeConfigService runtimeConfig,
@@ -225,8 +219,15 @@ public partial class MainWindow : Window
 
     private void Pad_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (IsPromotedStylusMouseEvent(e)) return;
-        if (e.LeftButton != MouseButtonState.Pressed) return;
+        if (IsPromotedStylusMouseEvent(e))
+        {
+            return;
+        }
+
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
 
         Point pos = e.GetPosition(Pad);
         if (_zonePadSession.TryHandleMouseDown(pos))
@@ -241,7 +242,10 @@ public partial class MainWindow : Window
 
     private void Pad_MouseMove(object sender, MouseEventArgs e)
     {
-        if (IsPromotedStylusMouseEvent(e)) return;
+        if (IsPromotedStylusMouseEvent(e))
+        {
+            return;
+        }
 
         Point pos = e.GetPosition(Pad);
         if (_zonePadSession.TryConsumeMouseMove(pos, out ZonePadResizeCursorKind cursorKind))
@@ -257,7 +261,10 @@ public partial class MainWindow : Window
 
     private void Pad_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (IsPromotedStylusMouseEvent(e)) return;
+        if (IsPromotedStylusMouseEvent(e))
+        {
+            return;
+        }
 
         if (_zonePadSession.TryConsumeMouseUp())
         {
@@ -285,7 +292,7 @@ public partial class MainWindow : Window
     private void RefreshPadZoneOverlay()
         => PadSurface.RefreshZoneOverlay(Config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
 
-    private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void TabletDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_viewModel.ZoneEditor.IsLoadingUi)
         {

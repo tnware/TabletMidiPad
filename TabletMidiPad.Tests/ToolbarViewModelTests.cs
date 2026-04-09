@@ -6,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class ToolbarViewModelTests
 {
     [Fact]
-    public void SendPressureGlobally_UpdatesConfigAndRequestsChromeRefresh()
+    public void SendPressureGloballyUpdatesConfigAndRequestsChromeRefresh()
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);
@@ -21,7 +21,7 @@ public sealed class ToolbarViewModelTests
     }
 
     [Fact]
-    public void SelectInputBackend_RebindsWhenModeChanges()
+    public void SelectInputBackendRebindsWhenModeChanges()
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);

@@ -17,7 +17,7 @@ public sealed class ZonePadResizeCursorsTests
     [InlineData(2 | 8, 3)]
     [InlineData(1 | 8, 4)]
     [InlineData(2 | 4, 4)]
-    public void FromResizeEdge_MatchesMainWindowLegacyMapping(int edgeBits, int expectedCursorKind)
+    public void FromResizeEdgeMatchesMainWindowLegacyMapping(int edgeBits, int expectedCursorKind)
     {
         var edge = (ZoneResizeEdge)edgeBits;
         var expected = (ZonePadResizeCursorKind)expectedCursorKind;

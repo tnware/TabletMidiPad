@@ -1,5 +1,3 @@
-using System;
-using System.ComponentModel;
 using System.ServiceProcess;
 
 namespace TabletMidiPad.Services.Wacom;

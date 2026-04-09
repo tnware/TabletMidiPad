@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace TabletMidiPad.Services.Midi;
 
@@ -203,7 +198,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
                 : $"<error:{deviceId}>";
         }
 
-        return names.Where(name => !string.IsNullOrWhiteSpace(name)).ToArray();
+        return [.. names.Where(name => !string.IsNullOrWhiteSpace(name))];
     }
 
     private static void RunMidiConsole(string arguments, bool allowFailure = false)
@@ -218,7 +213,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(startInfo)
+        using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
 
         string output = process.StandardOutput.ReadToEnd();

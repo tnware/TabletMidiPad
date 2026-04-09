@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Windows;
 using TabletMidiPad.ViewModels;
 using Xunit;
@@ -9,11 +7,11 @@ namespace TabletMidiPad.Tests;
 public sealed class SettingsWorkflowTests
 {
     [Fact]
-    public void ApplySettings_WhenPersistFails_SetsErrorAndSkipsUiRefresh()
+    public void ApplySettingsWhenPersistFailsSetsErrorAndSkipsUiRefresh()
     {
         var host = new RecordingSettingsHost();
         var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(false, "bad") };
-        var sut = CreateController(host, workflow);
+        SettingsWorkflow sut = CreateController(host, workflow);
 
         sut.ApplySettings();
 
@@ -26,11 +24,11 @@ public sealed class SettingsWorkflowTests
     }
 
     [Fact]
-    public void ApplySettings_WhenPersistSucceeds_RefreshesUiAndSuccessMessage()
+    public void ApplySettingsWhenPersistSucceedsRefreshesUiAndSuccessMessage()
     {
         var host = new RecordingSettingsHost();
         var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
-        var sut = CreateController(host, workflow);
+        SettingsWorkflow sut = CreateController(host, workflow);
 
         sut.ApplySettings();
 
@@ -43,11 +41,11 @@ public sealed class SettingsWorkflowTests
     }
 
     [Fact]
-    public void ApplySettings_OnException_SetsErrorFromMessage()
+    public void ApplySettingsOnExceptionSetsErrorFromMessage()
     {
         var host = new RecordingSettingsHost();
         var workflow = new ThrowingSettingsWorkflowCoordinator();
-        var sut = CreateController(host, workflow);
+        SettingsWorkflow sut = CreateController(host, workflow);
 
         sut.ApplySettings();
 
@@ -57,12 +55,12 @@ public sealed class SettingsWorkflowTests
     }
 
     [Fact]
-    public void ResetToDefaultsAndApply_ReplacesConfigAutoTilesLoadsAndApplies()
+    public void ResetToDefaultsAndApplyReplacesConfigAutoTilesLoadsAndApplies()
     {
         var host = new RecordingSettingsHost();
         var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
         var zones = new RecordingZoneConfigurationService();
-        var sut = CreateController(host, workflow, zones);
+        SettingsWorkflow sut = CreateController(host, workflow, zones);
 
         sut.ResetToDefaultsAndApply();
 
@@ -110,7 +108,7 @@ public sealed class SettingsWorkflowTests
 
         public int SyncToolbarCount { get; private set; }
 
-        public List<(string Message, SettingsResultKind Kind)> SettingsResults { get; } = new();
+        public List<(string Message, SettingsResultKind Kind)> SettingsResults { get; } = [];
 
         public void CommitCurrentZoneEdits() => CommitCurrentZoneEditsCount++;
 
@@ -148,7 +146,7 @@ public sealed class SettingsWorkflowTests
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
-        public WorkflowSaveResult ValidateAndSave(AppConfig config) => throw new System.InvalidOperationException("boom");
+        public WorkflowSaveResult ValidateAndSave(AppConfig config) => throw new InvalidOperationException("boom");
 
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => throw new NotImplementedException();
@@ -189,8 +187,8 @@ public sealed class SettingsWorkflowTests
         {
         }
 
-        public System.Threading.Tasks.Task InitializeAsync(AppConfig config, System.Action<string>? onProgress = null)
-            => System.Threading.Tasks.Task.CompletedTask;
+        public Task InitializeAsync(AppConfig config, Action<string>? onProgress = null)
+            => Task.CompletedTask;
 
         public void Restart(AppConfig config)
         {

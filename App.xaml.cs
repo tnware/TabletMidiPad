@@ -1,8 +1,7 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Resources;
 using TabletMidiPad.Composition;
 using TabletMidiPad.Views;
 
@@ -13,15 +12,12 @@ namespace TabletMidiPad;
 /// </summary>
 public partial class App : Application
 {
-    private SimpleContainer? _container;
-
     /// <inheritdoc />
     protected override void OnStartup(StartupEventArgs e)
     {
         try
         {
-            (SimpleContainer container, MainWindow mainWindow) = AppBootstrapper.CreateApplicationShell();
-            _container = container;
+            (_, MainWindow mainWindow) = AppBootstrapper.CreateApplicationShell();
             RegisterApplicationWindowIcon();
             base.OnStartup(e);
             MainWindow = mainWindow;
@@ -39,7 +35,7 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Exposes <c>AppIcon</c> for <see cref="System.Windows.Window.Icon"/>. Uses multi-size <c>app.ico</c> when
+    /// Exposes <c>AppIcon</c> for <see cref="Window.Icon"/>. Uses multi-size <c>app.ico</c> when
     /// present so Windows can choose 16/32/48/256 px frames instead of scaling one large bitmap (which looks
     /// soft or distorted in the title bar).
     /// </summary>
@@ -62,7 +58,7 @@ public partial class App : Application
         frame = null;
         try
         {
-            var info = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico", UriKind.Absolute));
+            StreamResourceInfo info = GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico", UriKind.Absolute));
             if (info?.Stream is null)
             {
                 return false;

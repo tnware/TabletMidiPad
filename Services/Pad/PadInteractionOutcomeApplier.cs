@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
@@ -52,14 +50,14 @@ internal sealed class PadInteractionOutcomeApplier : IPadInteractionOutcomeAppli
         viewModel.ModifiersText = result.ModifiersLabel;
 
         _lastZonePoints.Clear();
-        foreach ((int zoneIndex, (double x, double y) local) in state.LastLocalByZone)
+        foreach ((int zoneIndex, (double X, double Y) local) in state.LastLocalByZone)
         {
             if (zoneIndex < 0 || zoneIndex >= config.Zones.Count)
             {
                 continue;
             }
 
-            _lastZonePoints[config.Zones[zoneIndex]] = new Point(local.x, local.y);
+            _lastZonePoints[config.Zones[zoneIndex]] = new Point(local.X, local.Y);
         }
     }
 }

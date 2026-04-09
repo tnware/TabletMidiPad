@@ -1,5 +1,4 @@
 global using TabletMidiPad.Services.Config;
-global using TabletMidiPad.Services.Diagnostics;
 global using TabletMidiPad.Services.Input;
 global using TabletMidiPad.Services.Input.Models;
 global using TabletMidiPad.Services.Midi;

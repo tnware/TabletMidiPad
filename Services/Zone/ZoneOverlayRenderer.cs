@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -107,10 +106,10 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
                 AddResizeHandles(overlayCanvas, rectLeft, rectTop, rectWidth, rectHeight, strokeColor, request.SurfaceBrush);
             }
 
-            if (request.LastLocalByZoneIndex.TryGetValue(i, out (double x, double y) local))
+            if (request.LastLocalByZoneIndex.TryGetValue(i, out (double X, double Y) local))
             {
-                double markerX = zone.SendX ? local.x : 0.5;
-                double markerY = zone.SendY ? local.y : 0.5;
+                double markerX = zone.SendX ? local.X : 0.5;
+                double markerY = zone.SendY ? local.Y : 0.5;
                 double markerCenterX = rectLeft + (markerX * rectWidth);
                 double markerCenterY = rectTop + (markerY * rectHeight);
 
@@ -156,16 +155,16 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         var brush = new SolidColorBrush(Color.FromArgb(235, strokeColor.R, strokeColor.G, strokeColor.B));
 
         foreach (Point handleCenter in new[]
-        {
-            new Point(rectLeft, rectTop),
-            new Point(rectLeft + rectWidth / 2, rectTop),
-            new Point(rectLeft + rectWidth, rectTop),
-            new Point(rectLeft, rectTop + rectHeight / 2),
-            new Point(rectLeft + rectWidth, rectTop + rectHeight / 2),
-            new Point(rectLeft, rectTop + rectHeight),
-            new Point(rectLeft + rectWidth / 2, rectTop + rectHeight),
-            new Point(rectLeft + rectWidth, rectTop + rectHeight)
-        })
+            {
+                new Point(rectLeft, rectTop),
+                new Point(rectLeft + (rectWidth / 2), rectTop),
+                new Point(rectLeft + rectWidth, rectTop),
+                new Point(rectLeft, rectTop + (rectHeight / 2)),
+                new Point(rectLeft + rectWidth, rectTop + (rectHeight / 2)),
+                new Point(rectLeft, rectTop + rectHeight),
+                new Point(rectLeft + (rectWidth / 2), rectTop + rectHeight),
+                new Point(rectLeft + rectWidth, rectTop + rectHeight)
+            })
         {
             var handle = new Rectangle
             {

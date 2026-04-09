@@ -6,7 +6,7 @@ namespace TabletMidiPad.Tests;
 public sealed class MainViewModelStatusProjectionTests
 {
     [Fact]
-    public void ApplyWacomServiceMenuState_UpdatesHeaderAndStartEnabled()
+    public void ApplyWacomServiceMenuStateUpdatesHeaderAndStartEnabled()
     {
         var vm = new MainViewModel();
 
@@ -17,7 +17,7 @@ public sealed class MainViewModelStatusProjectionTests
     }
 
     [Fact]
-    public void ApplyConnectedState_UpdatesAllConnectedFields()
+    public void ApplyConnectedStateUpdatesAllConnectedFields()
     {
         var vm = new MainViewModel();
         var state = new ConnectedState(

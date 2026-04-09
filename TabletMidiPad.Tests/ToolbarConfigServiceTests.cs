@@ -7,7 +7,7 @@ public sealed class ToolbarConfigServiceTests
     private readonly ToolbarConfigService _sut = new();
 
     [Fact]
-    public void TryApplyInputBackendMode_WhenUnchanged_ReturnsNoRebind()
+    public void TryApplyInputBackendModeWhenUnchangedReturnsNoRebind()
     {
         var config = new AppConfig { InputBackendMode = "Auto" };
 
@@ -18,7 +18,7 @@ public sealed class ToolbarConfigServiceTests
     }
 
     [Fact]
-    public void TryApplyInputBackendMode_WhenChanged_ReturnsRebind()
+    public void TryApplyInputBackendModeWhenChangedReturnsRebind()
     {
         var config = new AppConfig { InputBackendMode = "Auto" };
 
@@ -30,7 +30,7 @@ public sealed class ToolbarConfigServiceTests
     }
 
     [Fact]
-    public void GetNextCycledInputBackendModeLabel_RotatesModes()
+    public void GetNextCycledInputBackendModeLabelRotatesModes()
     {
         var wintabOnly = new AppConfig { InputBackendMode = "Wintab Only" };
         Assert.Equal("Mouse", _sut.GetNextCycledInputBackendModeLabel(wintabOnly));

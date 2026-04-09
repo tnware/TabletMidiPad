@@ -1,5 +1,3 @@
-using System;
-
 namespace TabletMidiPad.Services.Shell.Models;
 
 /// <summary>

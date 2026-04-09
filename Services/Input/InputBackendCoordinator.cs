@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 
@@ -111,5 +110,4 @@ internal sealed class InputBackendCoordinator : IInputBackendCoordinator
 
     /// <inheritdoc />
     public bool ShouldReleaseOnProximityLeave(bool isActive) => isActive;
-
 }

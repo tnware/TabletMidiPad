@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using Xunit;
@@ -11,7 +9,7 @@ public sealed class InputBackendCoordinatorTests
     private readonly InputBackendCoordinator _sut = new();
 
     [Fact]
-    public void Initialize_StylusMouseOnly_ShutsDownBackendWithoutInitializingWintab()
+    public void InitializeStylusMouseOnlyShutsDownBackendWithoutInitializingWintab()
     {
         var backend = new FakeWintabBackend { Active = true };
 
@@ -29,7 +27,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void Initialize_WintabPath_CallsInitializeWithDeviceIndex()
+    public void InitializeWintabPathCallsInitializeWithDeviceIndex()
     {
         var backend = new FakeWintabBackend { Active = true, ExpressKeyCount = 4 };
 
@@ -47,7 +45,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void Initialize_ExpressKeyCount_UsesMaxOfCurrentAndBackend()
+    public void InitializeExpressKeyCountUsesMaxOfCurrentAndBackend()
     {
         var backend = new FakeWintabBackend { Active = true, ExpressKeyCount = 3 };
 
@@ -60,7 +58,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void Initialize_WintabOnlyWhenInactive_ReportsUnavailable()
+    public void InitializeWintabOnlyWhenInactiveReportsUnavailable()
     {
         var backend = new FakeWintabBackend { Active = false };
 
@@ -76,7 +74,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void Initialize_AutoWhenInactive_FallsBackToStylusMouseLabel()
+    public void InitializeAutoWhenInactiveFallsBackToStylusMouseLabel()
     {
         var backend = new FakeWintabBackend { Active = false };
 
@@ -91,7 +89,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void Shutdown_CallsBackendShutdown_AndReturnsFallbackState()
+    public void ShutdownCallsBackendShutdownAndReturnsFallbackState()
     {
         var backend = new FakeWintabBackend();
 
@@ -103,7 +101,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void BuildResetState_ReturnsClearedInteractionLabels()
+    public void BuildResetStateReturnsClearedInteractionLabels()
     {
         InputBackendResetResult reset = _sut.BuildResetState();
 
@@ -117,14 +115,14 @@ public sealed class InputBackendCoordinatorTests
     [InlineData(false, "Wintab Only", true)]
     [InlineData(false, "Auto", false)]
     [InlineData(false, "Wintab", true)]
-    public void IsStylusMouseFallbackSuppressed_MatchesLegacyRule(bool useWintab, string mode, bool expected)
+    public void IsStylusMouseFallbackSuppressedMatchesLegacyRule(bool useWintab, string mode, bool expected)
     {
         bool actual = _sut.IsStylusMouseFallbackSuppressed(useWintab, mode);
         Assert.Equal(expected, actual);
     }
 
     [Fact]
-    public void BuildWintabPacketFlow_HoverWhileActive_ReleasesBeforeTick()
+    public void BuildWintabPacketFlowHoverWhileActiveReleasesBeforeTick()
     {
         var update = new WintabPacketUpdate(
             XPixel: 10,
@@ -151,7 +149,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void BuildWintabPacketFlow_Down_SetsActiveFromUpdate()
+    public void BuildWintabPacketFlowDownSetsActiveFromUpdate()
     {
         var update = new WintabPacketUpdate(
             XPixel: 0,
@@ -176,7 +174,7 @@ public sealed class InputBackendCoordinatorTests
     }
 
     [Fact]
-    public void ShouldReleaseOnProximityLeave_OnlyWhenActive()
+    public void ShouldReleaseOnProximityLeaveOnlyWhenActive()
     {
         Assert.True(_sut.ShouldReleaseOnProximityLeave(true));
         Assert.False(_sut.ShouldReleaseOnProximityLeave(false));
@@ -186,7 +184,7 @@ public sealed class InputBackendCoordinatorTests
     [InlineData("Wintab", "Wintab Only")]
     [InlineData("Mouse", "Stylus/Mouse Only")]
     [InlineData("garbage", "Auto")]
-    public void InputBackendModeNormalizer_Normalize_AlignsWithLegacy(string raw, string expected)
+    public void InputBackendModeNormalizerNormalizeAlignsWithLegacy(string raw, string expected)
     {
         Assert.Equal(expected, InputBackendModeNormalizer.Normalize(raw));
     }
@@ -203,13 +201,29 @@ public sealed class InputBackendCoordinatorTests
 
         public int ExpressKeyCount { get; set; }
 
-        public event EventHandler<WintabPacketEventArgs>? PacketReceived;
+        public event EventHandler<WintabPacketEventArgs>? PacketReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived;
+        public event EventHandler<WintabExpressKeyEventArgs>? ExpressKeyReceived
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<WintabProximityEventArgs>? ProximityChanged;
+        public event EventHandler<WintabProximityEventArgs>? ProximityChanged
+        {
+            add { }
+            remove { }
+        }
 
-        public event EventHandler<string>? DiagnosticsChanged;
+        public event EventHandler<string>? DiagnosticsChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool IsActive => Active;
 
