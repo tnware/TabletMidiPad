@@ -40,10 +40,10 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config)
+    public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(PageConfig page)
     {
-        ArgumentNullException.ThrowIfNull(config);
-        return [.. config.Zones
+        ArgumentNullException.ThrowIfNull(page);
+        return [.. page.Zones
             .Select(z => new ZoneSnapshot(
                 Name: z.Name,
                 Enabled: z.Enabled,

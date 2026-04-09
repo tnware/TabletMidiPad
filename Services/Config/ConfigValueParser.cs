@@ -112,4 +112,29 @@ internal sealed class ConfigValueParser : IConfigValueParser
             _ => PenButtonActions.None
         };
     }
+
+    /// <inheritdoc />
+    public string NormalizeExpressKeyAction(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ExpressKeyActions.None => value,
+            ExpressKeyActions.CcMomentary => value,
+            ExpressKeyActions.CcToggle => value,
+            ExpressKeyActions.NoteMomentary => value,
+            ExpressKeyActions.NoteToggle => value,
+            ExpressKeyActions.PrevPage => value,
+            ExpressKeyActions.NextPage => value,
+            ExpressKeyActions.GoToPage1 => value,
+            ExpressKeyActions.GoToPage2 => value,
+            ExpressKeyActions.GoToPage3 => value,
+            ExpressKeyActions.GoToPage4 => value,
+            ExpressKeyActions.GoToPage5 => value,
+            ExpressKeyActions.GoToPage6 => value,
+            ExpressKeyActions.GoToPage7 => value,
+            ExpressKeyActions.GoToPage8 => value,
+            _ => ExpressKeyActions.None
+        };
+    }
 }

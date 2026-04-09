@@ -10,16 +10,17 @@ namespace TabletMidiPad.Services.Pad;
 internal interface IPadInteractionOutcomeApplier
 {
     /// <summary>
-    /// Last known per-zone marker positions in pad-normalized space (for overlay rendering).
+    /// Gets last known per-zone marker positions for the requested page.
     /// </summary>
-    IReadOnlyDictionary<ZoneConfig, Point> LastZoneMarkers { get; }
+    IReadOnlyDictionary<ZoneConfig, Point> GetLastZoneMarkers(int pageIndex);
 
     /// <summary>
-    /// Applies MIDI messages, updates interaction telemetry on the view model, and refreshes <see cref="LastZoneMarkers"/>.
+    /// Applies MIDI messages, updates interaction telemetry on the view model, and updates marker cache for the active page.
     /// </summary>
     void Apply(
         InteractionResult result,
         InteractionState state,
-        AppConfig config,
+        int activePageIndex,
+        IReadOnlyList<ZoneConfig> activeZones,
         MainViewModel viewModel);
 }

@@ -31,8 +31,9 @@ internal sealed class MainViewModel : ViewModelBase
             new ZoneListViewModel(
                 new DesignRuntimeConfigService(),
                 new DesignZoneActionWorkflowCoordinator(),
-                new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService())),
-            new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService()),
+                new DesignPageNavigationService(),
+                new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService(), new DesignPageNavigationService())),
+            new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService(), new DesignPageNavigationService()),
             new ToolbarViewModel(new DesignRuntimeConfigService(), new DesignToolbarSession(), new DesignUiStateProjectionService()),
             new MainShellCommandsViewModel(new DesignMainShellCommandController()))
     {
@@ -257,8 +258,37 @@ internal sealed class MainViewModel : ViewModelBase
         public ToolbarState BuildToolbarState(AppConfig config)
             => new("Pressure (Lin)", "Linear", "Input (Auto)", "Auto", true, false, false, true, false, false);
 
-        public ConnectedState BuildConnectedState(AppConfig config)
+        public ConnectedState BuildConnectedState(AppConfig config, int activePageIndex, int pageCount)
             => new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+    }
+
+    private sealed class DesignPageNavigationService : IPageNavigationService
+    {
+        public int ActivePageIndex { get; private set; }
+
+        public int? PendingPageIndex => null;
+
+        public void Initialize(AppConfig config) => ActivePageIndex = 0;
+
+        public PageSelectionResult Select(AppConfig config, int pageIndex)
+        {
+            ActivePageIndex = Math.Max(0, pageIndex);
+            return new PageSelectionResult(false, ActivePageIndex, string.Empty);
+        }
+
+        public PageSelectionResult SelectNext(AppConfig config) => new(false, ActivePageIndex, string.Empty);
+
+        public PageSelectionResult SelectPrevious(AppConfig config) => new(false, ActivePageIndex, string.Empty);
+
+        public PageSelectionResult AddPage(AppConfig config) => new(false, ActivePageIndex, string.Empty);
+
+        public PageSelectionResult RemovePage(AppConfig config, int pageIndex) => new(false, ActivePageIndex, string.Empty);
+
+        public bool TryQueueDeferred(AppConfig config, int pageIndex) => false;
+
+        public PageSelectionResult? ConsumeDeferred(AppConfig config) => null;
+
+        public PageConfig GetActivePage(AppConfig config) => AppConfig.GetPage(config, 0);
     }
 
     private sealed class DesignMainShellCommandController : IMainShellCommandController

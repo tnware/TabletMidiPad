@@ -10,16 +10,21 @@ internal sealed class ZonePadController : IZonePadController
 {
     private readonly IZonePadControllerHost _host;
     private readonly IZoneResizeService _zoneResizeService;
+    private readonly IPageNavigationService _pageNavigationService;
     private bool _isResizingZone;
     private ZoneResizeSession? _zoneResizeSession;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ZonePadController"/> class.
     /// </summary>
-    public ZonePadController(IZonePadControllerHost host, IZoneResizeService zoneResizeService)
+    public ZonePadController(
+        IZonePadControllerHost host,
+        IZoneResizeService zoneResizeService,
+        IPageNavigationService pageNavigationService)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _zoneResizeService = zoneResizeService ?? throw new ArgumentNullException(nameof(zoneResizeService));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
     }
 
     /// <inheritdoc />
@@ -75,17 +80,21 @@ internal sealed class ZonePadController : IZonePadController
     }
 
     private (int zone, ZoneResizeEdge edge) HitTestZoneEdge(Point pos)
-        => _zoneResizeService.HitTestZoneEdge(
-            _host.Config.Zones,
+    {
+        PageConfig page = _pageNavigationService.GetActivePage(_host.Config);
+        return _zoneResizeService.HitTestZoneEdge(
+            page.Zones,
             _host.SelectedZoneIndex,
             _host.PadActualWidth,
             _host.PadActualHeight,
             pos);
+    }
 
     private void SelectZoneAtPoint(Point pos)
     {
+        PageConfig page = _pageNavigationService.GetActivePage(_host.Config);
         int zoneIndex = _zoneResizeService.HitTestZoneBody(
-            _host.Config.Zones,
+            page.Zones,
             _host.PadActualWidth,
             _host.PadActualHeight,
             pos);
@@ -102,7 +111,8 @@ internal sealed class ZonePadController : IZonePadController
 
     private void StartZoneResize(int zoneIndex, ZoneResizeEdge edge, Point pos)
     {
-        _zoneResizeSession = _zoneResizeService.StartResizeSession(_host.Config.Zones, zoneIndex, edge, pos);
+        PageConfig page = _pageNavigationService.GetActivePage(_host.Config);
+        _zoneResizeSession = _zoneResizeService.StartResizeSession(page.Zones, zoneIndex, edge, pos);
         _isResizingZone = _zoneResizeSession is not null;
         if (!_isResizingZone)
         {
@@ -124,8 +134,9 @@ internal sealed class ZonePadController : IZonePadController
             return;
         }
 
+        PageConfig page = _pageNavigationService.GetActivePage(_host.Config);
         ZoneResizeUpdate? update = _zoneResizeService.ComputeResizeUpdate(
-            _host.Config.Zones,
+            page.Zones,
             _zoneResizeSession,
             _host.PadActualWidth,
             _host.PadActualHeight,
@@ -135,7 +146,7 @@ internal sealed class ZonePadController : IZonePadController
             return;
         }
 
-        ZoneConfig zone = _host.Config.Zones[update.ZoneIndex];
+        ZoneConfig zone = page.Zones[update.ZoneIndex];
         zone.Left = update.Left;
         zone.Top = update.Top;
         zone.Width = update.Width;

@@ -15,12 +15,12 @@ internal interface IZoneConfigurationService
     /// Applies automatic tiling across configured zones.
     /// </summary>
     /// <param name="config">The configuration containing zones and layout limits.</param>
-    void AutoTileZones(AppConfig config);
+    void AutoTileZones(PageConfig page);
 
     /// <summary>
     /// Gets the next available 3-CC block start value for a new zone.
     /// </summary>
     /// <param name="config">The configuration containing existing zone mappings.</param>
     /// <returns>The starting CC value.</returns>
-    int GetNextAvailableCcStart(AppConfig config);
+    int GetNextAvailableCcStart(PageConfig page);
 }

@@ -12,6 +12,7 @@ internal sealed class PadInputControllerFactory : IPadInputControllerFactory
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
+    private readonly IPageNavigationService _pageNavigationService;
 
     public PadInputControllerFactory(
         ITabletDevicePickerSyncService tabletDevicePickerSyncService,
@@ -20,7 +21,8 @@ internal sealed class PadInputControllerFactory : IPadInputControllerFactory
         IWintabInputBridge wintabInputBridge,
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
-        IInputBackendStatusFormatter inputBackendStatusFormatter)
+        IInputBackendStatusFormatter inputBackendStatusFormatter,
+        IPageNavigationService pageNavigationService)
     {
         _tabletDevicePickerSyncService = tabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(tabletDevicePickerSyncService));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
@@ -29,6 +31,7 @@ internal sealed class PadInputControllerFactory : IPadInputControllerFactory
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
     }
 
     public IPadInputController Create(IPadInputControllerHost host)
@@ -41,6 +44,7 @@ internal sealed class PadInputControllerFactory : IPadInputControllerFactory
             _wintabInputBridge,
             _inputFallbackService,
             _inputInteractionOrchestrator,
-            _inputBackendStatusFormatter);
+            _inputBackendStatusFormatter,
+            _pageNavigationService);
     }
 }

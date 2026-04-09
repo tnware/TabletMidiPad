@@ -19,7 +19,7 @@ public sealed class SettingsWorkflowCoordinatorTests
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         AppConfig config = AppConfig.Default;
-        config.Zones =
+        config.Pages[0].Zones =
         [
             new()
             {
@@ -67,6 +67,8 @@ public sealed class SettingsWorkflowCoordinatorTests
             UpperPenButtonNote = 61,
             SendPressureGlobally = true,
             AllowZoneSwitchWhilePressed = true,
+            AllowPageSwitchWhilePressed = false,
+            WrapPageNavigation = true,
             ExpressKeys = [],
             ZoneOverlayStyle = ZoneOverlayStyle.Plain
         };
@@ -83,7 +85,7 @@ public sealed class SettingsWorkflowCoordinatorTests
     {
         SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         AppConfig config = AppConfig.Default;
-        config.Zones = [];
+        config.Pages = [];
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(config, PreferencesMatching(config), IntPtr.Zero);
 
@@ -131,6 +133,8 @@ public sealed class SettingsWorkflowCoordinatorTests
             UpperPenButtonNote = config.UpperPenButtonNote,
             SendPressureGlobally = config.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed,
+            AllowPageSwitchWhilePressed = config.AllowPageSwitchWhilePressed,
+            WrapPageNavigation = config.WrapPageNavigation,
             ExpressKeys = [.. config.ExpressKeys],
             ZoneOverlayStyle = config.ZoneOverlayStyle,
         };

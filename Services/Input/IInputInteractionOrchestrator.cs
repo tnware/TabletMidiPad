@@ -15,7 +15,7 @@ internal interface IInputInteractionOrchestrator
     /// <summary>
     /// Builds zone snapshots for the interaction engine from persisted zone definitions.
     /// </summary>
-    IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config);
+    IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(PageConfig page);
 
     /// <summary>
     /// Processes one interaction sample through the pad interaction engine.

@@ -26,6 +26,8 @@ internal sealed class PreferencesViewModel : ViewModelBase
     private string _upperPenButtonNoteText = "61";
     private bool _sendPressureGlobally = true;
     private bool _allowZoneSwitchWhilePressed = true;
+    private bool _allowPageSwitchWhilePressed;
+    private bool _wrapPageNavigation = true;
     private string _midiLifecycleStatusText = string.Empty;
     private bool _isMidiLifecycleBusy;
 
@@ -135,6 +137,18 @@ internal sealed class PreferencesViewModel : ViewModelBase
     {
         get => _allowZoneSwitchWhilePressed;
         set => SetProperty(ref _allowZoneSwitchWhilePressed, value);
+    }
+
+    public bool AllowPageSwitchWhilePressed
+    {
+        get => _allowPageSwitchWhilePressed;
+        set => SetProperty(ref _allowPageSwitchWhilePressed, value);
+    }
+
+    public bool WrapPageNavigation
+    {
+        get => _wrapPageNavigation;
+        set => SetProperty(ref _wrapPageNavigation, value);
     }
 
     public string MidiLifecycleStatusText

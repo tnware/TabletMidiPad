@@ -4,6 +4,7 @@ global using TabletMidiPad.Services.Input;
 global using TabletMidiPad.Services.Input.Models;
 global using TabletMidiPad.Services.Midi;
 global using TabletMidiPad.Services.Pad;
+global using TabletMidiPad.Services.Page;
 global using TabletMidiPad.Services.Settings;
 global using TabletMidiPad.Services.Settings.Models;
 global using TabletMidiPad.Services.Shell;

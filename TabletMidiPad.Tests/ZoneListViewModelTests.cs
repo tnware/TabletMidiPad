@@ -10,8 +10,9 @@ public sealed class ZoneListViewModelTests
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);
-        var editorService = new ZoneEditorService(new ConfigValueParser());
-        var editor = new ZoneEditorViewModel(runtime, editorService);
+        var pageNavigation = new PageNavigationService();
+        var editorService = new ZoneEditorService(new ConfigValueParser(), pageNavigation);
+        var editor = new ZoneEditorViewModel(runtime, editorService, pageNavigation);
         editor.LoadConfigIntoUi();
         editor.ZoneName = "Edited";
 
@@ -19,7 +20,7 @@ public sealed class ZoneListViewModelTests
         {
             AddResult = new ZoneActionWorkflowResult(true, 1, "added"),
         };
-        var sut = new ZoneListViewModel(runtime, coordinator, editor);
+        var sut = new ZoneListViewModel(runtime, coordinator, pageNavigation, editor);
         string? status = null;
         int refreshCount = 0;
         sut.SettingsResultRequested += (message, _) => status = message;
@@ -27,7 +28,7 @@ public sealed class ZoneListViewModelTests
 
         sut.AddZoneCommand.Execute(null);
 
-        Assert.Equal("Edited", runtime.Current.Zones[0].Name);
+        Assert.Equal("Edited", runtime.Current.Pages[0].Zones[0].Name);
         Assert.Equal(1, editor.SelectedZoneIndex);
         Assert.Equal("added", status);
         Assert.Equal(1, refreshCount);
@@ -55,7 +56,7 @@ public sealed class ZoneListViewModelTests
 
         public ZoneActionWorkflowResult AddZone(AppConfig config)
         {
-            config.Zones.Add(new ZoneConfig { Name = "Zone 2" });
+            config.Pages[0].Zones.Add(new ZoneConfig { Name = "Zone 2" });
             return AddResult;
         }
 

@@ -73,10 +73,11 @@ public sealed class UiStateProjectionServiceTests
         };
         config.Zones.Add(ZoneConfig.CreateDefault());
 
-        ConnectedState state = projection.BuildConnectedState(config);
+        ConnectedState state = projection.BuildConnectedState(config, activePageIndex: 1, pageCount: 3);
 
         Assert.Equal("Connected", state.StatusText);
         Assert.Equal("Send to 'DAW X' via 'APP X'", state.RoutingText);
+        Assert.Contains("2/3 page(s) active", state.ConfigSummaryText);
         Assert.Contains("lock zone until release", state.ConfigSummaryText);
         Assert.Equal("Active zone: none", state.ActiveZoneText);
         Assert.Equal("X: -, Y: -, Pressure: -", state.ValueText);

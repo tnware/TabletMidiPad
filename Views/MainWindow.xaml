@@ -404,6 +404,27 @@
                     </StackPanel>
                 </Button>
                 <Border Style="{StaticResource ToolbarSep}"/>
+                <Button Style="{StaticResource ToolbarButton}"
+                        Command="{Binding ZoneList.PreviousPageCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE72B;"/>
+                        <TextBlock Text="Prev Page"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolbarButton}"
+                        Command="{Binding ZoneList.NextPageCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE72A;"/>
+                        <TextBlock Text="Next Page"/>
+                    </StackPanel>
+                </Button>
+                <Border Style="{StaticResource ToolbarSep}"/>
                 <!-- Pressure split button: toggle + curve dropdown -->
                 <Border x:Name="PressureSplitBorder"
                         CornerRadius="8"
@@ -830,6 +851,67 @@
                                    Margin="0,4,0,10"
                                    TextWrapping="Wrap"
                                    Text="{Binding RoutingText}"/>
+
+                        <TextBlock Text="Pages"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <ListBox Name="PageListBox"
+                                 Height="94"
+                                 ItemContainerStyle="{StaticResource ZoneListBoxItemStyle}"
+                                 ItemsSource="{Binding ZoneEditor.Pages}"
+                                 SelectedIndex="{Binding ZoneEditor.SelectedPageIndex, Mode=TwoWay}"
+                                 SelectionChanged="PageListBox_SelectionChanged"
+                                 Style="{StaticResource ZoneListStyle}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PageListItemViewModel}">
+                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="12"
+                                               Text="{Binding DisplayText}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Grid Margin="0,8,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource ZoneIconButtonStyle}"
+                                    ToolTip="Previous page"
+                                    Command="{Binding ZoneList.PreviousPageCommand}"
+                                    Content="&#xE72B;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource ZoneIconButtonStyle}"
+                                    ToolTip="Next page"
+                                    Command="{Binding ZoneList.NextPageCommand}"
+                                    Content="&#xE72A;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                            <Button Grid.Column="4"
+                                    Style="{StaticResource ZoneIconButtonStyle}"
+                                    ToolTip="Add page"
+                                    Command="{Binding ZoneList.AddPageCommand}"
+                                    Content="&#xE710;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                            <Button Grid.Column="6"
+                                    Style="{StaticResource ZoneIconButtonStyle}"
+                                    ToolTip="Remove selected page"
+                                    Command="{Binding ZoneList.RemovePageCommand}"
+                                    Content="&#xE74D;"
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"/>
+                            <TextBox Grid.Column="8"
+                                     Margin="0,0,0,0"
+                                     Text="{Binding ZoneEditor.PageName, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
 
                         <TextBlock Text="Layout"
                                    Foreground="{StaticResource TextMutedBrush}"

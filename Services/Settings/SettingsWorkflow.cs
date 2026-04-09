@@ -145,7 +145,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     public void ResetToDefaultsAndApply()
     {
         _runtimeConfig.ResetToDefaults();
-        _zoneConfigurationService.AutoTileZones(_runtimeConfig.Current);
+        _zoneConfigurationService.AutoTileZones(AppConfig.GetPage(_runtimeConfig.Current, 0));
         _host.LoadConfigIntoUi();
         ApplySettings();
     }

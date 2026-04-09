@@ -7,6 +7,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
 {
     private readonly IRuntimeConfigService _runtimeConfig;
     private readonly IZoneEditorService _zoneEditorService;
+    private readonly IPageNavigationService _pageNavigationService;
     private string _zoneSelectionSummaryPrimaryText = "No zone selected";
     private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
     private int _selectedZoneIndex = -1;
@@ -30,11 +31,17 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private string _maxZoneRowsText = string.Empty;
     private string _maxZonesPerRowText = string.Empty;
     private bool _isCanvasLocked;
+    private int _selectedPageIndex;
+    private string _pageName = string.Empty;
 
-    public ZoneEditorViewModel(IRuntimeConfigService runtimeConfig, IZoneEditorService zoneEditorService)
+    public ZoneEditorViewModel(
+        IRuntimeConfigService runtimeConfig,
+        IZoneEditorService zoneEditorService,
+        IPageNavigationService pageNavigationService)
     {
-        _runtimeConfig = runtimeConfig;
-        _zoneEditorService = zoneEditorService;
+        _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
+        _zoneEditorService = zoneEditorService ?? throw new ArgumentNullException(nameof(zoneEditorService));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
 
         for (int ch = 1; ch <= 16; ch++)
         {
@@ -51,9 +58,23 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
 
     public ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
 
+    public ObservableCollection<PageListItemViewModel> Pages { get; } = new();
+
     public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
 
     public bool IsLoadingUi { get; private set; }
+
+    public int SelectedPageIndex
+    {
+        get => _selectedPageIndex;
+        set => SetProperty(ref _selectedPageIndex, value);
+    }
+
+    public string PageName
+    {
+        get => _pageName;
+        set => SetProperty(ref _pageName, value);
+    }
 
     public string MaxZoneRowsText
     {
@@ -210,14 +231,57 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     public void LoadConfigIntoUi()
     {
         AppConfig config = _runtimeConfig.Current;
+        _pageNavigationService.Initialize(config);
         IsLoadingUi = true;
-        MaxZoneRowsText = config.MaxZoneRows.ToString(CultureInfo.InvariantCulture);
-        MaxZonesPerRowText = config.MaxZonesPerRow.ToString(CultureInfo.InvariantCulture);
+        RefreshPageList();
+        SelectedPageIndex = _pageNavigationService.ActivePageIndex;
+        NotifySelectedPageIndexChanged();
+        LoadSelectedPageIntoEditor();
         RefreshZoneList();
-        SelectedZoneIndex = config.Zones.Count > 0 ? 0 : -1;
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        SelectedZoneIndex = page.Zones.Count > 0 ? 0 : -1;
         NotifySelectedZoneIndexChanged();
         LoadSelectedZoneIntoEditor();
         IsLoadingUi = false;
+    }
+
+    public void NotifySelectedPageIndexChanged() => OnPropertyChanged(nameof(SelectedPageIndex));
+
+    public void RefreshPageList()
+    {
+        Pages.Clear();
+        AppConfig config = _runtimeConfig.Current;
+        for (int i = 0; i < config.Pages.Count; i++)
+        {
+            PageConfig page = AppConfig.GetPage(config, i);
+            Pages.Add(new PageListItemViewModel
+            {
+                Index = i,
+                DisplayIndex = i + 1,
+                Name = page.Name,
+                DisplayText = $"{i + 1}. {page.Name}"
+            });
+        }
+    }
+
+    public void LoadSelectedPageIntoEditor()
+    {
+        IsLoadingUi = true;
+        PageConfig page = _pageNavigationService.GetActivePage(_runtimeConfig.Current);
+        SelectedPageIndex = _pageNavigationService.ActivePageIndex;
+        PageName = page.Name;
+        MaxZoneRowsText = page.MaxZoneRows.ToString(CultureInfo.InvariantCulture);
+        MaxZonesPerRowText = page.MaxZonesPerRow.ToString(CultureInfo.InvariantCulture);
+        IsLoadingUi = false;
+    }
+
+    public void CommitCurrentPageEdits()
+    {
+        AppConfig config = _runtimeConfig.Current;
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        page.Name = string.IsNullOrWhiteSpace(PageName)
+            ? $"Page {_pageNavigationService.ActivePageIndex + 1}"
+            : PageName.Trim();
     }
 
     public void LoadSelectedZoneIntoEditor()
@@ -229,6 +293,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
 
     public void CommitCurrentZoneEdits()
     {
+        CommitCurrentPageEdits();
         _zoneEditorService.CommitCurrentZoneEdits(
             _runtimeConfig.Current,
             this,
@@ -251,5 +316,38 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
 
         LoadSelectedZoneIntoEditor();
         return true;
+    }
+
+    public bool OnPageListSelectionChanged()
+    {
+        if (IsLoadingUi)
+        {
+            return false;
+        }
+
+        CommitCurrentPageEdits();
+        CommitCurrentZoneEdits();
+        _pageNavigationService.Select(_runtimeConfig.Current, SelectedPageIndex);
+        ApplyActivePageFromWorkflow(_pageNavigationService.ActivePageIndex, resetZoneSelection: true);
+        return true;
+    }
+
+    public void ApplyActivePageFromWorkflow(int activePageIndex, bool resetZoneSelection)
+    {
+        IsLoadingUi = true;
+        SelectedPageIndex = activePageIndex;
+        NotifySelectedPageIndexChanged();
+        RefreshPageList();
+        LoadSelectedPageIntoEditor();
+        RefreshZoneList();
+        if (resetZoneSelection)
+        {
+            PageConfig page = _pageNavigationService.GetActivePage(_runtimeConfig.Current);
+            SelectedZoneIndex = page.Zones.Count > 0 ? 0 : -1;
+        }
+
+        NotifySelectedZoneIndexChanged();
+        LoadSelectedZoneIntoEditor();
+        IsLoadingUi = false;
     }
 }

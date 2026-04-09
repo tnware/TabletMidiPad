@@ -13,9 +13,7 @@ public sealed class PadInteractionOutcomeApplierTests
         var engine = new StubMidiEngine();
         var sut = new PadInteractionOutcomeApplier(engine);
         var vm = new MainViewModel();
-        var config = new AppConfig();
-        config.Zones.Clear();
-        config.Zones.Add(ZoneConfig.CreateDefault());
+        IReadOnlyList<ZoneConfig> activeZones = [ZoneConfig.CreateDefault()];
         var state = new InteractionState();
         var result = new InteractionResult(
             ActiveZoneIndex: 0,
@@ -29,7 +27,7 @@ public sealed class PadInteractionOutcomeApplierTests
                 MidiMessage.Note(1, 60, false, 0, false),
             });
 
-        sut.Apply(result, state, config, vm);
+        sut.Apply(result, state, activePageIndex: 0, activeZones, vm);
 
         Assert.Single(engine.CcCalls);
         Assert.Equal((1, 10, 64, false), engine.CcCalls[0]);
@@ -47,22 +45,20 @@ public sealed class PadInteractionOutcomeApplierTests
         var engine = new StubMidiEngine();
         var sut = new PadInteractionOutcomeApplier(engine);
         var vm = new MainViewModel();
-        var config = new AppConfig();
-        config.Zones.Clear();
         var z0 = new ZoneConfig { Name = "A" };
         var z1 = new ZoneConfig { Name = "B" };
-        config.Zones.Add(z0);
-        config.Zones.Add(z1);
+        IReadOnlyList<ZoneConfig> activeZones = [z0, z1];
         var state = new InteractionState();
         state.LastLocalByZone[0] = (0.1, 0.2);
         state.LastLocalByZone[1] = (0.3, 0.4);
         var result = new InteractionResult(-1, string.Empty, string.Empty, string.Empty, new List<MidiMessage>());
 
-        sut.Apply(result, state, config, vm);
+        sut.Apply(result, state, activePageIndex: 0, activeZones, vm);
 
-        Assert.Equal(2, sut.LastZoneMarkers.Count);
-        Assert.Equal(new Point(0.1, 0.2), sut.LastZoneMarkers[z0]);
-        Assert.Equal(new Point(0.3, 0.4), sut.LastZoneMarkers[z1]);
+        IReadOnlyDictionary<ZoneConfig, Point> markers = sut.GetLastZoneMarkers(0);
+        Assert.Equal(2, markers.Count);
+        Assert.Equal(new Point(0.1, 0.2), markers[z0]);
+        Assert.Equal(new Point(0.3, 0.4), markers[z1]);
     }
 
     [Fact]

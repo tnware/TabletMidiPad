@@ -9,9 +9,10 @@ public sealed class ZoneEditorServiceTests
     public void CommitCurrentZoneEditsWritesValidatedValuesFromViewModel()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser);
+        var sut = new ZoneEditorService(parser, new PageNavigationService());
         var config = new AppConfig();
-        config.Zones.Add(ZoneConfig.CreateDefault());
+        config.Pages[0].Zones.Clear();
+        config.Pages[0].Zones.Add(ZoneConfig.CreateDefault());
 
         var vm = new TestZoneEditorState
         {
@@ -35,7 +36,7 @@ public sealed class ZoneEditorServiceTests
 
         sut.CommitCurrentZoneEdits(config, vm, 0, "1", "2");
 
-        ZoneConfig z = config.Zones[0];
+        ZoneConfig z = config.Pages[0].Zones[0];
         Assert.Equal("Z1", z.Name);
         Assert.True(z.Enabled);
         Assert.Equal(2, z.MidiChannel);
@@ -44,8 +45,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(12, z.CcPressure);
         Assert.Equal(0.5, z.Width);
         Assert.Equal(0.5, z.Height);
-        Assert.Equal(1, config.MaxZoneRows);
-        Assert.Equal(2, config.MaxZonesPerRow);
+        Assert.Equal(1, config.Pages[0].MaxZoneRows);
+        Assert.Equal(2, config.Pages[0].MaxZonesPerRow);
         Assert.Equal(ZoneReleaseBehaviors.Hold, z.ReleaseBehavior);
     }
 
@@ -53,10 +54,10 @@ public sealed class ZoneEditorServiceTests
     public void LoadSelectedZoneIntoEditorLoadsMidiChannelAndReleaseBehavior()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser);
+        var sut = new ZoneEditorService(parser, new PageNavigationService());
         var config = new AppConfig();
-        config.Zones.Clear();
-        config.Zones.Add(new ZoneConfig
+        config.Pages[0].Zones.Clear();
+        config.Pages[0].Zones.Add(new ZoneConfig
         {
             Name = "Z",
             Enabled = true,
@@ -76,7 +77,7 @@ public sealed class ZoneEditorServiceTests
     public void LoadSelectedZoneIntoEditorNoSelectionClearsEditor()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser);
+        var sut = new ZoneEditorService(parser, new PageNavigationService());
         AppConfig config = AppConfig.Default;
         var vm = new TestZoneEditorState { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
 

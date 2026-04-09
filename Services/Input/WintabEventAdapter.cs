@@ -15,7 +15,7 @@ internal sealed class WintabEventAdapter : IWintabEventAdapter
         uint encodedButtons = (uint)(control & 0xFFFF) | (isPressed ? 0x0001_0000u : 0u);
 
         string action = control >= 0 && control < configuredExpressKeys.Count
-            ? NormalizePenButtonAction(configuredExpressKeys[control].Action)
+            ? NormalizeExpressKeyAction(configuredExpressKeys[control].Action)
             : "Unknown";
 
         string diagnostics = $"EK{control}: {(isPressed ? "pressed" : "released")} [{action}]";
@@ -61,22 +61,27 @@ internal sealed class WintabEventAdapter : IWintabEventAdapter
         return true;
     }
 
-    private static string NormalizePenButtonAction(string? text)
+    private static string NormalizeExpressKeyAction(string? text)
     {
         string value = (text ?? string.Empty).Trim();
         return value switch
         {
-            PenButtonActions.None => value,
-            PenButtonActions.LockXY => value,
-            PenButtonActions.LockX => value,
-            PenButtonActions.LockY => value,
-            PenButtonActions.DisablePressure => value,
-            PenButtonActions.EnablePressure => value,
-            PenButtonActions.CcMomentary => value,
-            PenButtonActions.CcToggle => value,
-            PenButtonActions.NoteMomentary => value,
-            PenButtonActions.NoteToggle => value,
-            _ => PenButtonActions.None
+            ExpressKeyActions.None => value,
+            ExpressKeyActions.CcMomentary => value,
+            ExpressKeyActions.CcToggle => value,
+            ExpressKeyActions.NoteMomentary => value,
+            ExpressKeyActions.NoteToggle => value,
+            ExpressKeyActions.PrevPage => value,
+            ExpressKeyActions.NextPage => value,
+            ExpressKeyActions.GoToPage1 => value,
+            ExpressKeyActions.GoToPage2 => value,
+            ExpressKeyActions.GoToPage3 => value,
+            ExpressKeyActions.GoToPage4 => value,
+            ExpressKeyActions.GoToPage5 => value,
+            ExpressKeyActions.GoToPage6 => value,
+            ExpressKeyActions.GoToPage7 => value,
+            ExpressKeyActions.GoToPage8 => value,
+            _ => ExpressKeyActions.None
         };
     }
 }

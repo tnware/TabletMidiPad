@@ -135,7 +135,8 @@ public sealed class PadInputControllerTests
             new StubWintabInputBridge(),
             new StubInputFallbackService(),
             new StubInputInteractionOrchestrator(),
-            new InputBackendStatusFormatter());
+            new InputBackendStatusFormatter(),
+            new PageNavigationService());
     }
 
     private sealed class ControllerTestHost : IPadInputControllerHost
@@ -330,7 +331,7 @@ public sealed class PadInputControllerTests
                 UpperPenButtonNote: 0,
                 ExpressKeys: []);
 
-        public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(AppConfig config) => Array.Empty<ZoneSnapshot>();
+        public IReadOnlyList<ZoneSnapshot> BuildZoneSnapshots(PageConfig page) => Array.Empty<ZoneSnapshot>();
 
         public InteractionResult ProcessTick(
             PadInteractionConfig config,

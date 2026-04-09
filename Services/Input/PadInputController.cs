@@ -17,6 +17,7 @@ internal sealed class PadInputController : IPadInputController
     private readonly IInputFallbackService _inputFallbackService;
     private readonly IInputInteractionOrchestrator _inputInteractionOrchestrator;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
+    private readonly IPageNavigationService _pageNavigationService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PadInputController"/> class.
@@ -29,7 +30,8 @@ internal sealed class PadInputController : IPadInputController
         IWintabInputBridge wintabInputBridge,
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
-        IInputBackendStatusFormatter inputBackendStatusFormatter)
+        IInputBackendStatusFormatter inputBackendStatusFormatter,
+        IPageNavigationService pageNavigationService)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _tabletDevicePickerSyncService = tabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(tabletDevicePickerSyncService));
@@ -39,6 +41,7 @@ internal sealed class PadInputController : IPadInputController
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
         _inputInteractionOrchestrator = inputInteractionOrchestrator ?? throw new ArgumentNullException(nameof(inputInteractionOrchestrator));
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
     }
 
     private PadInputControllerState S => _host.PadState;
@@ -159,11 +162,21 @@ internal sealed class PadInputController : IPadInputController
     {
         WintabExpressKeyBridgeOutcome outcome = _wintabInputBridge.BuildExpressKeyBridge(expressKey, _host.Config.ExpressKeys);
         S.ExpressKeyCount = Math.Max(S.ExpressKeyCount, outcome.RequiredExpressKeyCount);
-        _host.ApplyInteractionResult(_inputInteractionOrchestrator.ProcessTick(
-            _inputInteractionOrchestrator.BuildPadInteractionConfig(_host.Config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_host.Config),
-            _host.InteractionState,
-            outcome.EngineInput));
+
+        string action = ResolveExpressKeyAction(expressKey.Control);
+        if (expressKey.IsPressed && TryResolvePageSwitchTarget(action, out int targetPageIndex))
+        {
+            ApplyPageSwitch(targetPageIndex);
+        }
+        else
+        {
+            _host.ApplyInteractionResult(_inputInteractionOrchestrator.ProcessTick(
+                _inputInteractionOrchestrator.BuildPadInteractionConfig(_host.Config),
+                BuildActiveZoneSnapshots(),
+                _host.InteractionState,
+                outcome.EngineInput));
+        }
+
         S.ExpressKeyDiagnostics = outcome.ExpressKeyDiagnostics;
         MarkInputBackend(outcome.BackendLabel);
         _host.UpdateInputBackendStatus();
@@ -320,10 +333,18 @@ internal sealed class PadInputController : IPadInputController
     {
         InteractionResult releaseResult = _inputInteractionOrchestrator.ProcessRelease(
             _inputInteractionOrchestrator.BuildPadInteractionConfig(_host.Config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_host.Config),
+            BuildActiveZoneSnapshots(),
             _host.InteractionState,
             S.LastWintabButtons);
         _host.ApplyInteractionResult(releaseResult);
+
+        PageSelectionResult? deferred = _pageNavigationService.ConsumeDeferred(_host.Config);
+        if (deferred is PageSelectionResult deferredResult && deferredResult.Changed)
+        {
+            SyncPageSelectionToViewModel(deferredResult.ActivePageIndex);
+            _host.OnRebindCompletedRefreshRouting();
+        }
+
         _host.RefreshPadZoneOverlay();
 
         _host.PadChrome.ApplyCursorChrome(_host.PadChrome.ComputeCursorAfterRelease());
@@ -338,7 +359,7 @@ internal sealed class PadInputController : IPadInputController
 
         InteractionResult result = _inputInteractionOrchestrator.ProcessTick(
             _inputInteractionOrchestrator.BuildPadInteractionConfig(_host.Config),
-            _inputInteractionOrchestrator.BuildZoneSnapshots(_host.Config),
+            BuildActiveZoneSnapshots(),
             _host.InteractionState,
             input);
 
@@ -414,4 +435,120 @@ internal sealed class PadInputController : IPadInputController
     }
 
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e) => e.StylusDevice is not null;
+
+    private IReadOnlyList<ZoneSnapshot> BuildActiveZoneSnapshots()
+        => _inputInteractionOrchestrator.BuildZoneSnapshots(_pageNavigationService.GetActivePage(_host.Config));
+
+    private string ResolveExpressKeyAction(int control)
+    {
+        if (control < 0 || control >= _host.Config.ExpressKeys.Count)
+        {
+            return ExpressKeyActions.None;
+        }
+
+        string value = (_host.Config.ExpressKeys[control].Action ?? string.Empty).Trim();
+        return value switch
+        {
+            ExpressKeyActions.None => value,
+            ExpressKeyActions.CcMomentary => value,
+            ExpressKeyActions.CcToggle => value,
+            ExpressKeyActions.NoteMomentary => value,
+            ExpressKeyActions.NoteToggle => value,
+            ExpressKeyActions.PrevPage => value,
+            ExpressKeyActions.NextPage => value,
+            ExpressKeyActions.GoToPage1 => value,
+            ExpressKeyActions.GoToPage2 => value,
+            ExpressKeyActions.GoToPage3 => value,
+            ExpressKeyActions.GoToPage4 => value,
+            ExpressKeyActions.GoToPage5 => value,
+            ExpressKeyActions.GoToPage6 => value,
+            ExpressKeyActions.GoToPage7 => value,
+            ExpressKeyActions.GoToPage8 => value,
+            _ => ExpressKeyActions.None
+        };
+    }
+
+    private bool TryResolvePageSwitchTarget(string action, out int targetPageIndex)
+    {
+        targetPageIndex = _pageNavigationService.ActivePageIndex;
+        return action switch
+        {
+            ExpressKeyActions.PrevPage => ResolveRelativePage(-1, out targetPageIndex),
+            ExpressKeyActions.NextPage => ResolveRelativePage(1, out targetPageIndex),
+            ExpressKeyActions.GoToPage1 => ResolveDirectPage(0, out targetPageIndex),
+            ExpressKeyActions.GoToPage2 => ResolveDirectPage(1, out targetPageIndex),
+            ExpressKeyActions.GoToPage3 => ResolveDirectPage(2, out targetPageIndex),
+            ExpressKeyActions.GoToPage4 => ResolveDirectPage(3, out targetPageIndex),
+            ExpressKeyActions.GoToPage5 => ResolveDirectPage(4, out targetPageIndex),
+            ExpressKeyActions.GoToPage6 => ResolveDirectPage(5, out targetPageIndex),
+            ExpressKeyActions.GoToPage7 => ResolveDirectPage(6, out targetPageIndex),
+            ExpressKeyActions.GoToPage8 => ResolveDirectPage(7, out targetPageIndex),
+            _ => false
+        };
+    }
+
+    private bool ResolveRelativePage(int offset, out int targetPageIndex)
+    {
+        int count = _host.Config.Pages.Count;
+        if (count <= 0)
+        {
+            targetPageIndex = 0;
+            return false;
+        }
+
+        int current = _pageNavigationService.ActivePageIndex;
+        int target = current + offset;
+        if (target < 0)
+        {
+            target = _host.Config.WrapPageNavigation ? count - 1 : current;
+        }
+        else if (target >= count)
+        {
+            target = _host.Config.WrapPageNavigation ? 0 : current;
+        }
+
+        targetPageIndex = target;
+        return target != current;
+    }
+
+    private bool ResolveDirectPage(int directIndex, out int targetPageIndex)
+    {
+        targetPageIndex = directIndex;
+        if (targetPageIndex < 0 || targetPageIndex >= _host.Config.Pages.Count)
+        {
+            return false;
+        }
+
+        return targetPageIndex != _pageNavigationService.ActivePageIndex;
+    }
+
+    private void ApplyPageSwitch(int targetPageIndex)
+    {
+        if (!_host.Config.AllowPageSwitchWhilePressed && S.IsActive)
+        {
+            _pageNavigationService.TryQueueDeferred(_host.Config, targetPageIndex);
+            return;
+        }
+
+        if (S.IsActive && _host.Config.AllowPageSwitchWhilePressed)
+        {
+            HandleRelease();
+        }
+
+        PageSelectionResult result = _pageNavigationService.Select(_host.Config, targetPageIndex);
+        if (!result.Changed)
+        {
+            return;
+        }
+
+        SyncPageSelectionToViewModel(result.ActivePageIndex);
+        _host.OnRebindCompletedRefreshRouting();
+        _host.RefreshPadZoneOverlay();
+    }
+
+    private void SyncPageSelectionToViewModel(int activePageIndex)
+    {
+        var zoneEditor = _host.ViewModel.ZoneEditor;
+        zoneEditor.ApplyActivePageFromWorkflow(activePageIndex, resetZoneSelection: true);
+    }
 }

@@ -36,6 +36,8 @@ internal partial class PreferencesWindow : Window
     public int UpperPenButtonNote { get; private set; }
     public bool SendPressureGlobally => _viewModel.SendPressureGlobally;
     public bool AllowZoneSwitchWhilePressed => _viewModel.AllowZoneSwitchWhilePressed;
+    public bool AllowPageSwitchWhilePressed => _viewModel.AllowPageSwitchWhilePressed;
+    public bool WrapPageNavigation => _viewModel.WrapPageNavigation;
     public ZoneOverlayStyle ZoneOverlayStyle { get; private set; } = ZoneOverlayStyle.Plain;
 
     private readonly int _expressKeyCount;
@@ -120,6 +122,8 @@ internal partial class PreferencesWindow : Window
         _viewModel.UpperPenButtonNoteText = config.UpperPenButtonNote.ToString(CultureInfo.InvariantCulture);
         _viewModel.SendPressureGlobally = config.SendPressureGlobally;
         _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
+        _viewModel.AllowPageSwitchWhilePressed = config.AllowPageSwitchWhilePressed;
+        _viewModel.WrapPageNavigation = config.WrapPageNavigation;
         SelectZoneOverlayStyle(config.ZoneOverlayStyle);
         _viewModel.MidiLifecycleStatusText = string.Empty;
         _viewModel.IsMidiLifecycleBusy = false;
@@ -130,7 +134,7 @@ internal partial class PreferencesWindow : Window
         {
             ExpressKeyConfig ek = config.ExpressKeys[i];
             ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
-            row.Action = _configValueParser.NormalizePenButtonAction(ek.Action);
+            row.Action = _configValueParser.NormalizeExpressKeyAction(ek.Action);
             row.MidiChannelText = Math.Clamp(ek.MidiChannel, 1, 16).ToString(CultureInfo.InvariantCulture);
             row.CcText = Math.Clamp(ek.Cc, 0, 127).ToString(CultureInfo.InvariantCulture);
             row.NoteText = Math.Clamp(ek.Note, 0, 127).ToString(CultureInfo.InvariantCulture);
@@ -147,7 +151,7 @@ internal partial class PreferencesWindow : Window
             ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
             list.Add(new ExpressKeyConfig
             {
-                Action = _configValueParser.NormalizePenButtonAction(row.Action),
+                Action = _configValueParser.NormalizeExpressKeyAction(row.Action),
                 MidiChannel = ReadMidiChannelText(row.MidiChannelText, $"ExpressKey {i + 1} MIDI Channel"),
                 Cc = int.TryParse(row.CcText, out int cc) ? Math.Clamp(cc, 0, 127) : 70 + i,
                 Note = int.TryParse(row.NoteText, out int note) ? Math.Clamp(note, 0, 127) : 36 + i
@@ -329,7 +333,7 @@ internal partial class PreferencesWindow : Window
         for (int i = 0; i < _viewModel.ExpressKeys.Count; i++)
         {
             ExpressKeyRowViewModel row = _viewModel.ExpressKeys[i];
-            _ = _configValueParser.NormalizePenButtonAction(row.Action);
+            _ = _configValueParser.NormalizeExpressKeyAction(row.Action);
             ReadMidiChannelText(row.MidiChannelText, $"ExpressKey {i + 1} MIDI Channel");
             _ = _configValueParser.ReadInt(row.CcText, 0, 127, $"ExpressKey {i + 1} CC");
             _ = _configValueParser.ReadInt(row.NoteText, 0, 127, $"ExpressKey {i + 1} Note");
@@ -375,6 +379,26 @@ internal partial class PreferencesWindow : Window
         comboBox.Items.Add(PenButtonActions.NoteToggle);
     }
 
+    private static void PopulateExpressKeyActionComboBox(ComboBox comboBox)
+    {
+        comboBox.Items.Clear();
+        comboBox.Items.Add(ExpressKeyActions.None);
+        comboBox.Items.Add(ExpressKeyActions.CcMomentary);
+        comboBox.Items.Add(ExpressKeyActions.CcToggle);
+        comboBox.Items.Add(ExpressKeyActions.NoteMomentary);
+        comboBox.Items.Add(ExpressKeyActions.NoteToggle);
+        comboBox.Items.Add(ExpressKeyActions.PrevPage);
+        comboBox.Items.Add(ExpressKeyActions.NextPage);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage1);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage2);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage3);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage4);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage5);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage6);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage7);
+        comboBox.Items.Add(ExpressKeyActions.GoToPage8);
+    }
+
     private void BuildExpressKeyRows()
     {
         if (_expressKeyCount == 0)
@@ -412,7 +436,7 @@ internal partial class PreferencesWindow : Window
             };
 
             var actionCombo = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
-            PopulateActionComboBox(actionCombo);
+            PopulateExpressKeyActionComboBox(actionCombo);
             actionCombo.SetBinding(ComboBox.TextProperty, new System.Windows.Data.Binding(nameof(ExpressKeyRowViewModel.Action))
             {
                 Source = rowVm,

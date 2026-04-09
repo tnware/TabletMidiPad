@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using PenButtonActions = TabletMidiPad.Core.Interaction.InteractionConstants.PenButtonActions;
+using ExpressKeyActions = TabletMidiPad.Core.Interaction.InteractionConstants.ExpressKeyActions;
 using ZoneReleaseBehaviors = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneReleaseBehaviors;
 
 namespace TabletMidiPad.Core.Interaction;
@@ -254,21 +255,21 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         }
 
         var keyConfig = config.ExpressKeys[control];
-        string action = NormalizePenButtonAction(keyConfig.Action);
+        string action = NormalizeExpressKeyAction(keyConfig.Action);
         int channel = keyConfig.MidiChannel;
         int cc = Math.Clamp(keyConfig.Cc, 0, 127);
         int note = Math.Clamp(keyConfig.Note, 0, 127);
 
         var messages = new List<MidiMessage>(capacity: 1);
 
-        if (string.Equals(action, PenButtonActions.CcMomentary, StringComparison.Ordinal))
+        if (string.Equals(action, ExpressKeyActions.CcMomentary, StringComparison.Ordinal))
         {
             if (justPressed)
                 messages.Add(MidiMessage.Cc(channel, cc, 127, force: true));
             else if (justReleased)
                 messages.Add(MidiMessage.Cc(channel, cc, 0, force: true));
         }
-        else if (string.Equals(action, PenButtonActions.CcToggle, StringComparison.Ordinal))
+        else if (string.Equals(action, ExpressKeyActions.CcToggle, StringComparison.Ordinal))
         {
             if (justPressed)
             {
@@ -276,14 +277,14 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
                 messages.Add(MidiMessage.Cc(channel, cc, toggleState ? 127 : 0, force: true));
             }
         }
-        else if (string.Equals(action, PenButtonActions.NoteMomentary, StringComparison.Ordinal))
+        else if (string.Equals(action, ExpressKeyActions.NoteMomentary, StringComparison.Ordinal))
         {
             if (justPressed)
                 messages.Add(MidiMessage.Note(channel, note, on: true, velocity: 127, force: true));
             else if (justReleased)
                 messages.Add(MidiMessage.Note(channel, note, on: false, velocity: 0, force: true));
         }
-        else if (string.Equals(action, PenButtonActions.NoteToggle, StringComparison.Ordinal))
+        else if (string.Equals(action, ExpressKeyActions.NoteToggle, StringComparison.Ordinal))
         {
             if (justPressed)
             {
@@ -557,6 +558,30 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             PenButtonActions.NoteMomentary => value,
             PenButtonActions.NoteToggle => value,
             _ => PenButtonActions.None
+        };
+    }
+
+    private static string NormalizeExpressKeyAction(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ExpressKeyActions.None => value,
+            ExpressKeyActions.CcMomentary => value,
+            ExpressKeyActions.CcToggle => value,
+            ExpressKeyActions.NoteMomentary => value,
+            ExpressKeyActions.NoteToggle => value,
+            ExpressKeyActions.PrevPage => value,
+            ExpressKeyActions.NextPage => value,
+            ExpressKeyActions.GoToPage1 => value,
+            ExpressKeyActions.GoToPage2 => value,
+            ExpressKeyActions.GoToPage3 => value,
+            ExpressKeyActions.GoToPage4 => value,
+            ExpressKeyActions.GoToPage5 => value,
+            ExpressKeyActions.GoToPage6 => value,
+            ExpressKeyActions.GoToPage7 => value,
+            ExpressKeyActions.GoToPage8 => value,
+            _ => ExpressKeyActions.None
         };
     }
 

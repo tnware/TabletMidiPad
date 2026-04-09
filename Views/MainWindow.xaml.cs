@@ -21,12 +21,15 @@ public partial class MainWindow : Window
     private readonly IUiStateProjectionService _uiStateProjectionService;
     private readonly IStartupLifecycleService _startupLifecycle;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
+    private readonly IPageNavigationService _pageNavigationService;
     private readonly MainViewModel _viewModel;
     private readonly InteractionState _interactionState = new();
 
     private Canvas Pad => PadSurface.PadInputElement;
 
     private AppConfig Config => _runtimeConfig.Current;
+
+    private PageConfig ActivePage => _pageNavigationService.GetActivePage(Config);
 
     private int SelectedZoneIndex
     {
@@ -35,7 +38,12 @@ public partial class MainWindow : Window
     }
 
     private void ApplyInteractionResult(InteractionResult result)
-        => _interactionOutcomeApplier.Apply(result, _interactionState, Config, _viewModel);
+        => _interactionOutcomeApplier.Apply(
+            result,
+            _interactionState,
+            _pageNavigationService.ActivePageIndex,
+            ActivePage.Zones,
+            _viewModel);
 
     /// <summary>
     /// Application entry constructs the window via <see cref="Composition.AppBootstrapper.CreateApplicationShell"/>.
@@ -54,7 +62,8 @@ public partial class MainWindow : Window
         IMainWindowWorkflowFactory mainWindowWorkflowFactory,
         IPadPresentationCoordinator padPresentationCoordinator,
         IMainViewModelFactory mainViewModelFactory,
-        IPadInteractionOutcomeApplier interactionOutcomeApplier)
+        IPadInteractionOutcomeApplier interactionOutcomeApplier,
+        IPageNavigationService pageNavigationService)
     {
         _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
@@ -70,6 +79,7 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         ArgumentNullException.ThrowIfNull(mainViewModelFactory);
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
         InitializeComponent();
         var padInputHost = new PadInputViewHost(this);
         _padInputSession = padInputControllerFactory.Create(padInputHost);
@@ -194,6 +204,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PageListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel.ZoneEditor.OnPageListSelectionChanged())
+        {
+            UpdateUiForCurrentConfig();
+            RefreshPadZoneOverlay();
+        }
+    }
+
     private void SyncToolbar() => _viewModel.Toolbar.SyncFromConfig();
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
@@ -278,7 +297,11 @@ public partial class MainWindow : Window
     }
 
     private void RefreshPadZoneOverlay()
-        => PadSurface.RefreshZoneOverlay(Config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex, Config.ZoneOverlayStyle);
+        => PadSurface.RefreshZoneOverlay(
+            ActivePage.Zones,
+            _interactionOutcomeApplier.GetLastZoneMarkers(_pageNavigationService.ActivePageIndex),
+            SelectedZoneIndex,
+            Config.ZoneOverlayStyle);
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -322,7 +345,10 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        ConnectedState statusState = _uiStateProjectionService.BuildConnectedState(Config);
+        ConnectedState statusState = _uiStateProjectionService.BuildConnectedState(
+            Config,
+            _pageNavigationService.ActivePageIndex,
+            Config.Pages.Count);
         _viewModel.ApplyConnectedState(statusState);
         UpdateInputBackendStatus();
     }

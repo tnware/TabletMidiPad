@@ -10,22 +10,27 @@ namespace TabletMidiPad.Services.Zone;
 internal sealed class ZoneEditorService : IZoneEditorService
 {
     private readonly IConfigValueParser _configValueParser;
+    private readonly IPageNavigationService _pageNavigationService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ZoneEditorService"/> class.
     /// </summary>
-    public ZoneEditorService(IConfigValueParser configValueParser)
+    public ZoneEditorService(
+        IConfigValueParser configValueParser,
+        IPageNavigationService pageNavigationService)
     {
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
     }
 
     /// <inheritdoc />
     public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> target, AppConfig config)
     {
+        PageConfig page = _pageNavigationService.GetActivePage(config);
         target.Clear();
-        for (int i = 0; i < config.Zones.Count; i++)
+        for (int i = 0; i < page.Zones.Count; i++)
         {
-            ZoneConfig zone = config.Zones[i];
+            ZoneConfig zone = page.Zones[i];
             string enabled = zone.Enabled ? "on" : "off";
             target.Add(new ZoneListItemViewModel
             {
@@ -41,7 +46,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
     /// <inheritdoc />
     public void LoadSelectedZoneIntoEditor(IZoneEditorState viewModel, AppConfig config, int selectedZoneIndex)
     {
-        if (selectedZoneIndex < 0 || selectedZoneIndex >= config.Zones.Count)
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        if (selectedZoneIndex < 0 || selectedZoneIndex >= page.Zones.Count)
         {
             viewModel.ZoneName = string.Empty;
             viewModel.ZoneEnabled = false;
@@ -64,7 +70,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
             return;
         }
 
-        ZoneConfig zone = config.Zones[selectedZoneIndex];
+        ZoneConfig zone = page.Zones[selectedZoneIndex];
         viewModel.ZoneDetailsEnabled = true;
         viewModel.ZoneName = zone.Name;
         viewModel.ZoneEnabled = zone.Enabled;
@@ -93,14 +99,15 @@ internal sealed class ZoneEditorService : IZoneEditorService
         string? maxZoneRowsText,
         string? maxZonesPerRowText)
     {
-        if (selectedZoneIndex < 0 || selectedZoneIndex >= config.Zones.Count)
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        if (selectedZoneIndex < 0 || selectedZoneIndex >= page.Zones.Count)
         {
             return;
         }
 
-        ZoneConfig zone = config.Zones[selectedZoneIndex];
-        config.MaxZoneRows = _configValueParser.ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
-        config.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
+        ZoneConfig zone = page.Zones[selectedZoneIndex];
+        page.MaxZoneRows = _configValueParser.ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
+        page.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
         zone.Name = _configValueParser.RequireText(viewModel.ZoneName, "Zone Name");
         zone.Enabled = viewModel.ZoneEnabled;
         zone.MidiChannel = Math.Clamp(viewModel.ZoneMidiChannel, 1, 16);

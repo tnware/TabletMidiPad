@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
@@ -10,7 +11,7 @@ namespace TabletMidiPad.Services.Pad;
 internal sealed class PadInteractionOutcomeApplier : IPadInteractionOutcomeApplier
 {
     private readonly IMidiEngine _midiEngine;
-    private readonly Dictionary<ZoneConfig, Point> _lastZonePoints = new();
+    private readonly Dictionary<int, Dictionary<ZoneConfig, Point>> _lastZonePointsByPage = new();
 
     public PadInteractionOutcomeApplier(IMidiEngine midiEngine)
     {
@@ -18,18 +19,24 @@ internal sealed class PadInteractionOutcomeApplier : IPadInteractionOutcomeAppli
     }
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<ZoneConfig, Point> LastZoneMarkers => _lastZonePoints;
+    public IReadOnlyDictionary<ZoneConfig, Point> GetLastZoneMarkers(int pageIndex)
+    {
+        return _lastZonePointsByPage.TryGetValue(pageIndex, out Dictionary<ZoneConfig, Point>? points)
+            ? points
+            : s_emptyPoints;
+    }
 
     /// <inheritdoc />
     public void Apply(
         InteractionResult result,
         InteractionState state,
-        AppConfig config,
+        int activePageIndex,
+        IReadOnlyList<ZoneConfig> activeZones,
         MainViewModel viewModel)
     {
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(activeZones);
         ArgumentNullException.ThrowIfNull(viewModel);
 
         foreach (MidiMessage message in result.MidiMessages)
@@ -49,15 +56,35 @@ internal sealed class PadInteractionOutcomeApplier : IPadInteractionOutcomeAppli
         viewModel.ValueText = result.ValueLabel;
         viewModel.ModifiersText = result.ModifiersLabel;
 
-        _lastZonePoints.Clear();
-        foreach ((int zoneIndex, (double X, double Y) local) in state.LastLocalByZone)
+        Dictionary<ZoneConfig, Point> markers = GetOrCreatePageMarkers(activePageIndex);
+        var activeZoneSet = new HashSet<ZoneConfig>(activeZones);
+        foreach (ZoneConfig existingZone in markers.Keys.ToArray())
         {
-            if (zoneIndex < 0 || zoneIndex >= config.Zones.Count)
+            if (!activeZoneSet.Contains(existingZone))
             {
-                continue;
+                markers.Remove(existingZone);
             }
-
-            _lastZonePoints[config.Zones[zoneIndex]] = new Point(local.X, local.Y);
         }
+
+        int markerZoneIndex = result.ActiveZoneIndex;
+        if (markerZoneIndex >= 0 &&
+            markerZoneIndex < activeZones.Count &&
+            state.LastLocalByZone.TryGetValue(markerZoneIndex, out (double X, double Y) local))
+        {
+            markers[activeZones[markerZoneIndex]] = new Point(local.X, local.Y);
+        }
+    }
+
+    private static readonly IReadOnlyDictionary<ZoneConfig, Point> s_emptyPoints = new Dictionary<ZoneConfig, Point>();
+
+    private Dictionary<ZoneConfig, Point> GetOrCreatePageMarkers(int pageIndex)
+    {
+        if (!_lastZonePointsByPage.TryGetValue(pageIndex, out Dictionary<ZoneConfig, Point>? markers))
+        {
+            markers = new Dictionary<ZoneConfig, Point>();
+            _lastZonePointsByPage[pageIndex] = markers;
+        }
+
+        return markers;
     }
 }

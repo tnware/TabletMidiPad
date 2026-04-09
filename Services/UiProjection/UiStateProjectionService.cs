@@ -53,14 +53,16 @@ internal sealed class UiStateProjectionService : IUiStateProjectionService
     }
 
     /// <inheritdoc />
-    public ConnectedState BuildConnectedState(AppConfig config)
+    public ConnectedState BuildConnectedState(AppConfig config, int activePageIndex, int pageCount)
     {
         string switchMode = config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
+        int safePageCount = Math.Max(1, pageCount);
+        int safePageIndex = Math.Clamp(activePageIndex, 0, safePageCount - 1);
         return new ConnectedState(
             StatusText: "Connected",
             RoutingText: $"Send to '{config.DawPortName}' via '{config.AppPortName}'",
             ActiveZoneText: "Active zone: none",
-            ConfigSummaryText: $"{config.Zones.Count} zone(s) configured | layout {config.MaxZoneRows} row(s) max / {config.MaxZonesPerRow} per row | {switchMode}",
+            ConfigSummaryText: $"{safePageIndex + 1}/{safePageCount} page(s) active | {switchMode}",
             ValueText: "X: -, Y: -, Pressure: -",
             PenButtonsText: "Pen buttons: -",
             ModifiersText: "Modifiers: none");

@@ -7,9 +7,10 @@ namespace TabletMidiPad.Services.Zone;
 internal sealed class ZoneConfigurationService : IZoneConfigurationService
 {
     /// <inheritdoc />
-    public int GetNextAvailableCcStart(AppConfig config)
+    public int GetNextAvailableCcStart(PageConfig page)
     {
-        List<ZoneConfig> zones = config.Zones;
+        ArgumentNullException.ThrowIfNull(page);
+        List<ZoneConfig> zones = page.Zones;
         var used = new HashSet<int>(
             zones.SelectMany(zone => new[] { zone.CcX, zone.CcY, zone.CcPressure }));
 
@@ -37,17 +38,18 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
     }
 
     /// <inheritdoc />
-    public void AutoTileZones(AppConfig config)
+    public void AutoTileZones(PageConfig page)
     {
-        List<ZoneConfig> zones = config.Zones;
+        ArgumentNullException.ThrowIfNull(page);
+        List<ZoneConfig> zones = page.Zones;
         if (zones.Count == 0)
         {
             return;
         }
 
         int count = zones.Count;
-        int maxRows = Math.Max(1, config.MaxZoneRows);
-        int maxPerRow = Math.Max(1, config.MaxZonesPerRow);
+        int maxRows = Math.Max(1, page.MaxZoneRows);
+        int maxPerRow = Math.Max(1, page.MaxZonesPerRow);
         int capacity = maxRows * maxPerRow;
         int rows = count <= capacity
             ? Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)))
@@ -72,31 +74,40 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
     /// <inheritdoc />
     public void ValidateConfig(AppConfig config)
     {
-        if (config.Zones.Count == 0)
+        ArgumentNullException.ThrowIfNull(config);
+        if (config.Pages is null || config.Pages.Count == 0)
         {
-            throw new InvalidOperationException("At least one zone is required.");
+            throw new InvalidOperationException("At least one page is required.");
         }
 
-        if (config.MaxZoneRows < 1)
+        foreach (PageConfig page in config.Pages)
         {
-            throw new InvalidOperationException("Max rows must be at least 1.");
-        }
-
-        if (config.MaxZonesPerRow < 1)
-        {
-            throw new InvalidOperationException("Max zones per row must be at least 1.");
-        }
-
-        foreach (ZoneConfig zone in config.Zones)
-        {
-            if (zone.Width <= 0 || zone.Height <= 0)
+            if (page.Zones is null || page.Zones.Count == 0)
             {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must have width and height greater than 0.");
+                throw new InvalidOperationException($"Page '{page.Name}' must have at least one zone.");
             }
 
-            if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
+            if (page.MaxZoneRows < 1)
             {
-                throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
+                throw new InvalidOperationException($"Page '{page.Name}' max rows must be at least 1.");
+            }
+
+            if (page.MaxZonesPerRow < 1)
+            {
+                throw new InvalidOperationException($"Page '{page.Name}' max zones per row must be at least 1.");
+            }
+
+            foreach (ZoneConfig zone in page.Zones)
+            {
+                if (zone.Width <= 0 || zone.Height <= 0)
+                {
+                    throw new InvalidOperationException($"Zone '{zone.Name}' on page '{page.Name}' must have width and height greater than 0.");
+                }
+
+                if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
+                {
+                    throw new InvalidOperationException($"Zone '{zone.Name}' on page '{page.Name}' must fit within the pad bounds.");
+                }
             }
         }
     }

@@ -28,6 +28,7 @@ internal static class AppBootstrapper
         container.AddSingleton<IWintabInputBackend>(c => new WintabInputBackend(c.GetRequiredService<IAppTrace>()));
         container.AddSingleton<ITabletDevicePickerSyncService>(c => new TabletDevicePickerSyncService(c.GetRequiredService<IWintabInputBackend>()));
         container.AddSingleton<IWintabEventAdapter>(_ => new WintabEventAdapter());
+        container.AddSingleton<IPageNavigationService>(_ => new PageNavigationService());
         container.AddSingleton<IZoneConfigurationService>(_ => new ZoneConfigurationService());
         container.AddSingleton<IConfigValueParser>(_ => new ConfigValueParser());
         container.AddTransient(_ => new PreferencesViewModel());
@@ -35,10 +36,13 @@ internal static class AppBootstrapper
             c.GetRequiredService<IConfigValueParser>(),
             () => c.GetRequiredService<PreferencesViewModel>(),
             c.GetRequiredService<IMidiEngine>()));
-        container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(c.GetRequiredService<IConfigValueParser>()));
+        container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(
+            c.GetRequiredService<IConfigValueParser>(),
+            c.GetRequiredService<IPageNavigationService>()));
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IZonePadControllerFactory>(c => new ZonePadControllerFactory(
-            c.GetRequiredService<IZoneResizeService>()));
+            c.GetRequiredService<IZoneResizeService>(),
+            c.GetRequiredService<IPageNavigationService>()));
         container.AddSingleton<IInputFallbackService>(_ => new InputFallbackService());
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
             c.GetRequiredService<IPadInteractionEngine>()));
@@ -60,7 +64,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IWintabInputBridge>(),
             c.GetRequiredService<IInputFallbackService>(),
             c.GetRequiredService<IInputInteractionOrchestrator>(),
-            c.GetRequiredService<IInputBackendStatusFormatter>()));
+            c.GetRequiredService<IInputBackendStatusFormatter>(),
+            c.GetRequiredService<IPageNavigationService>()));
         container.AddSingleton<IStartupLifecycleService>(c => new StartupLifecycleService(
             c.GetRequiredService<IRuntimeConfigService>(),
             c.GetRequiredService<IInputBackendCoordinator>()));
@@ -70,7 +75,8 @@ internal static class AppBootstrapper
         container.AddSingleton<IPadPresentationCoordinator>(_ => new PadPresentationCoordinator());
         container.AddSingleton<IToolbarConfigService>(_ => new ToolbarConfigService());
         container.AddSingleton<IZoneActionWorkflowCoordinator>(c => new ZoneActionWorkflowCoordinator(
-            c.GetRequiredService<IZoneConfigurationService>()));
+            c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<IPageNavigationService>()));
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
         container.AddSingleton<IPadInteractionEngine>(_ => new PadInteractionEngine());
         container.AddSingleton<IPadInteractionOutcomeApplier>(c => new PadInteractionOutcomeApplier(
@@ -80,7 +86,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
             c.GetRequiredService<IToolbarConfigService>(),
-            c.GetRequiredService<IUiStateProjectionService>()));
+            c.GetRequiredService<IUiStateProjectionService>(),
+            c.GetRequiredService<IPageNavigationService>()));
 
         container.AddTransient(CreateMainWindow);
 
@@ -113,6 +120,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMainWindowWorkflowFactory>(),
             c.GetRequiredService<IPadPresentationCoordinator>(),
             c.GetRequiredService<IMainViewModelFactory>(),
-            c.GetRequiredService<IPadInteractionOutcomeApplier>());
+            c.GetRequiredService<IPadInteractionOutcomeApplier>(),
+            c.GetRequiredService<IPageNavigationService>());
     }
 }

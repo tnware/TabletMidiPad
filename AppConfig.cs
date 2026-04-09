@@ -30,12 +30,20 @@ public sealed partial class AppConfig
     public List<ExpressKeyConfig> ExpressKeys { get; set; } = new();
     public bool SendPressureGlobally { get; set; } = true;
     public bool AllowZoneSwitchWhilePressed { get; set; } = true;
+    public bool AllowPageSwitchWhilePressed { get; set; }
+    public bool WrapPageNavigation { get; set; } = true;
+    public List<PageConfig> Pages { get; set; } = new() { PageConfig.CreateDefault(1) };
     public int MaxZoneRows { get; set; } = 2;
     public int MaxZonesPerRow { get; set; } = 2;
     public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ZoneOverlayStyle ZoneOverlayStyle { get; set; } = ZoneOverlayStyle.Plain;
+
+    public AppConfig()
+    {
+        SyncLegacyFromFirstPage();
+    }
 
     public static AppConfig Default => new();
 
@@ -56,10 +64,8 @@ public sealed partial class AppConfig
             return Default;
         }
 
-        if (config.Zones is null || config.Zones.Count == 0)
-        {
-            config.Zones = new() { ZoneConfig.CreateDefault() };
-        }
+        config.Zones ??= new();
+        config.Pages ??= new();
 
         if (string.IsNullOrWhiteSpace(config.UpperPenButtonAction) && !string.IsNullOrWhiteSpace(config.PenButtonAction))
         {
@@ -86,17 +92,75 @@ public sealed partial class AppConfig
             }
         }
 
-        foreach (ZoneConfig zone in config.Zones)
+        bool hasPageData = config.Pages.Count > 0;
+        if (!hasPageData)
         {
-            if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
+            if (config.Zones.Count == 0)
             {
-                zone.ReleaseBehavior = zone.ResetPressureOnRelease
-                    ? ZoneReleaseBehaviors.ResetPressureOnly
-                    : ZoneReleaseBehaviors.NoSendOnRelease;
+                config.Zones.Add(ZoneConfig.CreateDefault());
+            }
+
+            config.Pages.Add(new PageConfig
+            {
+                Name = "Page 1",
+                MaxZoneRows = Math.Max(1, config.MaxZoneRows),
+                MaxZonesPerRow = Math.Max(1, config.MaxZonesPerRow),
+                Zones = config.Zones
+            });
+        }
+
+        for (int pageIndex = 0; pageIndex < config.Pages.Count; pageIndex++)
+        {
+            PageConfig page = config.Pages[pageIndex];
+            page.Name = string.IsNullOrWhiteSpace(page.Name) ? $"Page {pageIndex + 1}" : page.Name.Trim();
+            page.MaxZoneRows = Math.Max(1, page.MaxZoneRows);
+            page.MaxZonesPerRow = Math.Max(1, page.MaxZonesPerRow);
+            page.Zones ??= new();
+            if (page.Zones.Count == 0)
+            {
+                page.Zones.Add(ZoneConfig.CreateDefault());
+            }
+
+            foreach (ZoneConfig zone in page.Zones)
+            {
+                if (string.IsNullOrWhiteSpace(zone.ReleaseBehavior))
+                {
+                    zone.ReleaseBehavior = zone.ResetPressureOnRelease
+                        ? ZoneReleaseBehaviors.ResetPressureOnly
+                        : ZoneReleaseBehaviors.NoSendOnRelease;
+                }
             }
         }
 
+        config.SyncLegacyFromFirstPage();
         return config;
+    }
+
+    public static PageConfig GetPage(AppConfig config, int pageIndex)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        config.Pages ??= new();
+        if (config.Pages.Count == 0)
+        {
+            config.Pages.Add(PageConfig.CreateDefault(1));
+        }
+
+        int safeIndex = Math.Clamp(pageIndex, 0, config.Pages.Count - 1);
+        PageConfig page = config.Pages[safeIndex];
+        page.Zones ??= new();
+        if (page.Zones.Count == 0)
+        {
+            page.Zones.Add(ZoneConfig.CreateDefault());
+        }
+
+        page.MaxZoneRows = Math.Max(1, page.MaxZoneRows);
+        page.MaxZonesPerRow = Math.Max(1, page.MaxZonesPerRow);
+        if (string.IsNullOrWhiteSpace(page.Name))
+        {
+            page.Name = $"Page {safeIndex + 1}";
+        }
+
+        return page;
     }
 
     public static AppConfig Load()
@@ -125,8 +189,33 @@ public sealed partial class AppConfig
 
     public void Save()
     {
+        SyncLegacyFromFirstPage();
         string path = GetConfigPath();
         File.WriteAllText(path, JsonSerializer.Serialize(this, JsonWriteOptions));
+    }
+
+    private void SyncLegacyFromFirstPage()
+    {
+        Pages ??= new();
+        if (Pages.Count == 0)
+        {
+            Pages.Add(PageConfig.CreateDefault(1));
+        }
+
+        PageConfig first = Pages[0];
+        first.Zones ??= new();
+        if (first.Zones.Count == 0)
+        {
+            first.Zones.Add(ZoneConfig.CreateDefault());
+        }
+
+        first.MaxZoneRows = Math.Max(1, first.MaxZoneRows);
+        first.MaxZonesPerRow = Math.Max(1, first.MaxZonesPerRow);
+        first.Name = string.IsNullOrWhiteSpace(first.Name) ? "Page 1" : first.Name.Trim();
+
+        MaxZoneRows = first.MaxZoneRows;
+        MaxZonesPerRow = first.MaxZonesPerRow;
+        Zones = first.Zones;
     }
 }
 
@@ -142,6 +231,44 @@ public static class PenButtonActions
     public const string CcToggle = "CC Toggle";
     public const string NoteMomentary = "Note Momentary";
     public const string NoteToggle = "Note Toggle";
+}
+
+public static class ExpressKeyActions
+{
+    public const string None = PenButtonActions.None;
+    public const string CcMomentary = PenButtonActions.CcMomentary;
+    public const string CcToggle = PenButtonActions.CcToggle;
+    public const string NoteMomentary = PenButtonActions.NoteMomentary;
+    public const string NoteToggle = PenButtonActions.NoteToggle;
+    public const string PrevPage = "Prev Page";
+    public const string NextPage = "Next Page";
+    public const string GoToPage1 = "Go To Page 1";
+    public const string GoToPage2 = "Go To Page 2";
+    public const string GoToPage3 = "Go To Page 3";
+    public const string GoToPage4 = "Go To Page 4";
+    public const string GoToPage5 = "Go To Page 5";
+    public const string GoToPage6 = "Go To Page 6";
+    public const string GoToPage7 = "Go To Page 7";
+    public const string GoToPage8 = "Go To Page 8";
+}
+
+public sealed class PageConfig
+{
+    public string Name { get; set; } = "Page 1";
+    public int MaxZoneRows { get; set; } = 2;
+    public int MaxZonesPerRow { get; set; } = 2;
+    public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };
+
+    public static PageConfig CreateDefault(int oneBasedPageNumber)
+    {
+        return new PageConfig
+        {
+            Name = $"Page {Math.Max(1, oneBasedPageNumber)}",
+            MaxZoneRows = 2,
+            MaxZonesPerRow = 2,
+            Zones = new List<ZoneConfig> { ZoneConfig.CreateDefault() }
+        };
+    }
 }
 
 public static class ZoneReleaseBehaviors

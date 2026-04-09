@@ -120,7 +120,7 @@ public sealed class InputInteractionOrchestratorTests
     }
 
     [Fact]
-    public void BuildZoneSnapshotsNullAppConfigThrows()
+    public void BuildZoneSnapshotsNullPageThrows()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
 
@@ -131,7 +131,7 @@ public sealed class InputInteractionOrchestratorTests
     public void BuildZoneSnapshotsMapsZones()
     {
         var sut = new InputInteractionOrchestrator(new StubPadInteractionEngine(BuildEmptyResult()));
-        var app = new AppConfig
+        var page = new PageConfig
         {
             Zones =
             [
@@ -157,7 +157,7 @@ public sealed class InputInteractionOrchestratorTests
             ],
         };
 
-        IReadOnlyList<ZoneSnapshot> zones = sut.BuildZoneSnapshots(app);
+        IReadOnlyList<ZoneSnapshot> zones = sut.BuildZoneSnapshots(page);
 
         ZoneSnapshot z = Assert.Single(zones);
         Assert.Equal("A", z.Name);

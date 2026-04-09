@@ -9,5 +9,5 @@ internal interface IUiStateProjectionService
 
     ToolbarState BuildToolbarState(AppConfig config);
 
-    ConnectedState BuildConnectedState(AppConfig config);
+    ConnectedState BuildConnectedState(AppConfig config, int activePageIndex, int pageCount);
 }

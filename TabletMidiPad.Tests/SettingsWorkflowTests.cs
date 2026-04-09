@@ -169,9 +169,9 @@ public sealed class SettingsWorkflowTests
         {
         }
 
-        public void AutoTileZones(AppConfig config) => AutoTileZonesCount++;
+        public void AutoTileZones(PageConfig page) => AutoTileZonesCount++;
 
-        public int GetNextAvailableCcStart(AppConfig config) => 0;
+        public int GetNextAvailableCcStart(PageConfig page) => 0;
     }
 
     private sealed class MemoryConfigStore : IConfigStore

@@ -39,4 +39,9 @@ internal interface IConfigValueParser
     /// Normalizes pen-button action values to known actions.
     /// </summary>
     string NormalizePenButtonAction(string? text);
+
+    /// <summary>
+    /// Normalizes express-key action values to known actions.
+    /// </summary>
+    string NormalizeExpressKeyAction(string? text);
 }

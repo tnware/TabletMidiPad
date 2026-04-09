@@ -6,23 +6,28 @@ namespace TabletMidiPad.Services.Zone;
 internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordinator
 {
     private readonly IZoneConfigurationService _zoneConfigurationService;
+    private readonly IPageNavigationService _pageNavigationService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ZoneActionWorkflowCoordinator"/> class.
     /// </summary>
     /// <param name="zoneConfigurationService">Zone configuration service dependency.</param>
-    public ZoneActionWorkflowCoordinator(IZoneConfigurationService zoneConfigurationService)
+    public ZoneActionWorkflowCoordinator(
+        IZoneConfigurationService zoneConfigurationService,
+        IPageNavigationService pageNavigationService)
     {
-        _zoneConfigurationService = zoneConfigurationService;
+        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+        _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
     }
 
     /// <inheritdoc />
     public ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex)
     {
-        _zoneConfigurationService.AutoTileZones(config);
-        int nextSelection = config.Zones.Count == 0
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        _zoneConfigurationService.AutoTileZones(page);
+        int nextSelection = page.Zones.Count == 0
             ? -1
-            : Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
+            : Math.Clamp(selectedZoneIndex, 0, page.Zones.Count - 1);
         return new ZoneActionWorkflowResult(
             Changed: true,
             SelectedZoneIndex: nextSelection,
@@ -32,10 +37,11 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
     /// <inheritdoc />
     public ZoneActionWorkflowResult AddZone(AppConfig config)
     {
-        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(config);
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(page);
         var zone = new ZoneConfig
         {
-            Name = $"Zone {config.Zones.Count + 1}",
+            Name = $"Zone {page.Zones.Count + 1}",
             Enabled = true,
             MidiChannel = 1,
             CcX = nextCcStart,
@@ -53,9 +59,9 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
             Height = 0.5
         };
 
-        config.Zones.Add(zone);
-        _zoneConfigurationService.AutoTileZones(config);
-        int nextSelection = config.Zones.Count - 1;
+        page.Zones.Add(zone);
+        _zoneConfigurationService.AutoTileZones(page);
+        int nextSelection = page.Zones.Count - 1;
         return new ZoneActionWorkflowResult(
             Changed: true,
             SelectedZoneIndex: nextSelection,
@@ -65,7 +71,8 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
     /// <inheritdoc />
     public ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex)
     {
-        if (selectedZoneIndex < 0 || selectedZoneIndex >= config.Zones.Count)
+        PageConfig page = _pageNavigationService.GetActivePage(config);
+        if (selectedZoneIndex < 0 || selectedZoneIndex >= page.Zones.Count)
         {
             return new ZoneActionWorkflowResult(
                 Changed: false,
@@ -73,14 +80,14 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
                 StatusMessage: string.Empty);
         }
 
-        config.Zones.RemoveAt(selectedZoneIndex);
-        if (config.Zones.Count == 0)
+        page.Zones.RemoveAt(selectedZoneIndex);
+        if (page.Zones.Count == 0)
         {
-            config.Zones.Add(ZoneConfig.CreateDefault());
+            page.Zones.Add(ZoneConfig.CreateDefault());
         }
 
-        _zoneConfigurationService.AutoTileZones(config);
-        int nextSelection = Math.Clamp(selectedZoneIndex, 0, config.Zones.Count - 1);
+        _zoneConfigurationService.AutoTileZones(page);
+        int nextSelection = Math.Clamp(selectedZoneIndex, 0, page.Zones.Count - 1);
         return new ZoneActionWorkflowResult(
             Changed: true,
             SelectedZoneIndex: nextSelection,

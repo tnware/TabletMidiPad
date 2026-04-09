@@ -396,6 +396,10 @@
                                           IsChecked="{Binding SendPressureGlobally}"/>
                                 <CheckBox Name="AllowZoneSwitchCheckBox" Margin="0,10,0,0" Content="Latch onto zones when entering while pressed"
                                           IsChecked="{Binding AllowZoneSwitchWhilePressed}"/>
+                                <CheckBox Name="AllowPageSwitchCheckBox" Margin="0,10,0,0" Content="Switch pages immediately while pen is down"
+                                          IsChecked="{Binding AllowPageSwitchWhilePressed}"/>
+                                <CheckBox Name="WrapPageNavigationCheckBox" Margin="0,10,0,0" Content="Wrap page navigation at first/last page"
+                                          IsChecked="{Binding WrapPageNavigation}"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

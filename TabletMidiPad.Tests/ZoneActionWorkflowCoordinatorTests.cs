@@ -9,14 +9,12 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     {
         var config = new AppConfig
         {
-            Zones =
-            [
-                new(),
-                new(),
-            ],
+            Pages = [new PageConfig { Name = "Page 1", Zones = [new(), new()] }],
         };
         var service = new StubZoneConfigurationService();
-        var coordinator = new ZoneActionWorkflowCoordinator(service);
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
 
         ZoneActionWorkflowResult result = coordinator.AutoLayout(config, selectedZoneIndex: 99);
 
@@ -31,15 +29,17 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     {
         var config = new AppConfig
         {
-            Zones = [new()],
+            Pages = [new PageConfig { Name = "Page 1", Zones = [new()] }],
         };
         var service = new StubZoneConfigurationService { NextCcStart = 40 };
-        var coordinator = new ZoneActionWorkflowCoordinator(service);
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
 
         ZoneActionWorkflowResult result = coordinator.AddZone(config);
 
-        Assert.Equal(2, config.Zones.Count);
-        ZoneConfig added = config.Zones[1];
+        Assert.Equal(2, config.Pages[0].Zones.Count);
+        ZoneConfig added = config.Pages[0].Zones[1];
         Assert.Equal("Zone 2", added.Name);
         Assert.Equal(40, added.CcX);
         Assert.Equal(41, added.CcY);
@@ -53,15 +53,17 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     {
         var config = new AppConfig
         {
-            Zones = [new()],
+            Pages = [new PageConfig { Name = "Page 1", Zones = [new()] }],
         };
-        var coordinator = new ZoneActionWorkflowCoordinator(new StubZoneConfigurationService());
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(new StubZoneConfigurationService(), pageNavigation);
 
         ZoneActionWorkflowResult result = coordinator.RemoveZone(config, selectedZoneIndex: -1);
 
         Assert.False(result.Changed);
         Assert.Equal(-1, result.SelectedZoneIndex);
-        Assert.Single(config.Zones);
+        Assert.Single(config.Pages[0].Zones);
     }
 
     [Fact]
@@ -69,22 +71,25 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     {
         var config = new AppConfig
         {
-            Zones =
+            Pages =
             [
-                new()
+                new PageConfig
                 {
-                    Name = "Only",
+                    Name = "Page 1",
+                    Zones = [new() { Name = "Only" }],
                 },
             ],
         };
         var service = new StubZoneConfigurationService();
-        var coordinator = new ZoneActionWorkflowCoordinator(service);
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
 
         ZoneActionWorkflowResult result = coordinator.RemoveZone(config, selectedZoneIndex: 0);
 
         Assert.True(result.Changed);
-        Assert.Single(config.Zones);
-        Assert.Equal("Zone 1", config.Zones[0].Name);
+        Assert.Single(config.Pages[0].Zones);
+        Assert.Equal("Zone 1", config.Pages[0].Zones[0].Name);
         Assert.True(service.AutoTileCalled);
         Assert.Equal(0, result.SelectedZoneIndex);
     }
@@ -99,11 +104,11 @@ public sealed class ZoneActionWorkflowCoordinatorTests
         {
         }
 
-        public void AutoTileZones(AppConfig config)
+        public void AutoTileZones(PageConfig page)
         {
             AutoTileCalled = true;
         }
 
-        public int GetNextAvailableCcStart(AppConfig config) => NextCcStart;
+        public int GetNextAvailableCcStart(PageConfig page) => NextCcStart;
     }
 }
