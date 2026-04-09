@@ -118,7 +118,6 @@ public partial class MainWindow : Window
         _wintabInputBackend.ExpressKeyReceived += (_, e) => _padInputSession.HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) => _padInputSession.HandleProximityChanged(e);
         _wintabInputBackend.DiagnosticsChanged += (_, diagnostics) => _padInputSession.OnWintabDiagnosticsChanged(diagnostics);
-        WindowChromeTheme.ApplyDarkNonClientChrome(this);
         ConfigureNumericInputs();
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>

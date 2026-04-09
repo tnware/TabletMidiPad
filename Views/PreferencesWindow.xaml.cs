@@ -59,7 +59,6 @@ internal partial class PreferencesWindow : Window
         _removeLoopbackAsync = removeLoopbackAsync ?? throw new ArgumentNullException(nameof(removeLoopbackAsync));
         InitializeComponent();
         DataContext = _viewModel;
-        WindowChromeTheme.ApplyDarkNonClientChrome(this);
         PopulatePressureCurveList();
         PopulateInputBackendModeList();
         PopulatePenButtonActionList();
