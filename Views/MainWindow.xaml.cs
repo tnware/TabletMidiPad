@@ -112,9 +112,9 @@ public partial class MainWindow : Window
             zoneListViewModel,
             zoneEditorViewModel,
             toolbarViewModel,
-            saveSettings: () => _settingsSession.ApplySettings(),
-            resetDefaults: () => _settingsSession.ResetToDefaultsAndApply(),
-            openPreferences: () => _settingsSession.RunPreferencesFlow(),
+            saveSettings: SaveSettings,
+            resetDefaults: ResetDefaults,
+            openPreferences: OpenPreferences,
             exit: Close,
             refreshWacomStatus: RefreshWacomServiceStatus,
             reconnectPen: ReconnectPenCore,
@@ -256,8 +256,14 @@ public partial class MainWindow : Window
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        _settingsSession.ApplySettings();
+        SaveSettings();
     }
+
+    private void SaveSettings() => _settingsSession?.ApplySettings();
+
+    private void ResetDefaults() => _settingsSession?.ResetToDefaultsAndApply();
+
+    private void OpenPreferences() => _settingsSession?.RunPreferencesFlow();
 
     private void ReconnectPenCore()
     {

@@ -26,9 +26,36 @@ csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
 
 # Code analysis severity
 dotnet_diagnostic.CA1303.severity = none
+dotnet_diagnostic.CS8602.severity = warning
+dotnet_diagnostic.EnableGenerateDocumentationFile.severity = none
+
+# Keep correctness warnings visible, but stop surfacing broad legacy style noise in build output.
+dotnet_diagnostic.IDE0011.severity = suggestion
+dotnet_diagnostic.IDE0022.severity = suggestion
+dotnet_diagnostic.IDE0032.severity = suggestion
+dotnet_diagnostic.IDE0046.severity = suggestion
+dotnet_diagnostic.IDE0058.severity = suggestion
+dotnet_diagnostic.IDE0059.severity = suggestion
+dotnet_diagnostic.IDE0060.severity = suggestion
+dotnet_diagnostic.IDE0290.severity = suggestion
+dotnet_diagnostic.IDE0301.severity = suggestion
 
 # StyleCop rules adjustments
 dotnet_diagnostic.SA1309.severity = none
+dotnet_diagnostic.SA0001.severity = none
+dotnet_diagnostic.SA1101.severity = none
+dotnet_diagnostic.SA1200.severity = none
+dotnet_diagnostic.SA1633.severity = none
+dotnet_diagnostic.SA1516.severity = suggestion
+dotnet_diagnostic.SA1413.severity = suggestion
+dotnet_diagnostic.SA1310.severity = suggestion
+dotnet_diagnostic.SA1201.severity = suggestion
+dotnet_diagnostic.SA1204.severity = suggestion
+dotnet_diagnostic.SA1402.severity = suggestion
+dotnet_diagnostic.SA1518.severity = suggestion
+dotnet_diagnostic.SA1202.severity = suggestion
+dotnet_diagnostic.SA1513.severity = suggestion
+dotnet_diagnostic.SA1122.severity = suggestion
 
 # Treat analyzer diagnostics as warnings by default
 dotnet_analyzer_diagnostic.severity = warning
