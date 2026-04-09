@@ -23,6 +23,15 @@
         </Style>
         <Style x:Key="PrefsSliderStyle" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}"/>
 
+        <Style x:Key="ButtonGlyphTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ButtonLabelTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <Style x:Key="SettingsGroupStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource ExpanderHeaderBackground}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource ExpanderHeaderBorderBrush}"/>
@@ -645,15 +654,23 @@
                 <Button Grid.Column="1" MinWidth="120" Click="OkButton_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                   FontSize="13" Margin="0,0,6,0" Text="&#xE8FB;"/>
-                        <TextBlock Text="OK"/>
+                                   Style="{StaticResource ButtonGlyphTextStyle}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE8FB;"/>
+                        <TextBlock Style="{StaticResource ButtonLabelTextStyle}"
+                                   Text="OK"/>
                     </StackPanel>
                 </Button>
                 <Button Grid.Column="3" MinWidth="120" Click="CancelButton_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                   FontSize="13" Margin="0,0,6,0" Text="&#xE711;"/>
-                        <TextBlock Text="Cancel"/>
+                                   Style="{StaticResource ButtonGlyphTextStyle}"
+                                   FontSize="13"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE711;"/>
+                        <TextBlock Style="{StaticResource ButtonLabelTextStyle}"
+                                   Text="Cancel"/>
                     </StackPanel>
                 </Button>
             </Grid>
