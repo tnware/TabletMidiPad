@@ -1,6 +1,6 @@
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default adapter that translates Wintab backend events into interaction-engine inputs and UI diagnostics payloads.

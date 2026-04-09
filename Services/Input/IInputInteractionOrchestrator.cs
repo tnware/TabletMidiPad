@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Orchestrates pad interaction engine invocation for view input events.

@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Default implementation for zone editor projection and commit logic.

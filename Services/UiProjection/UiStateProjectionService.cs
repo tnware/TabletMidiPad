@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.UiProjection;
 
 /// <summary>
 /// Default projection service for shell, toolbar, and connected-state labels.

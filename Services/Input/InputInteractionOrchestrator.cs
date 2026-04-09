@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Orchestrates interaction-engine invocation for pad input samples.

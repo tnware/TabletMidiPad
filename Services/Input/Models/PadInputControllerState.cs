@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input.Models;
 
 /// <summary>
 /// Mutable pad/tablet interaction flags and diagnostics shared between the main window and <see cref="IPadInputController"/>.

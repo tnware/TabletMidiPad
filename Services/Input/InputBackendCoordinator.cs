@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default coordinator for input backend lifecycle/rebind/reset orchestration in MainWindow.

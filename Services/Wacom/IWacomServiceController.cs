@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Wacom;
 
 /// <summary>
 /// Provides operations for querying and controlling the Wacom Professional Service.

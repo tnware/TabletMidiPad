@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Adapts raw Wintab backend events into interaction-friendly payloads.

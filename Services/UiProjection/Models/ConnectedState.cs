@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.UiProjection.Models;
 
 /// <summary>
 /// Main connected-state status labels mapped from configuration.

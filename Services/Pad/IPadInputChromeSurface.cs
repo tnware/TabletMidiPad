@@ -1,7 +1,7 @@
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Pad;
 
 /// <summary>
 /// Cursor chrome operations used by <see cref="PadInputController"/> so tests can substitute fakes without a full <see cref="Views.PadInteractionSurface"/> visual tree.

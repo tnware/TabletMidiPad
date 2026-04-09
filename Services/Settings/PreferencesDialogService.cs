@@ -3,7 +3,7 @@ using System.Windows;
 using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// WPF-backed implementation that opens the preferences dialog and

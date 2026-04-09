@@ -1,7 +1,7 @@
 using System.Windows;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// View-owned dependencies for <see cref="IZonePadController"/> (config, selection, and UI sync).

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Builds structured outcomes for Wintab packet and express-key paths so the view applies side effects in order.

@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Default parser/normalizer for configuration-bound values.

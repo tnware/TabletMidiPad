@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Views;

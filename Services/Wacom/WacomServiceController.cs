@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.ServiceProcess;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Wacom;
 
 /// <summary>
 /// Default implementation for interacting with the Wacom Professional Service.

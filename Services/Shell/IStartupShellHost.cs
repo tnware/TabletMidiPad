@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Shell;
 
 /// <summary>
 /// Main-window surface used by <see cref="IStartupLifecycleService.RunColdStartAsync"/> so cold-start

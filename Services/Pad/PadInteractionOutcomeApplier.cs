@@ -4,7 +4,7 @@ using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Pad;
 
 /// <summary>
 /// Default implementation of <see cref="IPadInteractionOutcomeApplier"/>.

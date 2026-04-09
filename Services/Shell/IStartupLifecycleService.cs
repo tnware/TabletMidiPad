@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Shell;
 
 /// <summary>
 /// Orchestrates main-window cold start (config load hook, MIDI connect presentation) and application exit shutdown.

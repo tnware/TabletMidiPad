@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Pad;
 
 /// <summary>
 /// Default pad presentation coordinator for <see cref="Views.PadInteractionSurface"/> (invoked by the main window).

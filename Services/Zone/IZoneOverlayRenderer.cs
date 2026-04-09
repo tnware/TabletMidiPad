@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Renders the zone overlay visuals onto the pad overlay canvas.

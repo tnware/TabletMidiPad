@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using TabletMidiPad;
-using TabletMidiPad.Services;
 
 namespace TabletMidiPad.ViewModels;
 
@@ -188,7 +187,7 @@ internal sealed class MainViewModel : ViewModelBase
         ModifiersText = state.ModifiersText;
     }
 
-    private sealed class DesignRuntimeConfigService : Services.IRuntimeConfigService
+    private sealed class DesignRuntimeConfigService : IRuntimeConfigService
     {
         public AppConfig Current { get; private set; } = AppConfig.Default;
 
@@ -213,7 +212,7 @@ internal sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private sealed class DesignZoneEditorService : Services.IZoneEditorService
+    private sealed class DesignZoneEditorService : IZoneEditorService
     {
         public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> zones, AppConfig config)
         {
@@ -232,35 +231,35 @@ internal sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private sealed class DesignZoneActionWorkflowCoordinator : Services.IZoneActionWorkflowCoordinator
+    private sealed class DesignZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordinator
     {
-        public Services.ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
+        public ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
 
-        public Services.ZoneActionWorkflowResult AddZone(AppConfig config) => new(false, 0, string.Empty);
+        public ZoneActionWorkflowResult AddZone(AppConfig config) => new(false, 0, string.Empty);
 
-        public Services.ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
+        public ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
     }
 
-    private sealed class DesignToolbarSession : Services.IToolbarConfigService
+    private sealed class DesignToolbarSession : IToolbarConfigService
     {
         public void ApplyPressureCurve(AppConfig config, string curve)
         {
         }
 
-        public Services.ToolbarInputModeApplyResult TryApplyInputBackendMode(AppConfig config, string mode)
+        public ToolbarInputModeApplyResult TryApplyInputBackendMode(AppConfig config, string mode)
             => new(false, false);
 
         public string GetNextCycledInputBackendModeLabel(AppConfig config) => "Auto";
     }
 
-    private sealed class DesignUiStateProjectionService : Services.IUiStateProjectionService
+    private sealed class DesignUiStateProjectionService : IUiStateProjectionService
     {
-        public Services.WacomServiceMenuState BuildWacomServiceMenuState(Services.WacomServiceStatus status) => new(string.Empty, false);
+        public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status) => new(string.Empty, false);
 
-        public Services.ToolbarState BuildToolbarState(AppConfig config)
+        public ToolbarState BuildToolbarState(AppConfig config)
             => new("Pressure (Lin)", "Linear", "Input (Auto)", "Auto", true, false, false, true, false, false);
 
-        public Services.ConnectedState BuildConnectedState(AppConfig config)
+        public ConnectedState BuildConnectedState(AppConfig config)
             => new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
     }
 

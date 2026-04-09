@@ -4,7 +4,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.Services;
+using TabletMidiPad.Services.Input.Models;
+using TabletMidiPad.Services.Midi;
+using TabletMidiPad.Services.UiProjection.Models;
+using TabletMidiPad.Services.Zone.Models;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Views;

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using TabletMidiPad.Services;
 using Xunit;
 
 namespace TabletMidiPad.Tests;

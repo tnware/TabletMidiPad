@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Wacom;
 
 /// <summary>
 /// Default coordinator for Wacom service startup/recovery decisions.

@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.UiProjection;
 
 /// <summary>
 /// Projects runtime/domain state into UI-facing status/label payloads.

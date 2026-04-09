@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.UiProjection.Models;
 
 /// <summary>
 /// Wacom service menu state projected for MainWindow controls.

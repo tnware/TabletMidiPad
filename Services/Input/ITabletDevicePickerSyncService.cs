@@ -1,6 +1,6 @@
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Projects Wintab-reported tablet devices into the main window view model for the device combo box.

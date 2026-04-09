@@ -1,4 +1,3 @@
-using TabletMidiPad.Services;
 using Xunit;
 using System.Collections.Generic;
 

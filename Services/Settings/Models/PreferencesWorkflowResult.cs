@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings.Models;
 
 /// <summary>
 /// Result of applying preferences and deciding follow-up workflow actions.

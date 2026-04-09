@@ -1,7 +1,7 @@
 using System.Windows;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// View-owned surface for <see cref="ISettingsWorkflow"/> (dialog owner and VM refresh hooks).
