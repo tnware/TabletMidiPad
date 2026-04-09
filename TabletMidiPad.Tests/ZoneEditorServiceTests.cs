@@ -14,7 +14,7 @@ public sealed class ZoneEditorServiceTests
         var config = new AppConfig();
         config.Zones.Add(ZoneConfig.CreateDefault());
 
-        var vm = new MainViewModel
+        var vm = new TestZoneEditorState
         {
             ZoneName = "Z1",
             ZoneEnabled = true,
@@ -65,7 +65,7 @@ public sealed class ZoneEditorServiceTests
             ReleaseBehavior = ZoneReleaseBehaviors.Hold,
         });
 
-        var vm = new MainViewModel();
+        var vm = new TestZoneEditorState();
         sut.LoadSelectedZoneIntoEditor(vm, config, 0);
 
         Assert.Equal(7, vm.ZoneMidiChannel);
@@ -79,11 +79,62 @@ public sealed class ZoneEditorServiceTests
         var parser = new ConfigValueParser();
         var sut = new ZoneEditorService(parser);
         var config = AppConfig.Default;
-        var vm = new MainViewModel { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
+        var vm = new TestZoneEditorState { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
 
         sut.LoadSelectedZoneIntoEditor(vm, config, -1);
 
         Assert.False(vm.ZoneDetailsEnabled);
         Assert.Equal(1, vm.ZoneMidiChannel);
+    }
+
+    private sealed class TestZoneEditorState : IZoneEditorState
+    {
+        public System.Collections.ObjectModel.ObservableCollection<int> MidiChannels { get; } = new();
+
+        public System.Collections.ObjectModel.ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
+
+        public System.Collections.ObjectModel.ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
+
+        public string MaxZoneRowsText { get; set; } = string.Empty;
+
+        public string MaxZonesPerRowText { get; set; } = string.Empty;
+
+        public string ZoneSelectionSummaryPrimaryText { get; set; } = string.Empty;
+
+        public string ZoneSelectionSummarySecondaryText { get; set; } = string.Empty;
+
+        public bool ZoneDetailsEnabled { get; set; }
+
+        public string ZoneName { get; set; } = string.Empty;
+
+        public bool ZoneEnabled { get; set; }
+
+        public int ZoneMidiChannel { get; set; } = 1;
+
+        public string ZoneCcX { get; set; } = string.Empty;
+
+        public string ZoneCcY { get; set; } = string.Empty;
+
+        public string ZoneCcPressure { get; set; } = string.Empty;
+
+        public string ZoneLeft { get; set; } = string.Empty;
+
+        public string ZoneTop { get; set; } = string.Empty;
+
+        public string ZoneWidth { get; set; } = string.Empty;
+
+        public string ZoneHeight { get; set; } = string.Empty;
+
+        public bool ZoneSendX { get; set; }
+
+        public bool ZoneSendY { get; set; }
+
+        public bool ZoneInvertX { get; set; }
+
+        public bool ZoneInvertY { get; set; }
+
+        public bool ZoneSendPressure { get; set; }
+
+        public string ZoneReleaseBehavior { get; set; } = string.Empty;
     }
 }

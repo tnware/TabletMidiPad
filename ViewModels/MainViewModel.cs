@@ -8,7 +8,7 @@ namespace TabletMidiPad.ViewModels;
 /// <summary>
 /// Root shell view-model for <see cref="Views.MainWindow"/>.
 /// </summary>
-internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
+internal sealed class MainViewModel : ViewModelBase
 {
     private string _statusText = "Waiting for MIDI port...";
     private string _routingText = string.Empty;
@@ -58,12 +58,6 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
     public ZoneEditorViewModel ZoneEditor { get; }
 
     public ToolbarViewModel Toolbar { get; }
-
-    public ObservableCollection<int> MidiChannels => ZoneEditor.MidiChannels;
-
-    public ObservableCollection<string> ReleaseBehaviorOptions => ZoneEditor.ReleaseBehaviorOptions;
-
-    public ObservableCollection<ZoneListItemViewModel> Zones => ZoneEditor.Zones;
 
     public ObservableCollection<TabletDeviceListItemViewModel> TabletDevices { get; } = new();
 
@@ -121,78 +115,6 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
         set => SetProperty(ref _isTabletDevicePickerEnabled, value);
     }
 
-    public bool SendPressureGlobally
-    {
-        get => Toolbar.SendPressureGlobally;
-        set => Toolbar.SendPressureGlobally = value;
-    }
-
-    public bool AllowZoneSwitchWhilePressed
-    {
-        get => Toolbar.AllowZoneSwitchWhilePressed;
-        set => Toolbar.AllowZoneSwitchWhilePressed = value;
-    }
-
-    public string ToolbarPressureLabelText
-    {
-        get => Toolbar.ToolbarPressureLabelText;
-        set => Toolbar.ToolbarPressureLabelText = value;
-    }
-
-    public string ToolbarInputBackendLabelText
-    {
-        get => Toolbar.ToolbarInputBackendLabelText;
-        set => Toolbar.ToolbarInputBackendLabelText = value;
-    }
-
-    public string SelectedPressureCurve
-    {
-        get => Toolbar.SelectedPressureCurve;
-        set => Toolbar.SelectedPressureCurve = value;
-    }
-
-    public string SelectedInputBackendMode
-    {
-        get => Toolbar.SelectedInputBackendMode;
-        set => Toolbar.SelectedInputBackendMode = value;
-    }
-
-    public bool IsPressureCurveLinearChecked
-    {
-        get => Toolbar.IsPressureCurveLinearChecked;
-        set => Toolbar.IsPressureCurveLinearChecked = value;
-    }
-
-    public bool IsPressureCurveLogarithmicChecked
-    {
-        get => Toolbar.IsPressureCurveLogarithmicChecked;
-        set => Toolbar.IsPressureCurveLogarithmicChecked = value;
-    }
-
-    public bool IsPressureCurveExponentialChecked
-    {
-        get => Toolbar.IsPressureCurveExponentialChecked;
-        set => Toolbar.IsPressureCurveExponentialChecked = value;
-    }
-
-    public bool IsInputBackendAutoChecked
-    {
-        get => Toolbar.IsInputBackendAutoChecked;
-        set => Toolbar.IsInputBackendAutoChecked = value;
-    }
-
-    public bool IsInputBackendWintabChecked
-    {
-        get => Toolbar.IsInputBackendWintabChecked;
-        set => Toolbar.IsInputBackendWintabChecked = value;
-    }
-
-    public bool IsInputBackendMouseChecked
-    {
-        get => Toolbar.IsInputBackendMouseChecked;
-        set => Toolbar.IsInputBackendMouseChecked = value;
-    }
-
     public MainShellCommandsViewModel ShellCommands { get; }
 
     public string StatusText
@@ -247,140 +169,6 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
     {
         get => _midiStatusText;
         set => SetProperty(ref _midiStatusText, value);
-    }
-
-    public string MaxZoneRowsText
-    {
-        get => ZoneEditor.MaxZoneRowsText;
-        set => ZoneEditor.MaxZoneRowsText = value;
-    }
-
-    public string MaxZonesPerRowText
-    {
-        get => ZoneEditor.MaxZonesPerRowText;
-        set => ZoneEditor.MaxZonesPerRowText = value;
-    }
-
-    public string ZoneSelectionSummaryPrimaryText
-    {
-        get => ZoneEditor.ZoneSelectionSummaryPrimaryText;
-        set => ZoneEditor.ZoneSelectionSummaryPrimaryText = value;
-    }
-
-    public string ZoneSelectionSummarySecondaryText
-    {
-        get => ZoneEditor.ZoneSelectionSummarySecondaryText;
-        set => ZoneEditor.ZoneSelectionSummarySecondaryText = value;
-    }
-
-    public int SelectedZoneIndex
-    {
-        get => ZoneEditor.SelectedZoneIndex;
-        set => ZoneEditor.SelectedZoneIndex = value;
-    }
-
-    internal void NotifySelectedZoneIndexChanged() => ZoneEditor.NotifySelectedZoneIndexChanged();
-
-    public bool ZoneDetailsEnabled
-    {
-        get => ZoneEditor.ZoneDetailsEnabled;
-        set => ZoneEditor.ZoneDetailsEnabled = value;
-    }
-
-    public string ZoneName
-    {
-        get => ZoneEditor.ZoneName;
-        set => ZoneEditor.ZoneName = value;
-    }
-
-    public bool ZoneEnabled
-    {
-        get => ZoneEditor.ZoneEnabled;
-        set => ZoneEditor.ZoneEnabled = value;
-    }
-
-    public int ZoneMidiChannel
-    {
-        get => ZoneEditor.ZoneMidiChannel;
-        set => ZoneEditor.ZoneMidiChannel = value;
-    }
-
-    public string ZoneCcX
-    {
-        get => ZoneEditor.ZoneCcX;
-        set => ZoneEditor.ZoneCcX = value;
-    }
-
-    public string ZoneCcY
-    {
-        get => ZoneEditor.ZoneCcY;
-        set => ZoneEditor.ZoneCcY = value;
-    }
-
-    public string ZoneCcPressure
-    {
-        get => ZoneEditor.ZoneCcPressure;
-        set => ZoneEditor.ZoneCcPressure = value;
-    }
-
-    public string ZoneLeft
-    {
-        get => ZoneEditor.ZoneLeft;
-        set => ZoneEditor.ZoneLeft = value;
-    }
-
-    public string ZoneTop
-    {
-        get => ZoneEditor.ZoneTop;
-        set => ZoneEditor.ZoneTop = value;
-    }
-
-    public string ZoneWidth
-    {
-        get => ZoneEditor.ZoneWidth;
-        set => ZoneEditor.ZoneWidth = value;
-    }
-
-    public string ZoneHeight
-    {
-        get => ZoneEditor.ZoneHeight;
-        set => ZoneEditor.ZoneHeight = value;
-    }
-
-    public bool ZoneSendX
-    {
-        get => ZoneEditor.ZoneSendX;
-        set => ZoneEditor.ZoneSendX = value;
-    }
-
-    public bool ZoneSendY
-    {
-        get => ZoneEditor.ZoneSendY;
-        set => ZoneEditor.ZoneSendY = value;
-    }
-
-    public bool ZoneInvertX
-    {
-        get => ZoneEditor.ZoneInvertX;
-        set => ZoneEditor.ZoneInvertX = value;
-    }
-
-    public bool ZoneInvertY
-    {
-        get => ZoneEditor.ZoneInvertY;
-        set => ZoneEditor.ZoneInvertY = value;
-    }
-
-    public bool ZoneSendPressure
-    {
-        get => ZoneEditor.ZoneSendPressure;
-        set => ZoneEditor.ZoneSendPressure = value;
-    }
-
-    public string ZoneReleaseBehavior
-    {
-        get => ZoneEditor.ZoneReleaseBehavior;
-        set => ZoneEditor.ZoneReleaseBehavior = value;
     }
 
     private sealed class DesignRuntimeConfigService : Services.IRuntimeConfigService
