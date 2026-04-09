@@ -613,6 +613,7 @@
                     </StackPanel>
                 </Border>
                 <Border x:Name="InputBackendSplitBorder"
+                        Margin="6,0,0,0"
                         CornerRadius="8"
                         BorderThickness="1"
                         BorderBrush="Transparent"
@@ -715,6 +716,7 @@
                     </StackPanel>
                 </Border>
                 <ToggleButton Name="ToolbarZoneSwitchToggle"
+                              Margin="6,0,0,0"
                               Style="{StaticResource ToolbarToggle}"
                               IsChecked="{Binding Toolbar.AllowZoneSwitchWhilePressed, Mode=TwoWay}">
                     <StackPanel Orientation="Horizontal">
