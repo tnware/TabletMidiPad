@@ -137,6 +137,70 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="PrefsSliderTrackButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrefsSliderThumbStyle" TargetType="Thumb">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbRoot"
+                                Background="{StaticResource AccentBrush}"
+                                BorderBrush="{StaticResource AccentBrushHover}"
+                                BorderThickness="1"
+                                CornerRadius="7"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbRoot" Property="Background" Value="{StaticResource AccentBrushHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbRoot" Property="Background" Value="{StaticResource AccentBrushPressed}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrefsSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource PrefsSliderTrackButtonStyle}"
+                                                  Background="{StaticResource AccentSurfaceStrongBrush}"
+                                                  BorderBrush="{StaticResource AccentBrush}"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource PrefsSliderThumbStyle}"/>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource PrefsSliderTrackButtonStyle}"
+                                                  Background="{StaticResource SurfaceMutedBrush}"
+                                                  BorderBrush="{StaticResource PanelBorderBrush}"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="22">
@@ -234,17 +298,47 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Mouse Pressure Fallback" Foreground="{StaticResource TextMutedBrush}"/>
                                     <TextBox Name="MousePressureTextBox" Margin="0,6,0,0"
+                                             TextChanged="MousePressureTextBox_TextChanged"
                                              Text="{Binding MousePressureText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Slider Name="MousePressureSlider"
+                                            Style="{StaticResource PrefsSliderStyle}"
+                                            Margin="0,8,0,0"
+                                            Minimum="0"
+                                            Maximum="127"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            TickPlacement="None"
+                                            ValueChanged="MousePressureSlider_ValueChanged"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Position Dead Zone" Foreground="{StaticResource TextMutedBrush}"/>
                                     <TextBox Name="DeadZoneTextBox" Margin="0,6,0,0"
+                                             TextChanged="DeadZoneTextBox_TextChanged"
                                              Text="{Binding PositionDeadZoneText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Slider Name="DeadZoneSlider"
+                                            Style="{StaticResource PrefsSliderStyle}"
+                                            Margin="0,8,0,0"
+                                            Minimum="0"
+                                            Maximum="0.1"
+                                            TickFrequency="0.005"
+                                            IsSnapToTickEnabled="True"
+                                            TickPlacement="None"
+                                            ValueChanged="DeadZoneSlider_ValueChanged"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">
                                     <TextBlock Text="XY Smoothing" Foreground="{StaticResource TextMutedBrush}"/>
                                     <TextBox Name="SmoothingTextBox" Margin="0,6,0,0"
+                                             TextChanged="SmoothingTextBox_TextChanged"
                                              Text="{Binding PositionSmoothingText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Slider Name="SmoothingSlider"
+                                            Style="{StaticResource PrefsSliderStyle}"
+                                            Margin="0,8,0,0"
+                                            Minimum="0"
+                                            Maximum="0.95"
+                                            TickFrequency="0.05"
+                                            IsSnapToTickEnabled="True"
+                                            TickPlacement="None"
+                                            ValueChanged="SmoothingSlider_ValueChanged"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>

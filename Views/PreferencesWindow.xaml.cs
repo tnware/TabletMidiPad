@@ -13,6 +13,7 @@ internal partial class PreferencesWindow : Window
     public bool Accepted { get; private set; }
     private readonly PreferencesViewModel _viewModel;
     private readonly IConfigValueParser _configValueParser;
+    private bool _isSyncingInputDeviceControls;
 
     public string DawPortName => _viewModel.DawPortName.Trim();
     public string AppPortName => _viewModel.AppPortName.Trim();
@@ -55,6 +56,7 @@ internal partial class PreferencesWindow : Window
         BuildExpressKeyRows();
         BuildStyleCards();
         ConfigureNumericInputs();
+        SyncInputDeviceSlidersFromText();
     }
 
     private void ConfigureNumericInputs()
@@ -119,6 +121,8 @@ internal partial class PreferencesWindow : Window
             row.CcText = Math.Clamp(ek.Cc, 0, 127).ToString(CultureInfo.InvariantCulture);
             row.NoteText = Math.Clamp(ek.Note, 0, 127).ToString(CultureInfo.InvariantCulture);
         }
+
+        SyncInputDeviceSlidersFromText();
     }
 
     public List<ExpressKeyConfig> GetExpressKeyConfigs()
@@ -160,6 +164,51 @@ internal partial class PreferencesWindow : Window
     private void ComboBox_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         e.Handled = true;
+    }
+
+    private void MousePressureTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        => SyncSingleSliderFromTextBox(MousePressureTextBox, MousePressureSlider, 0, 127);
+
+    private void DeadZoneTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        => SyncSingleSliderFromTextBox(DeadZoneTextBox, DeadZoneSlider, 0.0, 0.1);
+
+    private void SmoothingTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        => SyncSingleSliderFromTextBox(SmoothingTextBox, SmoothingSlider, 0.0, 0.95);
+
+    private void MousePressureSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isSyncingInputDeviceControls)
+        {
+            return;
+        }
+
+        _isSyncingInputDeviceControls = true;
+        MousePressureTextBox.Text = Math.Round(e.NewValue).ToString(CultureInfo.InvariantCulture);
+        _isSyncingInputDeviceControls = false;
+    }
+
+    private void DeadZoneSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isSyncingInputDeviceControls)
+        {
+            return;
+        }
+
+        _isSyncingInputDeviceControls = true;
+        DeadZoneTextBox.Text = e.NewValue.ToString("0.###", CultureInfo.InvariantCulture);
+        _isSyncingInputDeviceControls = false;
+    }
+
+    private void SmoothingSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isSyncingInputDeviceControls)
+        {
+            return;
+        }
+
+        _isSyncingInputDeviceControls = true;
+        SmoothingTextBox.Text = e.NewValue.ToString("0.##", CultureInfo.InvariantCulture);
+        _isSyncingInputDeviceControls = false;
     }
 
     private void MidiCcNoteStepper_Decrease_Click(object sender, RoutedEventArgs e)
@@ -561,5 +610,46 @@ internal partial class PreferencesWindow : Window
         grid.Children.Add(up);
 
         return grid;
+    }
+
+    private void SyncInputDeviceSlidersFromText()
+    {
+        SyncSingleSliderFromTextBox(MousePressureTextBox, MousePressureSlider, 0, 127);
+        SyncSingleSliderFromTextBox(DeadZoneTextBox, DeadZoneSlider, 0.0, 0.1);
+        SyncSingleSliderFromTextBox(SmoothingTextBox, SmoothingSlider, 0.0, 0.95);
+    }
+
+    private void SyncSingleSliderFromTextBox(TextBox textBox, Slider slider, int min, int max)
+    {
+        if (_isSyncingInputDeviceControls)
+        {
+            return;
+        }
+
+        if (!int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+        {
+            return;
+        }
+
+        _isSyncingInputDeviceControls = true;
+        slider.Value = Math.Clamp(parsed, min, max);
+        _isSyncingInputDeviceControls = false;
+    }
+
+    private void SyncSingleSliderFromTextBox(TextBox textBox, Slider slider, double min, double max)
+    {
+        if (_isSyncingInputDeviceControls)
+        {
+            return;
+        }
+
+        if (!double.TryParse(textBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed))
+        {
+            return;
+        }
+
+        _isSyncingInputDeviceControls = true;
+        slider.Value = Math.Clamp(parsed, min, max);
+        _isSyncingInputDeviceControls = false;
     }
 }
