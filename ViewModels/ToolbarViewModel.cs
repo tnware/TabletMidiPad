@@ -7,8 +7,8 @@ namespace TabletMidiPad.ViewModels;
 internal sealed class ToolbarViewModel : ViewModelBase
 {
     private readonly IRuntimeConfigService _runtimeConfig;
-    private readonly IMainWindowToolbarSession _toolbarSession;
-    private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
+    private readonly IToolbarConfigService _toolbarSession;
+    private readonly IWorkflowCoordinator _workflowCoordinator;
     private string _toolbarPressureLabelText = "Pressure (Lin)";
     private string _toolbarInputBackendLabelText = "Input (Auto)";
     private string _selectedPressureCurve = "Linear";
@@ -25,8 +25,8 @@ internal sealed class ToolbarViewModel : ViewModelBase
 
     public ToolbarViewModel(
         IRuntimeConfigService runtimeConfig,
-        IMainWindowToolbarSession toolbarSession,
-        IMainWindowWorkflowCoordinator workflowCoordinator)
+        IToolbarConfigService toolbarSession,
+        IWorkflowCoordinator workflowCoordinator)
     {
         _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
         _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
@@ -156,7 +156,7 @@ internal sealed class ToolbarViewModel : ViewModelBase
         AppConfig config = _runtimeConfig.Current;
         SendPressureGlobally = config.SendPressureGlobally;
         AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
-        MainWindowToolbarState toolbarState = _workflowCoordinator.BuildToolbarState(config);
+        ToolbarState toolbarState = _workflowCoordinator.BuildToolbarState(config);
         ToolbarPressureLabelText = toolbarState.ToolbarPressureLabelText;
         SelectedPressureCurve = toolbarState.SelectedPressureCurve;
         ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;

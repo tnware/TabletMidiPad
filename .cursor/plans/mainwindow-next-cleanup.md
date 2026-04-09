@@ -31,8 +31,8 @@
 
 **Add**
 
-- `Services/IMainWindowPadPresentationCoordinator.cs`
-- `Services/MainWindowPadPresentationCoordinator.cs`
+- `Services/IPadPresentationCoordinator.cs`
+- `Services/PadPresentationCoordinator.cs`
 
 **Responsibility:**
 
@@ -45,7 +45,7 @@
 
 ## 3) Normalize helpers (optional third commit)
 
-- Single canonical **input backend mode** normalization used by `MainWindowViewStateMapper`, `MainWindowInputBackendCoordinator`, and any remaining `MainWindow` code—one shared static or small `IInputBackendModeNormalizer` if you want testability.
+- Single canonical **input backend mode** normalization used by `MainWindowViewStateMapper`, `InputBackendCoordinator`, and any remaining `MainWindow` code—one shared static or small `IInputBackendModeNormalizer` if you want testability.
 - **Suggested commit:** `Share input backend mode normalization across services`
 
 ## Tests
@@ -53,7 +53,7 @@
 Add in `TabletMidiPad.Tests/`:
 
 - `MainWindowInputEventFlowCoordinatorTests.cs` — routing decisions (hover → release, fallback allowed/blocked, etc.) with minimal fakes.
-- `MainWindowPadPresentationCoordinatorTests.cs` — overlay request shape, cursor position/opacity rules.
+- `PadPresentationCoordinatorTests.cs` — overlay request shape, cursor position/opacity rules.
 
 Keep existing service tests as regression net.
 

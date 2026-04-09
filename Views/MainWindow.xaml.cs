@@ -11,11 +11,11 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly PadInputSessionState _padState = new();
+    private readonly PadInputControllerState _padState = new();
     private readonly PadInputHost _padInputHost;
-    private readonly IMainWindowPadInputSession _padInputSession;
-    private readonly IMainWindowZonePadSession _zonePadSession;
-    private readonly IMainWindowSettingsSession _settingsSession;
+    private readonly IPadInputController _padInputSession;
+    private readonly IZonePadController _zonePadSession;
+    private readonly ISettingsWorkflow _settingsSession;
     private readonly StartupHost _startupHost;
 
     private readonly IConfigStore _configStore;
@@ -29,11 +29,11 @@ public partial class MainWindow : Window
     private readonly IZoneEditorService _zoneEditorService;
     private readonly IZoneResizeService _zoneResizeService;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
-    private readonly IMainWindowWorkflowCoordinator _workflowCoordinator;
-    private readonly IMainWindowInputBackendCoordinator _inputBackendCoordinator;
+    private readonly IWorkflowCoordinator _workflowCoordinator;
+    private readonly IInputBackendCoordinator _inputBackendCoordinator;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
-    private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
-    private readonly IMainWindowStartupLifecycleService _startupLifecycle;
+    private readonly ILifecycleCoordinator _lifecycleCoordinator;
+    private readonly IStartupLifecycleService _startupLifecycle;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
     private readonly InteractionState _interactionState = new();
@@ -69,14 +69,14 @@ public partial class MainWindow : Window
         IInputFallbackService inputFallbackService,
         IInputInteractionOrchestrator inputInteractionOrchestrator,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
-        IMainWindowWorkflowCoordinator workflowCoordinator,
-        IMainWindowInputBackendCoordinator inputBackendCoordinator,
+        IWorkflowCoordinator workflowCoordinator,
+        IInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
-        IMainWindowLifecycleCoordinator lifecycleCoordinator,
-        IMainWindowStartupLifecycleService startupLifecycle,
-        IMainWindowWintabInputBridge wintabInputBridge,
-        IMainWindowPadPresentationCoordinator padPresentationCoordinator,
-        IMainWindowToolbarSession toolbarSession,
+        ILifecycleCoordinator lifecycleCoordinator,
+        IStartupLifecycleService startupLifecycle,
+        IWintabInputBridge wintabInputBridge,
+        IPadPresentationCoordinator padPresentationCoordinator,
+        IToolbarConfigService toolbarSession,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
     {
@@ -121,7 +121,7 @@ public partial class MainWindow : Window
             startWacomService: () => _ = StartWacomServiceAsync(),
             showAbout: MenuAbout);
         _padInputHost = new PadInputHost(this);
-        _padInputSession = new MainWindowPadInputSession(
+        _padInputSession = new PadInputController(
             _padInputHost,
             _tabletDevicePickerSyncService,
             _inputBackendCoordinator,
@@ -131,8 +131,8 @@ public partial class MainWindow : Window
             inputFallbackService,
             inputInteractionOrchestrator,
             _inputBackendStatusFormatter);
-        _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
-        _settingsSession = new MainWindowSettingsSession(
+        _zonePadSession = new ZonePadController(new ZonePadHost(this), _zoneResizeService);
+        _settingsSession = new SettingsWorkflow(
             new SettingsSessionHost(this),
             _workflowCoordinator,
             _preferencesDialogService,
@@ -422,7 +422,7 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        MainWindowConnectedState statusState = _workflowCoordinator.BuildConnectedState(Config);
+        ConnectedState statusState = _workflowCoordinator.BuildConnectedState(Config);
         _viewModel.StatusText = statusState.StatusText;
         _viewModel.RoutingText = statusState.RoutingText;
         UpdateInputBackendStatus();

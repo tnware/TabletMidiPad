@@ -471,7 +471,7 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
         public Services.ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
     }
 
-    private sealed class DesignToolbarSession : Services.IMainWindowToolbarSession
+    private sealed class DesignToolbarSession : Services.IToolbarConfigService
     {
         public void ApplyPressureCurve(AppConfig config, string curve)
         {
@@ -483,7 +483,7 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
         public string GetNextCycledInputBackendModeLabel(AppConfig config) => "Auto";
     }
 
-    private sealed class DesignWorkflowCoordinator : Services.IMainWindowWorkflowCoordinator
+    private sealed class DesignWorkflowCoordinator : Services.IWorkflowCoordinator
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
@@ -498,10 +498,10 @@ internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
 
         public Services.WacomServiceMenuState BuildWacomServiceMenuState(Services.WacomServiceStatus status) => new(string.Empty, false);
 
-        public Services.MainWindowToolbarState BuildToolbarState(AppConfig config)
+        public Services.ToolbarState BuildToolbarState(AppConfig config)
             => new("Pressure (Lin)", "Linear", "Input (Auto)", "Auto", true, false, false, true, false, false);
 
-        public Services.MainWindowConnectedState BuildConnectedState(AppConfig config)
+        public Services.ConnectedState BuildConnectedState(AppConfig config)
             => new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
     }
 }

@@ -25,7 +25,7 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
         "ZonePalette6Color",
     };
 
-    private IMainWindowPadPresentationCoordinator? _presentationCoordinator;
+    private IPadPresentationCoordinator? _presentationCoordinator;
     private IZoneOverlayRenderer? _zoneOverlayRenderer;
 
     /// <summary>
@@ -40,7 +40,7 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
     /// Wires presentation services from the composition root. Call once after the visual tree is loaded.
     /// </summary>
     internal void AttachPresentationServices(
-        IMainWindowPadPresentationCoordinator presentationCoordinator,
+        IPadPresentationCoordinator presentationCoordinator,
         IZoneOverlayRenderer zoneOverlayRenderer)
     {
         _presentationCoordinator = presentationCoordinator ?? throw new ArgumentNullException(nameof(presentationCoordinator));
@@ -112,7 +112,7 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
     {
         EnsureServices();
 
-        var theme = new MainWindowPadOverlayTheme(
+        var theme = new PadOverlayTheme(
             ZonePalette: Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor).ToList(),
             ColorWindow: ThemeColor("ColorWindow", Colors.Black),
             TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),

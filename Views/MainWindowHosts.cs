@@ -8,7 +8,7 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow
 {
-    private sealed class PadInputHost : IMainWindowPadInputSessionHost
+    private sealed class PadInputHost : IPadInputControllerHost
     {
         private readonly MainWindow _w;
 
@@ -26,7 +26,7 @@ public partial class MainWindow
 
         public IPadInteractionOutcomeApplier OutcomeApplier => _w._interactionOutcomeApplier;
 
-        public PadInputSessionState PadState => _w._padState;
+        public PadInputControllerState PadState => _w._padState;
 
         public int SelectedZoneIndex
         {
@@ -51,7 +51,7 @@ public partial class MainWindow
             => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
     }
 
-    private sealed class ZonePadHost : IMainWindowZonePadSessionHost
+    private sealed class ZonePadHost : IZonePadControllerHost
     {
         private readonly MainWindow _w;
 
@@ -80,7 +80,7 @@ public partial class MainWindow
         public void ClearPadCursor() => _w.Pad.Cursor = null;
     }
 
-    private sealed class SettingsSessionHost : IMainWindowSettingsSessionHost
+    private sealed class SettingsSessionHost : ISettingsWorkflowHost
     {
         private readonly MainWindow _w;
 
@@ -92,7 +92,7 @@ public partial class MainWindow
 
         public void ReplaceConfig(AppConfig config) => _w._runtimeConfig.Replace(config);
 
-        public PadInputSessionState PadState => _w._padState;
+        public PadInputControllerState PadState => _w._padState;
 
         public void CommitCurrentZoneEdits() => _w._viewModel.ZoneEditor.CommitCurrentZoneEdits();
 
@@ -107,7 +107,7 @@ public partial class MainWindow
         public void LoadConfigIntoUi(AppConfig config) => _w.LoadConfigIntoUi();
     }
 
-    private sealed class StartupHost : IMainWindowStartupHost
+    private sealed class StartupHost : IStartupShellHost
     {
         private readonly MainWindow _w;
 

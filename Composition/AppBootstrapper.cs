@@ -42,17 +42,17 @@ internal static class AppBootstrapper
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
             c.GetRequiredService<IPadInteractionEngine>()));
         container.AddSingleton<IInputBackendStatusFormatter>(_ => new InputBackendStatusFormatter());
-        container.AddSingleton<IMainWindowWorkflowCoordinator>(_ => new MainWindowWorkflowCoordinator());
-        container.AddSingleton<IMainWindowInputBackendCoordinator>(_ => new MainWindowInputBackendCoordinator());
+        container.AddSingleton<IWorkflowCoordinator>(_ => new WorkflowCoordinator());
+        container.AddSingleton<IInputBackendCoordinator>(_ => new InputBackendCoordinator());
         container.AddSingleton<IWacomServiceWorkflowCoordinator>(_ => new WacomServiceWorkflowCoordinator());
-        container.AddSingleton<IMainWindowLifecycleCoordinator>(_ => new MainWindowLifecycleCoordinator());
-        container.AddSingleton<IMainWindowStartupLifecycleService>(c => new MainWindowStartupLifecycleService(
-            c.GetRequiredService<IMainWindowLifecycleCoordinator>()));
-        container.AddSingleton<IMainWindowWintabInputBridge>(c => new MainWindowWintabInputBridge(
+        container.AddSingleton<ILifecycleCoordinator>(_ => new LifecycleCoordinator());
+        container.AddSingleton<IStartupLifecycleService>(c => new StartupLifecycleService(
+            c.GetRequiredService<ILifecycleCoordinator>()));
+        container.AddSingleton<IWintabInputBridge>(c => new WintabInputBridge(
             c.GetRequiredService<IWintabEventAdapter>(),
-            c.GetRequiredService<IMainWindowInputBackendCoordinator>()));
-        container.AddSingleton<IMainWindowPadPresentationCoordinator>(_ => new MainWindowPadPresentationCoordinator());
-        container.AddSingleton<IMainWindowToolbarSession>(_ => new MainWindowToolbarSession());
+            c.GetRequiredService<IInputBackendCoordinator>()));
+        container.AddSingleton<IPadPresentationCoordinator>(_ => new PadPresentationCoordinator());
+        container.AddSingleton<IToolbarConfigService>(_ => new ToolbarConfigService());
         container.AddSingleton<IZoneActionWorkflowCoordinator>(c => new ZoneActionWorkflowCoordinator(
             c.GetRequiredService<IZoneConfigurationService>()));
         container.AddSingleton<IZoneOverlayRenderer>(_ => new ZoneOverlayRenderer());
@@ -92,14 +92,14 @@ internal static class AppBootstrapper
             c.GetRequiredService<IInputFallbackService>(),
             c.GetRequiredService<IInputInteractionOrchestrator>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
-            c.GetRequiredService<IMainWindowWorkflowCoordinator>(),
-            c.GetRequiredService<IMainWindowInputBackendCoordinator>(),
+            c.GetRequiredService<IWorkflowCoordinator>(),
+            c.GetRequiredService<IInputBackendCoordinator>(),
             c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),
-            c.GetRequiredService<IMainWindowLifecycleCoordinator>(),
-            c.GetRequiredService<IMainWindowStartupLifecycleService>(),
-            c.GetRequiredService<IMainWindowWintabInputBridge>(),
-            c.GetRequiredService<IMainWindowPadPresentationCoordinator>(),
-            c.GetRequiredService<IMainWindowToolbarSession>(),
+            c.GetRequiredService<ILifecycleCoordinator>(),
+            c.GetRequiredService<IStartupLifecycleService>(),
+            c.GetRequiredService<IWintabInputBridge>(),
+            c.GetRequiredService<IPadPresentationCoordinator>(),
+            c.GetRequiredService<IToolbarConfigService>(),
             c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
             c.GetRequiredService<IPadInteractionOutcomeApplier>());
     }
