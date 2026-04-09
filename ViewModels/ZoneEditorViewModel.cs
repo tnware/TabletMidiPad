@@ -29,6 +29,8 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private bool _zoneSendPressure = true;
     private string _zoneReleaseBehavior = string.Empty;
     private string _zoneOutputMode = ZoneOutputModes.CcPad;
+    private bool _mappingAssistEnabled;
+    private string _mappingAssistTarget = ZoneMappingAssistTargets.CcX;
     private string _scaleBreathRootText = "0";
     private string _scaleBreathScale = ScaleBreathScaleNames.Major;
     private string _scaleBreathOctaveText = "4";
@@ -72,6 +74,9 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.NaturalMinor);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.MajorPentatonic);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.MinorPentatonic);
+        MappingAssistTargetOptions.Add(ZoneMappingAssistTargets.CcX);
+        MappingAssistTargetOptions.Add(ZoneMappingAssistTargets.CcY);
+        MappingAssistTargetOptions.Add(ZoneMappingAssistTargets.CcPressure);
     }
 
     public ObservableCollection<int> MidiChannels { get; } = new();
@@ -81,6 +86,8 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     public ObservableCollection<string> ZoneOutputModeOptions { get; } = new();
 
     public ObservableCollection<string> ScaleBreathScaleOptions { get; } = new();
+
+    public ObservableCollection<string> MappingAssistTargetOptions { get; } = new();
 
     public ObservableCollection<PageListItemViewModel> Pages { get; } = new();
 
@@ -264,6 +271,18 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
             OnPropertyChanged(nameof(IsScaleBreathMode));
             OnPropertyChanged(nameof(IsScaleGridMode));
         }
+    }
+
+    public bool MappingAssistEnabled
+    {
+        get => _mappingAssistEnabled;
+        set => SetProperty(ref _mappingAssistEnabled, value);
+    }
+
+    public string MappingAssistTarget
+    {
+        get => _mappingAssistTarget;
+        set => SetProperty(ref _mappingAssistTarget, value);
     }
 
     public string ScaleBreathRootText

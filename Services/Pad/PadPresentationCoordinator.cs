@@ -67,6 +67,8 @@ internal sealed class PadPresentationCoordinator : IPadPresentationCoordinator
                 ScaleGridOctave: zone.ScaleGridOctave,
                 ScaleGridRows: zone.ScaleGridRows,
                 ScaleGridColumns: zone.ScaleGridColumns,
+                MappingAssistEnabled: zone.MappingAssistEnabled,
+                MappingAssistTarget: zone.MappingAssistTarget,
                 Left: zone.Left,
                 Top: zone.Top,
                 Width: zone.Width,

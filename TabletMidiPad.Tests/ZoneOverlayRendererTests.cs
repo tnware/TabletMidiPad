@@ -39,6 +39,8 @@ public sealed class ZoneOverlayRendererTests
                             ScaleGridOctave: 4,
                             ScaleGridRows: 4,
                             ScaleGridColumns: 4,
+                            MappingAssistEnabled: true,
+                            MappingAssistTarget: ZoneMappingAssistTargets.CcX,
                             Left: 0,
                             Top: 0,
                             Width: 1,

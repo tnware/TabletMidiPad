@@ -164,4 +164,17 @@ internal sealed class ConfigValueParser : IConfigValueParser
             _ => ScaleBreathScaleNames.Major
         };
     }
+
+    /// <inheritdoc />
+    public string NormalizeZoneMappingAssistTarget(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneMappingAssistTargets.CcX => value,
+            ZoneMappingAssistTargets.CcY => value,
+            ZoneMappingAssistTargets.CcPressure => value,
+            _ => ZoneMappingAssistTargets.CcX
+        };
+    }
 }

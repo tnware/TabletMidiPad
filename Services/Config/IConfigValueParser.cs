@@ -54,4 +54,9 @@ internal interface IConfigValueParser
     /// Normalizes Scale Breath scale values.
     /// </summary>
     string NormalizeScaleBreathScale(string? text);
+
+    /// <summary>
+    /// Normalizes mapping-assist target values.
+    /// </summary>
+    string NormalizeZoneMappingAssistTarget(string? text);
 }

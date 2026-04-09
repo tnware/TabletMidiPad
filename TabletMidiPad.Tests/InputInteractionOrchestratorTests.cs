@@ -162,6 +162,8 @@ public sealed class InputInteractionOrchestratorTests
                     ScaleGridRows = 6,
                     ScaleGridColumns = 7,
                     ScaleGridSendCc = false,
+                    MappingAssistEnabled = true,
+                    MappingAssistTarget = ZoneMappingAssistTargets.CcY,
                     Left = 0.1,
                     Top = 0.2,
                     Width = 0.3,
@@ -198,6 +200,8 @@ public sealed class InputInteractionOrchestratorTests
         Assert.Equal(6, z.ScaleGridRows);
         Assert.Equal(7, z.ScaleGridColumns);
         Assert.False(z.ScaleGridSendCc);
+        Assert.True(z.MappingAssistEnabled);
+        Assert.Equal(ZoneMappingAssistTargets.CcY, z.MappingAssistTarget);
         Assert.Equal(0.1, z.Left);
         Assert.Equal(0.2, z.Top);
         Assert.Equal(0.3, z.Width);

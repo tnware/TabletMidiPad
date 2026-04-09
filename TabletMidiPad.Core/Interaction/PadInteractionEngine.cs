@@ -6,6 +6,7 @@ using ExpressKeyActions = TabletMidiPad.Core.Interaction.InteractionConstants.Ex
 using ZoneReleaseBehaviors = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneReleaseBehaviors;
 using ZoneOutputModes = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneOutputModes;
 using ScaleBreathScales = TabletMidiPad.Core.Interaction.InteractionConstants.ScaleBreathScales;
+using ZoneMappingAssistTargets = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneMappingAssistTargets;
 
 namespace TabletMidiPad.Core.Interaction;
 
@@ -232,22 +233,29 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             sendPressure = sendPressure && pressureEnabledByButton;
         }
 
-        string xText = zone.SendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string yText = zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string pressureText = sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        bool sendX = ShouldSendAxisCc(zone, zone.SendX, ZoneMappingAssistTargets.CcX);
+        bool sendY = ShouldSendAxisCc(zone, zone.SendY, ZoneMappingAssistTargets.CcY);
+        bool sendPressureCc = ShouldSendAxisCc(zone, sendPressure, ZoneMappingAssistTargets.CcPressure);
+        string xText = sendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = sendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = sendPressureCc ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
 
         var messages = ccmessages;
-        if (zone.SendX)
+        if (sendX)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
-        if (zone.SendY)
+        if (sendY)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
-        if (sendPressure)
+        if (sendPressureCc)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
+
+        string mappingText = zone.MappingAssistEnabled
+            ? $" | Learn: {NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget)}"
+            : string.Empty;
 
         return new InteractionResult(
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
-            ValueLabel: $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}",
+            ValueLabel: $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}{mappingText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -271,19 +279,27 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         int velocity = Math.Clamp(ApplyPressureCurve(config, input.Pressure), 1, 127);
 
         var messages = new List<MidiMessage>(capacity: 6);
-        bool shouldSwitch =
-            !state.HasScaleBreathActiveNote ||
-            state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
-            state.ScaleBreathActiveChannel != zone.MidiChannel ||
-            state.ScaleBreathActiveNote != note;
-        if (shouldSwitch)
+        bool mappingAssistEnabled = zone.MappingAssistEnabled;
+        if (mappingAssistEnabled)
         {
             SendScaleBreathNoteOff(state, messages);
-            messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
-            state.HasScaleBreathActiveNote = true;
-            state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
-            state.ScaleBreathActiveChannel = zone.MidiChannel;
-            state.ScaleBreathActiveNote = note;
+        }
+        else
+        {
+            bool shouldSwitch =
+                !state.HasScaleBreathActiveNote ||
+                state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
+                state.ScaleBreathActiveChannel != zone.MidiChannel ||
+                state.ScaleBreathActiveNote != note;
+            if (shouldSwitch)
+            {
+                SendScaleBreathNoteOff(state, messages);
+                messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
+                state.HasScaleBreathActiveNote = true;
+                state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
+                state.ScaleBreathActiveChannel = zone.MidiChannel;
+                state.ScaleBreathActiveNote = note;
+            }
         }
 
         int xCc = ToCc(xLocal, zone.InvertX);
@@ -308,22 +324,28 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         }
 
         bool allowScaleBreathCc = zone.ScaleBreathSendCc;
-        if (allowScaleBreathCc && zone.SendX)
+        bool sendX = allowScaleBreathCc && ShouldSendAxisCc(zone, zone.SendX, ZoneMappingAssistTargets.CcX);
+        bool sendY = allowScaleBreathCc && ShouldSendAxisCc(zone, zone.SendY, ZoneMappingAssistTargets.CcY);
+        bool sendPressureCc = allowScaleBreathCc && ShouldSendAxisCc(zone, sendPressure, ZoneMappingAssistTargets.CcPressure);
+        if (sendX)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
-        if (allowScaleBreathCc && zone.SendY)
+        if (sendY)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
-        if (allowScaleBreathCc && sendPressure)
+        if (sendPressureCc)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
 
         string rowText = rowIndex == 0 ? "A" : "B";
-        string xText = allowScaleBreathCc && zone.SendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string yText = allowScaleBreathCc && zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string pressureText = allowScaleBreathCc && sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        string xText = sendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = sendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = sendPressureCc ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        string mappingText = mappingAssistEnabled
+            ? $" | Learn: {NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget)}"
+            : string.Empty;
 
         return new InteractionResult(
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
-            ValueLabel: $"{zone.Name} -> Note {note} (hole {holeIndex + 1}, row {rowText}) | X: {xText}, Y: {yText}, Pressure: {pressureText}",
+            ValueLabel: $"{zone.Name} -> Note {note} (hole {holeIndex + 1}, row {rowText}) | X: {xText}, Y: {yText}, Pressure: {pressureText}{mappingText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -348,19 +370,27 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         int velocity = Math.Clamp(ApplyPressureCurve(config, input.Pressure), 1, 127);
 
         var messages = new List<MidiMessage>(capacity: 6);
-        bool shouldSwitch =
-            !state.HasScaleBreathActiveNote ||
-            state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
-            state.ScaleBreathActiveChannel != zone.MidiChannel ||
-            state.ScaleBreathActiveNote != note;
-        if (shouldSwitch)
+        bool mappingAssistEnabled = zone.MappingAssistEnabled;
+        if (mappingAssistEnabled)
         {
             SendScaleBreathNoteOff(state, messages);
-            messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
-            state.HasScaleBreathActiveNote = true;
-            state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
-            state.ScaleBreathActiveChannel = zone.MidiChannel;
-            state.ScaleBreathActiveNote = note;
+        }
+        else
+        {
+            bool shouldSwitch =
+                !state.HasScaleBreathActiveNote ||
+                state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
+                state.ScaleBreathActiveChannel != zone.MidiChannel ||
+                state.ScaleBreathActiveNote != note;
+            if (shouldSwitch)
+            {
+                SendScaleBreathNoteOff(state, messages);
+                messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
+                state.HasScaleBreathActiveNote = true;
+                state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
+                state.ScaleBreathActiveChannel = zone.MidiChannel;
+                state.ScaleBreathActiveNote = note;
+            }
         }
 
         int xCc = ToCc(xLocal, zone.InvertX);
@@ -385,21 +415,27 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         }
 
         bool allowScaleGridCc = zone.ScaleGridSendCc;
-        if (allowScaleGridCc && zone.SendX)
+        bool sendX = allowScaleGridCc && ShouldSendAxisCc(zone, zone.SendX, ZoneMappingAssistTargets.CcX);
+        bool sendY = allowScaleGridCc && ShouldSendAxisCc(zone, zone.SendY, ZoneMappingAssistTargets.CcY);
+        bool sendPressureCc = allowScaleGridCc && ShouldSendAxisCc(zone, sendPressure, ZoneMappingAssistTargets.CcPressure);
+        if (sendX)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
-        if (allowScaleGridCc && zone.SendY)
+        if (sendY)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
-        if (allowScaleGridCc && sendPressure)
+        if (sendPressureCc)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
 
-        string xText = allowScaleGridCc && zone.SendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string yText = allowScaleGridCc && zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
-        string pressureText = allowScaleGridCc && sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        string xText = sendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = sendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = sendPressureCc ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        string mappingText = mappingAssistEnabled
+            ? $" | Learn: {NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget)}"
+            : string.Empty;
 
         return new InteractionResult(
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
-            ValueLabel: $"{zone.Name} -> Note {note} (r{rowFromBottom + 1} c{colIndex + 1}) | X: {xText}, Y: {yText}, Pressure: {pressureText}",
+            ValueLabel: $"{zone.Name} -> Note {note} (r{rowFromBottom + 1} c{colIndex + 1}) | X: {xText}, Y: {yText}, Pressure: {pressureText}{mappingText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -752,6 +788,31 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             ScaleBreathScales.MajorPentatonic => value,
             ScaleBreathScales.MinorPentatonic => value,
             _ => ScaleBreathScales.Major
+        };
+    }
+
+    private static bool ShouldSendAxisCc(ZoneSnapshot zone, bool axisEnabled, string axisTarget)
+    {
+        if (!zone.MappingAssistEnabled)
+        {
+            return axisEnabled;
+        }
+
+        return string.Equals(
+            NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget),
+            axisTarget,
+            StringComparison.Ordinal);
+    }
+
+    private static string NormalizeZoneMappingAssistTarget(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneMappingAssistTargets.CcX => value,
+            ZoneMappingAssistTargets.CcY => value,
+            ZoneMappingAssistTargets.CcPressure => value,
+            _ => ZoneMappingAssistTargets.CcX
         };
     }
 

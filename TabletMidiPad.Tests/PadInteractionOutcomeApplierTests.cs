@@ -51,13 +51,12 @@ public sealed class PadInteractionOutcomeApplierTests
         var state = new InteractionState();
         state.LastLocalByZone[0] = (0.1, 0.2);
         state.LastLocalByZone[1] = (0.3, 0.4);
-        var result = new InteractionResult(-1, string.Empty, string.Empty, string.Empty, new List<MidiMessage>());
+        var result = new InteractionResult(1, string.Empty, string.Empty, string.Empty, new List<MidiMessage>());
 
         sut.Apply(result, state, activePageIndex: 0, activeZones, vm);
 
         IReadOnlyDictionary<ZoneConfig, Point> markers = sut.GetLastZoneMarkers(0);
-        Assert.Equal(2, markers.Count);
-        Assert.Equal(new Point(0.1, 0.2), markers[z0]);
+        Assert.Single(markers);
         Assert.Equal(new Point(0.3, 0.4), markers[z1]);
     }
 

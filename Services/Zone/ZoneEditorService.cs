@@ -68,6 +68,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
             viewModel.ZoneSendPressure = false;
             viewModel.ZoneReleaseBehavior = string.Empty;
             viewModel.ZoneOutputMode = ZoneOutputModes.CcPad;
+            viewModel.MappingAssistEnabled = false;
+            viewModel.MappingAssistTarget = ZoneMappingAssistTargets.CcX;
             viewModel.ScaleBreathRootText = "0";
             viewModel.ScaleBreathScale = ScaleBreathScaleNames.Major;
             viewModel.ScaleBreathOctaveText = "4";
@@ -103,6 +105,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ZoneSendPressure = zone.SendPressure;
         viewModel.ZoneReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(zone.ReleaseBehavior);
         viewModel.ZoneOutputMode = _configValueParser.NormalizeZoneOutputMode(zone.OutputMode);
+        viewModel.MappingAssistEnabled = zone.MappingAssistEnabled;
+        viewModel.MappingAssistTarget = _configValueParser.NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget);
         viewModel.ScaleBreathRootText = Math.Clamp(zone.ScaleBreathRoot, 0, 11).ToString(CultureInfo.InvariantCulture);
         viewModel.ScaleBreathScale = _configValueParser.NormalizeScaleBreathScale(zone.ScaleBreathScale);
         viewModel.ScaleBreathOctaveText = Math.Clamp(zone.ScaleBreathOctave, 0, 8).ToString(CultureInfo.InvariantCulture);
@@ -152,6 +156,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
         zone.ReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(viewModel.ZoneReleaseBehavior);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
         zone.OutputMode = _configValueParser.NormalizeZoneOutputMode(viewModel.ZoneOutputMode);
+        zone.MappingAssistEnabled = viewModel.MappingAssistEnabled;
+        zone.MappingAssistTarget = _configValueParser.NormalizeZoneMappingAssistTarget(viewModel.MappingAssistTarget);
         zone.ScaleBreathRoot = _configValueParser.ReadInt(viewModel.ScaleBreathRootText, 0, 11, "Scale Breath Root");
         zone.ScaleBreathScale = _configValueParser.NormalizeScaleBreathScale(viewModel.ScaleBreathScale);
         zone.ScaleBreathOctave = _configValueParser.ReadInt(viewModel.ScaleBreathOctaveText, 0, 8, "Scale Breath Octave");

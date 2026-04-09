@@ -45,6 +45,8 @@ public sealed class ZoneEditorServiceTests
             ScaleGridRowsText = "6",
             ScaleGridColumnsText = "8",
             ScaleGridSendCc = false,
+            MappingAssistEnabled = true,
+            MappingAssistTarget = ZoneMappingAssistTargets.CcPressure,
         };
 
         sut.CommitCurrentZoneEdits(config, vm, 0, "1", "2");
@@ -74,6 +76,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(6, z.ScaleGridRows);
         Assert.Equal(8, z.ScaleGridColumns);
         Assert.False(z.ScaleGridSendCc);
+        Assert.True(z.MappingAssistEnabled);
+        Assert.Equal(ZoneMappingAssistTargets.CcPressure, z.MappingAssistTarget);
     }
 
     [Fact]
@@ -96,6 +100,8 @@ public sealed class ZoneEditorServiceTests
             ScaleGridRows = 7,
             ScaleGridColumns = 5,
             ScaleGridSendCc = false,
+            MappingAssistEnabled = true,
+            MappingAssistTarget = ZoneMappingAssistTargets.CcY,
         });
 
         var vm = new TestZoneEditorState();
@@ -110,6 +116,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal("7", vm.ScaleGridRowsText);
         Assert.Equal("5", vm.ScaleGridColumnsText);
         Assert.False(vm.ScaleGridSendCc);
+        Assert.True(vm.MappingAssistEnabled);
+        Assert.Equal(ZoneMappingAssistTargets.CcY, vm.MappingAssistTarget);
         Assert.True(vm.ZoneDetailsEnabled);
     }
 
@@ -131,6 +139,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal("4", vm.ScaleGridRowsText);
         Assert.Equal("4", vm.ScaleGridColumnsText);
         Assert.True(vm.ScaleGridSendCc);
+        Assert.False(vm.MappingAssistEnabled);
+        Assert.Equal(ZoneMappingAssistTargets.CcX, vm.MappingAssistTarget);
     }
 
     private sealed class TestZoneEditorState : IZoneEditorState
@@ -142,6 +152,8 @@ public sealed class ZoneEditorServiceTests
         public System.Collections.ObjectModel.ObservableCollection<string> ZoneOutputModeOptions { get; } = [];
 
         public System.Collections.ObjectModel.ObservableCollection<string> ScaleBreathScaleOptions { get; } = [];
+
+        public System.Collections.ObjectModel.ObservableCollection<string> MappingAssistTargetOptions { get; } = [];
 
         public System.Collections.ObjectModel.ObservableCollection<ZoneListItemViewModel> Zones { get; } = [];
 
@@ -188,6 +200,10 @@ public sealed class ZoneEditorServiceTests
         public string ZoneReleaseBehavior { get; set; } = string.Empty;
 
         public string ZoneOutputMode { get; set; } = ZoneOutputModes.CcPad;
+
+        public bool MappingAssistEnabled { get; set; }
+
+        public string MappingAssistTarget { get; set; } = ZoneMappingAssistTargets.CcX;
 
         public string ScaleBreathRootText { get; set; } = "0";
 

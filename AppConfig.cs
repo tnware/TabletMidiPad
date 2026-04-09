@@ -142,6 +142,7 @@ public sealed partial class AppConfig
                 zone.ScaleGridOctave = Math.Clamp(zone.ScaleGridOctave, 0, 8);
                 zone.ScaleGridRows = Math.Clamp(zone.ScaleGridRows, 1, 16);
                 zone.ScaleGridColumns = Math.Clamp(zone.ScaleGridColumns, 1, 16);
+                zone.MappingAssistTarget = NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget);
             }
         }
 
@@ -171,6 +172,18 @@ public sealed partial class AppConfig
             ScaleBreathScaleNames.MajorPentatonic => value,
             ScaleBreathScaleNames.MinorPentatonic => value,
             _ => ScaleBreathScaleNames.Major
+        };
+    }
+
+    private static string NormalizeZoneMappingAssistTarget(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneMappingAssistTargets.CcX => value,
+            ZoneMappingAssistTargets.CcY => value,
+            ZoneMappingAssistTargets.CcPressure => value,
+            _ => ZoneMappingAssistTargets.CcX
         };
     }
 
@@ -332,6 +345,13 @@ public static class ScaleBreathScaleNames
     public const string MinorPentatonic = "Minor Pentatonic";
 }
 
+public static class ZoneMappingAssistTargets
+{
+    public const string CcX = "CC X";
+    public const string CcY = "CC Y";
+    public const string CcPressure = "CC Pressure";
+}
+
 public sealed class ExpressKeyConfig
 {
     public string Action { get; set; } = PenButtonActions.None;
@@ -387,6 +407,8 @@ public sealed class ZoneConfig
     public int ScaleGridRows { get; set; } = 4;
     public int ScaleGridColumns { get; set; } = 4;
     public bool ScaleGridSendCc { get; set; } = true;
+    public bool MappingAssistEnabled { get; set; }
+    public string MappingAssistTarget { get; set; } = ZoneMappingAssistTargets.CcX;
 
     public double Left { get; set; }
     public double Top { get; set; }

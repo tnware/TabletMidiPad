@@ -75,7 +75,9 @@ public sealed class PadPresentationCoordinatorTests
                 ScaleGridScale = ScaleBreathScaleNames.MajorPentatonic,
                 ScaleGridOctave = 5,
                 ScaleGridRows = 6,
-                ScaleGridColumns = 8
+                ScaleGridColumns = 8,
+                MappingAssistEnabled = true,
+                MappingAssistTarget = ZoneMappingAssistTargets.CcY
             },
             new() { Name = "B", Left = 0.5, Top = 0, Width = 0.5, Height = 1 },
         };
@@ -117,5 +119,7 @@ public sealed class PadPresentationCoordinatorTests
         Assert.Equal(5, request.Zones[0].ScaleGridOctave);
         Assert.Equal(6, request.Zones[0].ScaleGridRows);
         Assert.Equal(8, request.Zones[0].ScaleGridColumns);
+        Assert.True(request.Zones[0].MappingAssistEnabled);
+        Assert.Equal(ZoneMappingAssistTargets.CcY, request.Zones[0].MappingAssistTarget);
     }
 }

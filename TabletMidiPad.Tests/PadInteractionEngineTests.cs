@@ -506,7 +506,7 @@ public sealed class PadInteractionEngineTests
         MidiMessage firstOn = Assert.Single(first.MidiMessages);
         Assert.Equal(MidiMessageKind.Note, firstOn.Kind);
         Assert.Equal(4, firstOn.Channel);
-        Assert.Equal(60, firstOn.Number);
+        Assert.Equal(48, firstOn.Number);
         Assert.Equal(127, firstOn.Value);
 
         InteractionResult second = engine.Process(
@@ -517,10 +517,131 @@ public sealed class PadInteractionEngineTests
 
         Assert.Equal(2, second.MidiMessages.Count);
         Assert.Equal(MidiMessageKind.Note, second.MidiMessages[0].Kind);
-        Assert.Equal(60, second.MidiMessages[0].Number);
+        Assert.Equal(48, second.MidiMessages[0].Number);
         Assert.Equal(0, second.MidiMessages[0].Value);
         Assert.Equal(MidiMessageKind.Note, second.MidiMessages[1].Kind);
-        Assert.Equal(64, second.MidiMessages[1].Number);
+        Assert.Equal(52, second.MidiMessages[1].Number);
         Assert.Equal(127, second.MidiMessages[1].Value);
+    }
+
+    [Fact]
+    public void MappingAssistCanSoloSingleCcAndSuppressNotes()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "S",
+                Enabled: true,
+                MidiChannel: 2,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: true,
+                SendY: true,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.ScaleBreath,
+                ScaleBreathSendCc = true,
+                MappingAssistEnabled = true,
+                MappingAssistTarget = InteractionConstants.ZoneMappingAssistTargets.CcPressure
+            },
+        };
+
+        var state = new InteractionState();
+        InteractionResult result = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.3, 0.3, 64, true, false, 0, InteractionBackend.Wintab));
+
+        MidiMessage cc = Assert.Single(result.MidiMessages);
+        Assert.Equal(MidiMessageKind.ControlChange, cc.Kind);
+        Assert.Equal(22, cc.Number);
+        Assert.Equal(64, cc.Value);
+    }
+
+    [Fact]
+    public void MappingAssistPressureTargetBypassesNormalPressureSendToggles()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: false,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "C",
+                Enabled: true,
+                MidiChannel: 1,
+                CcX: 10,
+                CcY: 11,
+                CcPressure: 12,
+                SendX: false,
+                SendY: false,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: false,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.CcPad,
+                MappingAssistEnabled = true,
+                MappingAssistTarget = InteractionConstants.ZoneMappingAssistTargets.CcPressure
+            },
+        };
+
+        var state = new InteractionState();
+        InteractionResult result = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.4, 0.4, 96, true, false, 0, InteractionBackend.Wintab));
+
+        MidiMessage pressure = Assert.Single(result.MidiMessages);
+        Assert.Equal(MidiMessageKind.ControlChange, pressure.Kind);
+        Assert.Equal(12, pressure.Number);
+        Assert.Equal(96, pressure.Value);
     }
 }

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using TabletMidiPad.Services.Zone.Models;
+using ZoneMappingAssistTargets = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneMappingAssistTargets;
 
 namespace TabletMidiPad.Services.Zone;
 
@@ -56,6 +57,9 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
 
             string bounds = $"({zone.Left:0.##},{zone.Top:0.##}) {zone.Width:0.##}\u00D7{zone.Height:0.##}";
             string axes = $"  [{(zone.SendX ? "X" : "-")}{(zone.SendY ? "Y" : "-")}{(zone.SendPressure ? "P" : "-")}]";
+            string mappingAssist = zone.MappingAssistEnabled
+                ? $"  [learn: {NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget)}]"
+                : string.Empty;
             string pressureFlag = zone.SendPressure ? "" : "  [no pressure]";
             string enabledFlag = zone.Enabled ? "" : "  [off]";
 
@@ -78,6 +82,13 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
             {
                 Foreground = new SolidColorBrush(WithAlpha(baseColor, 240))
             });
+            if (mappingAssist.Length > 0)
+            {
+                label.Inlines.Add(new System.Windows.Documents.Run(mappingAssist)
+                {
+                    Foreground = request.TextMutedBrush
+                });
+            }
             if (pressureFlag.Length > 0)
             {
                 label.Inlines.Add(new System.Windows.Documents.Run(pressureFlag)
@@ -671,6 +682,18 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
             ScaleBreathScaleNames.MajorPentatonic => value,
             ScaleBreathScaleNames.MinorPentatonic => value,
             _ => ScaleBreathScaleNames.Major
+        };
+    }
+
+    private static string NormalizeZoneMappingAssistTarget(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneMappingAssistTargets.CcX => value,
+            ZoneMappingAssistTargets.CcY => value,
+            ZoneMappingAssistTargets.CcPressure => value,
+            _ => ZoneMappingAssistTargets.CcX
         };
     }
 

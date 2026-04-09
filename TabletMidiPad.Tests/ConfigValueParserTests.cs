@@ -34,4 +34,11 @@ public sealed class ConfigValueParserTests
         Assert.Equal(ScaleBreathScaleNames.NaturalMinor, _sut.NormalizeScaleBreathScale("Natural Minor"));
         Assert.Equal(ScaleBreathScaleNames.Major, _sut.NormalizeScaleBreathScale("X"));
     }
+
+    [Fact]
+    public void NormalizeZoneMappingAssistTargetFallsBackToCcX()
+    {
+        Assert.Equal(ZoneMappingAssistTargets.CcPressure, _sut.NormalizeZoneMappingAssistTarget("CC Pressure"));
+        Assert.Equal(ZoneMappingAssistTargets.CcX, _sut.NormalizeZoneMappingAssistTarget("X"));
+    }
 }

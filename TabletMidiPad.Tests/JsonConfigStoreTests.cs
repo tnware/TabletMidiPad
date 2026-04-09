@@ -18,13 +18,17 @@ public sealed class JsonConfigStoreTests
             {
                 AppPortName = "App Out",
                 DawPortName = "DAW In",
-                MaxZoneRows = 3,
-                MaxZonesPerRow = 4,
                 SendPressureGlobally = false,
                 InputBackendMode = "Mouse",
             };
-            original.Zones.Clear();
-            original.Zones.Add(new ZoneConfig { Name = "Test", Width = 0.5, Height = 0.5 });
+            original.Pages.Clear();
+            original.Pages.Add(new PageConfig
+            {
+                Name = "Page 1",
+                MaxZoneRows = 3,
+                MaxZonesPerRow = 4,
+                Zones = new List<ZoneConfig> { new ZoneConfig { Name = "Test", Width = 0.5, Height = 0.5 } }
+            });
 
             store.Save(original);
 
@@ -36,8 +40,8 @@ public sealed class JsonConfigStoreTests
             Assert.Equal(4, loaded.MaxZonesPerRow);
             Assert.False(loaded.SendPressureGlobally);
             Assert.Equal("Mouse", loaded.InputBackendMode);
-            Assert.Single(loaded.Zones);
-            Assert.Equal("Test", loaded.Zones[0].Name);
+            Assert.Single(loaded.Pages[0].Zones);
+            Assert.Equal("Test", loaded.Pages[0].Zones[0].Name);
         }
         finally
         {

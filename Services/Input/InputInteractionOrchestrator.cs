@@ -74,7 +74,9 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
                 ScaleGridOctave = z.ScaleGridOctave,
                 ScaleGridRows = z.ScaleGridRows,
                 ScaleGridColumns = z.ScaleGridColumns,
-                ScaleGridSendCc = z.ScaleGridSendCc
+                ScaleGridSendCc = z.ScaleGridSendCc,
+                MappingAssistEnabled = z.MappingAssistEnabled,
+                MappingAssistTarget = z.MappingAssistTarget
             })];
     }
 

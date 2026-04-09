@@ -75,5 +75,15 @@ public static class InteractionConstants
         public const string MajorPentatonic = "Major Pentatonic";
         public const string MinorPentatonic = "Minor Pentatonic";
     }
+
+    /// <summary>
+    /// Supported mapping-assist targets.
+    /// </summary>
+    public static class ZoneMappingAssistTargets
+    {
+        public const string CcX = "CC X";
+        public const string CcY = "CC Y";
+        public const string CcPressure = "CC Pressure";
+    }
 }
 

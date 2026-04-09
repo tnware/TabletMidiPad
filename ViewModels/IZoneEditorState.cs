@@ -12,6 +12,8 @@ internal interface IZoneEditorState
 
     ObservableCollection<string> ScaleBreathScaleOptions { get; }
 
+    ObservableCollection<string> MappingAssistTargetOptions { get; }
+
     ObservableCollection<ZoneListItemViewModel> Zones { get; }
 
     string MaxZoneRowsText { get; set; }
@@ -57,6 +59,10 @@ internal interface IZoneEditorState
     string ZoneReleaseBehavior { get; set; }
 
     string ZoneOutputMode { get; set; }
+
+    bool MappingAssistEnabled { get; set; }
+
+    string MappingAssistTarget { get; set; }
 
     string ScaleBreathRootText { get; set; }
 

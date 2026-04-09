@@ -1125,6 +1125,38 @@
                                                 BorderBrush="{StaticResource PanelBorderBrush}"
                                                 BorderThickness="1"
                                                 Background="{StaticResource SurfaceRaisedBrush}"
+                                                CornerRadius="8">
+                                            <StackPanel>
+                                                <TextBlock Text="MIDI Learn Assist"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,6"/>
+                                                <CheckBox IsChecked="{Binding ZoneEditor.MappingAssistEnabled}"
+                                                          Content="Solo one controller stream for MIDI learn"/>
+                                                <Grid Margin="0,8,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               VerticalAlignment="Center"
+                                                               Text="Target"
+                                                               Foreground="{StaticResource TextMutedBrush}"
+                                                               FontSize="11"/>
+                                                    <ComboBox Grid.Column="2"
+                                                              ItemsSource="{Binding ZoneEditor.MappingAssistTargetOptions}"
+                                                              SelectedItem="{Binding ZoneEditor.MappingAssistTarget, Mode=TwoWay}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Margin="0,12,0,0"
+                                                Padding="10,8"
+                                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                                BorderThickness="1"
+                                                Background="{StaticResource SurfaceRaisedBrush}"
                                                 CornerRadius="8"
                                                 Visibility="{Binding ZoneEditor.IsScaleBreathMode, Converter={StaticResource BoolToVis}}">
                                             <StackPanel>
