@@ -6,10 +6,9 @@ namespace TabletMidiPad.Services.Shell;
 /// View host callbacks required by <see cref="IMainShellCommandController"/>.
 /// </summary>
 internal interface IMainShellCommandHost
+    : ISettingsResultHost
 {
     void CommitCurrentZoneEdits();
-
-    void SetSettingsResult(string message, SettingsResultKind kind);
 
     void SetWacomServiceState(string statusHeader, bool startEnabled);
 

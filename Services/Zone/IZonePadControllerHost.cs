@@ -1,4 +1,4 @@
-using TabletMidiPad.ViewModels;
+using TabletMidiPad.Services.Shell;
 
 namespace TabletMidiPad.Services.Zone;
 
@@ -6,6 +6,7 @@ namespace TabletMidiPad.Services.Zone;
 /// View-owned dependencies for <see cref="IZonePadController"/> (config, selection, and UI sync).
 /// </summary>
 internal interface IZonePadControllerHost
+    : ISettingsResultHost
 {
     AppConfig Config { get; }
 
@@ -20,8 +21,6 @@ internal interface IZonePadControllerHost
     void LoadSelectedZoneIntoEditor();
 
     void RefreshPadZoneOverlay();
-
-    void SetSettingsResult(string message, SettingsResultKind kind);
 
     /// <summary>
     /// Clears the pad cursor after a resize completes (restores default hit-test cursor behavior).

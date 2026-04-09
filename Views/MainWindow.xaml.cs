@@ -10,7 +10,7 @@ public partial class MainWindow : Window
 {
     private readonly PadInputControllerState _padState = new();
     private readonly IPadInputController _padInputSession;
-    private readonly ZonePadController _zonePadSession;
+    private readonly IZonePadController _zonePadSession;
     private readonly StartupViewHost _startupHost;
 
     private readonly IRuntimeConfigService _runtimeConfig;
@@ -48,13 +48,10 @@ public partial class MainWindow : Window
         IZoneOverlayRenderer zoneOverlayRenderer,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IUiStateProjectionService uiStateProjectionService,
-        IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IStartupLifecycleService startupLifecycle,
         IPadInputControllerFactory padInputControllerFactory,
-        IZoneResizeService zoneResizeService,
-        IPreferencesDialogService preferencesDialogService,
-        IZoneConfigurationService zoneConfigurationService,
-        ISettingsWorkflowCoordinator settingsWorkflowCoordinator,
+        IZonePadControllerFactory zonePadControllerFactory,
+        IMainWindowWorkflowFactory mainWindowWorkflowFactory,
         IPadPresentationCoordinator padPresentationCoordinator,
         IMainViewModelFactory mainViewModelFactory,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
@@ -66,37 +63,27 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
         _uiStateProjectionService = uiStateProjectionService ?? throw new ArgumentNullException(nameof(uiStateProjectionService));
-        ArgumentNullException.ThrowIfNull(wacomServiceWorkflowCoordinator);
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         ArgumentNullException.ThrowIfNull(padInputControllerFactory);
-        ArgumentNullException.ThrowIfNull(zoneResizeService);
-        ArgumentNullException.ThrowIfNull(preferencesDialogService);
-        ArgumentNullException.ThrowIfNull(zoneConfigurationService);
-        ArgumentNullException.ThrowIfNull(settingsWorkflowCoordinator);
+        ArgumentNullException.ThrowIfNull(zonePadControllerFactory);
+        ArgumentNullException.ThrowIfNull(mainWindowWorkflowFactory);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         ArgumentNullException.ThrowIfNull(mainViewModelFactory);
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
         var padInputHost = new PadInputViewHost(this);
         _padInputSession = padInputControllerFactory.Create(padInputHost);
-        _zonePadSession = new ZonePadController(new ZonePadViewHost(this), zoneResizeService);
-        ISettingsWorkflow settingsWorkflow = new SettingsWorkflow(
-            new SettingsWorkflowViewHost(this),
-            settingsWorkflowCoordinator,
-            preferencesDialogService,
-            zoneConfigurationService,
-            runtimeConfig,
-            midiEngine,
-            _padInputSession);
+        _zonePadSession = zonePadControllerFactory.Create(new ZonePadViewHost(this));
+        MainWindowWorkflowSet workflows = mainWindowWorkflowFactory.Create(new MainWindowWorkflowContext(
+            SettingsWorkflowHost: new SettingsWorkflowViewHost(this),
+            MainShellCommandHost: new MainShellCommandHost(this),
+            RuntimeConfig: runtimeConfig,
+            MidiEngine: midiEngine,
+            WacomServiceController: _wacomServiceController,
+            UiStateProjectionService: _uiStateProjectionService,
+            PadInputController: _padInputSession));
         _startupHost = new StartupViewHost(this);
-        var shellCommandController = new MainShellCommandController(
-            new MainShellCommandHost(this),
-            settingsWorkflow,
-            wacomServiceWorkflowCoordinator,
-            _wacomServiceController,
-            _uiStateProjectionService,
-            _padInputSession);
-        _viewModel = mainViewModelFactory.Create(new MainShellCommandsViewModel(shellCommandController));
+        _viewModel = mainViewModelFactory.Create(workflows.ShellCommandsViewModel);
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
         _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
         _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
