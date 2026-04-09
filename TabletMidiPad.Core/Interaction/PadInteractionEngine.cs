@@ -4,6 +4,8 @@ using System.Globalization;
 using PenButtonActions = TabletMidiPad.Core.Interaction.InteractionConstants.PenButtonActions;
 using ExpressKeyActions = TabletMidiPad.Core.Interaction.InteractionConstants.ExpressKeyActions;
 using ZoneReleaseBehaviors = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneReleaseBehaviors;
+using ZoneOutputModes = TabletMidiPad.Core.Interaction.InteractionConstants.ZoneOutputModes;
+using ScaleBreathScales = TabletMidiPad.Core.Interaction.InteractionConstants.ScaleBreathScales;
 
 namespace TabletMidiPad.Core.Interaction;
 
@@ -65,6 +67,8 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
                 SendZoneRelease(config, zones[state.ActiveZoneIndex], messages);
             }
 
+            SendScaleBreathNoteOff(state, messages);
+
             state.ActiveZoneIndex = -1;
             state.HasLockedPosition = false;
             state.LowerPenButtonHeld = false;
@@ -87,6 +91,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         if (zoneIndex != state.ActiveZoneIndex)
         {
             var switchMessages = new List<MidiMessage>();
+            SendScaleBreathNoteOff(state, switchMessages);
             if (state.ActiveZoneIndex >= 0 && state.ActiveZoneIndex < zones.Count)
             {
                 SendZoneRelease(config, zones[state.ActiveZoneIndex], switchMessages);
@@ -193,6 +198,14 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
 
         state.LastLocalByZone[state.ActiveZoneIndex] = (xLocal, yLocal);
 
+        string zoneMode = NormalizeZoneOutputMode(zone.OutputMode);
+        if (string.Equals(zoneMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal))
+        {
+            return ProcessScaleBreathZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
+        }
+
+        var ccmessages = new List<MidiMessage>(capacity: 4);
+        SendScaleBreathNoteOff(state, ccmessages);
         int xCc = ToCc(xLocal, zone.InvertX);
         int yCc = ToCc(yLocal, zone.InvertY);
         int curvedPressure = ApplyPressureCurve(config, input.Pressure);
@@ -219,7 +232,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         string yText = zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
         string pressureText = sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
 
-        var messages = new List<MidiMessage>(capacity: 3);
+        var messages = ccmessages;
         if (zone.SendX)
             messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
         if (zone.SendY)
@@ -231,6 +244,82 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
             ValueLabel: $"{zone.Name} -> X: {xText}, Y: {yText}, Pressure: {pressureText}",
+            ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
+            MidiMessages: messages);
+    }
+
+    private static InteractionResult ProcessScaleBreathZone(
+        PadInteractionConfig config,
+        ZoneSnapshot zone,
+        InteractionInput input,
+        InteractionState state,
+        string lowerAction,
+        string upperAction,
+        double xLocal,
+        double yLocal)
+    {
+        int holeCount = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16);
+        int holeIndex = Math.Clamp((int)Math.Floor(xLocal * holeCount), 0, holeCount - 1);
+        double split = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9);
+        int rowIndex = yLocal < split ? 0 : 1;
+        int streamIndex = (holeIndex * 2) + rowIndex;
+        int note = BuildScaleBreathNote(zone.ScaleBreathRoot, zone.ScaleBreathScale, zone.ScaleBreathOctave, streamIndex);
+        int velocity = Math.Clamp(ApplyPressureCurve(config, input.Pressure), 1, 127);
+
+        var messages = new List<MidiMessage>(capacity: 6);
+        bool shouldSwitch =
+            !state.HasScaleBreathActiveNote ||
+            state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
+            state.ScaleBreathActiveChannel != zone.MidiChannel ||
+            state.ScaleBreathActiveNote != note;
+        if (shouldSwitch)
+        {
+            SendScaleBreathNoteOff(state, messages);
+            messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
+            state.HasScaleBreathActiveNote = true;
+            state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
+            state.ScaleBreathActiveChannel = zone.MidiChannel;
+            state.ScaleBreathActiveNote = note;
+        }
+
+        int xCc = ToCc(xLocal, zone.InvertX);
+        int yCc = ToCc(yLocal, zone.InvertY);
+        int curvedPressure = ApplyPressureCurve(config, input.Pressure);
+        bool sendPressure = config.SendPressureGlobally && zone.SendPressure;
+        if ((state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
+        {
+            sendPressure = false;
+        }
+
+        bool pressureEnabledByButton =
+            (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
+        bool anyEnablePressureAction =
+            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
+            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
+        if (anyEnablePressureAction)
+        {
+            sendPressure = sendPressure && pressureEnabledByButton;
+        }
+
+        bool allowScaleBreathCc = zone.ScaleBreathSendCc;
+        if (allowScaleBreathCc && zone.SendX)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
+        if (allowScaleBreathCc && zone.SendY)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
+        if (allowScaleBreathCc && sendPressure)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
+
+        string rowText = rowIndex == 0 ? "A" : "B";
+        string xText = allowScaleBreathCc && zone.SendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = allowScaleBreathCc && zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = allowScaleBreathCc && sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+
+        return new InteractionResult(
+            ActiveZoneIndex: state.ActiveZoneIndex,
+            ActiveZoneLabel: $"Active zone: {zone.Name}",
+            ValueLabel: $"{zone.Name} -> Note {note} (hole {holeIndex + 1}, row {rowText}) | X: {xText}, Y: {yText}, Pressure: {pressureText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -559,6 +648,64 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             PenButtonActions.NoteToggle => value,
             _ => PenButtonActions.None
         };
+    }
+
+    private static string NormalizeZoneOutputMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.ScaleBreath => value,
+            _ => ZoneOutputModes.CcPad
+        };
+    }
+
+    private static string NormalizeScaleBreathScale(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ScaleBreathScales.Major => value,
+            ScaleBreathScales.NaturalMinor => value,
+            ScaleBreathScales.MajorPentatonic => value,
+            ScaleBreathScales.MinorPentatonic => value,
+            _ => ScaleBreathScales.Major
+        };
+    }
+
+    private static int BuildScaleBreathNote(int root, string scale, int octave, int streamIndex)
+    {
+        int[] steps = BuildScaleSteps(NormalizeScaleBreathScale(scale));
+        int rootMidi = Math.Clamp((Math.Clamp(octave, 0, 8) * 12) + Math.Clamp(root, 0, 11), 0, 127);
+        int octaveStride = streamIndex / steps.Length;
+        int stepIndex = streamIndex % steps.Length;
+        int note = rootMidi + (octaveStride * 12) + steps[stepIndex];
+        return Math.Clamp(note, 0, 127);
+    }
+
+    private static int[] BuildScaleSteps(string scale)
+    {
+        return scale switch
+        {
+            ScaleBreathScales.NaturalMinor => [0, 2, 3, 5, 7, 8, 10],
+            ScaleBreathScales.MajorPentatonic => [0, 2, 4, 7, 9],
+            ScaleBreathScales.MinorPentatonic => [0, 3, 5, 7, 10],
+            _ => [0, 2, 4, 5, 7, 9, 11]
+        };
+    }
+
+    private static void SendScaleBreathNoteOff(InteractionState state, List<MidiMessage> messages)
+    {
+        if (!state.HasScaleBreathActiveNote || state.ScaleBreathActiveNote < 0)
+        {
+            return;
+        }
+
+        messages.Add(MidiMessage.Note(state.ScaleBreathActiveChannel, state.ScaleBreathActiveNote, on: false, velocity: 0, force: true));
+        state.HasScaleBreathActiveNote = false;
+        state.ScaleBreathActiveZoneIndex = -1;
+        state.ScaleBreathActiveNote = -1;
     }
 
     private static string NormalizeExpressKeyAction(string? text)

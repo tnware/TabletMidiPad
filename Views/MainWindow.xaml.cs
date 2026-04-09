@@ -135,7 +135,10 @@ public partial class MainWindow : Window
             MaxZonesPerRowTextBox,
             ZoneCcXTextBox,
             ZoneCcYTextBox,
-            ZoneCcPressureTextBox
+            ZoneCcPressureTextBox,
+            ZoneScaleBreathRootTextBox,
+            ZoneScaleBreathOctaveTextBox,
+            ZoneScaleBreathHoleCountTextBox
         })
         {
             NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Integer);
@@ -147,7 +150,8 @@ public partial class MainWindow : Window
             ZoneLeftTextBox,
             ZoneTopTextBox,
             ZoneWidthTextBox,
-            ZoneHeightTextBox
+            ZoneHeightTextBox,
+            ZoneScaleBreathRowSplitTextBox
         })
         {
             NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Decimal);

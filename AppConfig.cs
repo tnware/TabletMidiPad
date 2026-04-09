@@ -130,11 +130,42 @@ public sealed partial class AppConfig
                         ? ZoneReleaseBehaviors.ResetPressureOnly
                         : ZoneReleaseBehaviors.NoSendOnRelease;
                 }
+
+                zone.OutputMode = NormalizeZoneOutputMode(zone.OutputMode);
+                zone.ScaleBreathScale = NormalizeScaleBreathScale(zone.ScaleBreathScale);
+                zone.ScaleBreathRoot = Math.Clamp(zone.ScaleBreathRoot, 0, 11);
+                zone.ScaleBreathOctave = Math.Clamp(zone.ScaleBreathOctave, 0, 8);
+                zone.ScaleBreathHoleCount = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16);
+                zone.ScaleBreathRowSplit = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9);
             }
         }
 
         config.SyncLegacyFromFirstPage();
         return config;
+    }
+
+    private static string NormalizeZoneOutputMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.ScaleBreath => value,
+            _ => ZoneOutputModes.CcPad
+        };
+    }
+
+    private static string NormalizeScaleBreathScale(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ScaleBreathScaleNames.Major => value,
+            ScaleBreathScaleNames.NaturalMinor => value,
+            ScaleBreathScaleNames.MajorPentatonic => value,
+            ScaleBreathScaleNames.MinorPentatonic => value,
+            _ => ScaleBreathScaleNames.Major
+        };
     }
 
     public static PageConfig GetPage(AppConfig config, int pageIndex)
@@ -280,6 +311,20 @@ public static class ZoneReleaseBehaviors
     public const string NoSendOnRelease = "No Send On Release";
 }
 
+public static class ZoneOutputModes
+{
+    public const string CcPad = "CC Pad";
+    public const string ScaleBreath = "Scale Breath";
+}
+
+public static class ScaleBreathScaleNames
+{
+    public const string Major = "Major";
+    public const string NaturalMinor = "Natural Minor";
+    public const string MajorPentatonic = "Major Pentatonic";
+    public const string MinorPentatonic = "Minor Pentatonic";
+}
+
 public sealed class ExpressKeyConfig
 {
     public string Action { get; set; } = PenButtonActions.None;
@@ -322,6 +367,13 @@ public sealed class ZoneConfig
     public bool SendPressure { get; set; } = true;
     public string ReleaseBehavior { get; set; } = ZoneReleaseBehaviors.NoSendOnRelease;
     public bool ResetPressureOnRelease { get; set; } = true;
+    public string OutputMode { get; set; } = ZoneOutputModes.CcPad;
+    public int ScaleBreathRoot { get; set; }
+    public string ScaleBreathScale { get; set; } = ScaleBreathScaleNames.Major;
+    public int ScaleBreathOctave { get; set; } = 4;
+    public int ScaleBreathHoleCount { get; set; } = 10;
+    public double ScaleBreathRowSplit { get; set; } = 0.5;
+    public bool ScaleBreathSendCc { get; set; } = true;
 
     public double Left { get; set; }
     public double Top { get; set; }

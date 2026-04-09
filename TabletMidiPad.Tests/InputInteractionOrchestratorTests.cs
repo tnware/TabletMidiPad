@@ -149,6 +149,13 @@ public sealed class InputInteractionOrchestratorTests
                     InvertY = false,
                     SendPressure = false,
                     ReleaseBehavior = ZoneReleaseBehaviors.Hold,
+                    OutputMode = ZoneOutputModes.ScaleBreath,
+                    ScaleBreathRoot = 7,
+                    ScaleBreathScale = ScaleBreathScaleNames.MinorPentatonic,
+                    ScaleBreathOctave = 3,
+                    ScaleBreathHoleCount = 9,
+                    ScaleBreathRowSplit = 0.4,
+                    ScaleBreathSendCc = false,
                     Left = 0.1,
                     Top = 0.2,
                     Width = 0.3,
@@ -172,6 +179,13 @@ public sealed class InputInteractionOrchestratorTests
         Assert.False(z.InvertY);
         Assert.False(z.SendPressure);
         Assert.Equal(ZoneReleaseBehaviors.Hold, z.ReleaseBehavior);
+        Assert.Equal(ZoneOutputModes.ScaleBreath, z.OutputMode);
+        Assert.Equal(7, z.ScaleBreathRoot);
+        Assert.Equal(ScaleBreathScaleNames.MinorPentatonic, z.ScaleBreathScale);
+        Assert.Equal(3, z.ScaleBreathOctave);
+        Assert.Equal(9, z.ScaleBreathHoleCount);
+        Assert.Equal(0.4, z.ScaleBreathRowSplit);
+        Assert.False(z.ScaleBreathSendCc);
         Assert.Equal(0.1, z.Left);
         Assert.Equal(0.2, z.Top);
         Assert.Equal(0.3, z.Width);

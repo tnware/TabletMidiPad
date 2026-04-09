@@ -19,4 +19,18 @@ public sealed class ConfigValueParserTests
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => _sut.RequirePressureCurve("Spline"));
         Assert.Contains("Pressure Curve", ex.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void NormalizeZoneOutputModeFallsBackToCcPad()
+    {
+        Assert.Equal(ZoneOutputModes.ScaleBreath, _sut.NormalizeZoneOutputMode("Scale Breath"));
+        Assert.Equal(ZoneOutputModes.CcPad, _sut.NormalizeZoneOutputMode("Unknown"));
+    }
+
+    [Fact]
+    public void NormalizeScaleBreathScaleFallsBackToMajor()
+    {
+        Assert.Equal(ScaleBreathScaleNames.NaturalMinor, _sut.NormalizeScaleBreathScale("Natural Minor"));
+        Assert.Equal(ScaleBreathScaleNames.Major, _sut.NormalizeScaleBreathScale("X"));
+    }
 }

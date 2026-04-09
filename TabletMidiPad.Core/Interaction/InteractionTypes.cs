@@ -50,7 +50,16 @@ public sealed record ZoneSnapshot(
     double Left,
     double Top,
     double Width,
-    double Height);
+    double Height)
+{
+    public string OutputMode { get; init; } = InteractionConstants.ZoneOutputModes.CcPad;
+    public int ScaleBreathRoot { get; init; }
+    public string ScaleBreathScale { get; init; } = InteractionConstants.ScaleBreathScales.Major;
+    public int ScaleBreathOctave { get; init; } = 4;
+    public int ScaleBreathHoleCount { get; init; } = 10;
+    public double ScaleBreathRowSplit { get; init; } = 0.5;
+    public bool ScaleBreathSendCc { get; init; } = true;
+}
 
 /// <summary>
 /// Captures a single input sample for the interaction engine.
@@ -128,6 +137,26 @@ public sealed class InteractionState
     /// Express key toggle state by key index.
     /// </summary>
     public Dictionary<int, bool> ExpressKeyToggle { get; } = [];
+
+    /// <summary>
+    /// Whether Scale Breath currently has an active note.
+    /// </summary>
+    public bool HasScaleBreathActiveNote { get; set; }
+
+    /// <summary>
+    /// Active Scale Breath MIDI note value.
+    /// </summary>
+    public int ScaleBreathActiveNote { get; set; } = -1;
+
+    /// <summary>
+    /// Active Scale Breath MIDI channel.
+    /// </summary>
+    public int ScaleBreathActiveChannel { get; set; } = 1;
+
+    /// <summary>
+    /// Active Scale Breath zone index.
+    /// </summary>
+    public int ScaleBreathActiveZoneIndex { get; set; } = -1;
 }
 
 /// <summary>

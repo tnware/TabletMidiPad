@@ -32,6 +32,13 @@ public sealed class ZoneEditorServiceTests
             ZoneInvertY = true,
             ZoneSendPressure = true,
             ZoneReleaseBehavior = ZoneReleaseBehaviors.Hold,
+            ZoneOutputMode = ZoneOutputModes.ScaleBreath,
+            ScaleBreathRootText = "2",
+            ScaleBreathScale = ScaleBreathScaleNames.NaturalMinor,
+            ScaleBreathOctaveText = "3",
+            ScaleBreathHoleCountText = "12",
+            ScaleBreathRowSplitText = "0.6",
+            ScaleBreathSendCc = false,
         };
 
         sut.CommitCurrentZoneEdits(config, vm, 0, "1", "2");
@@ -48,6 +55,13 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(1, config.Pages[0].MaxZoneRows);
         Assert.Equal(2, config.Pages[0].MaxZonesPerRow);
         Assert.Equal(ZoneReleaseBehaviors.Hold, z.ReleaseBehavior);
+        Assert.Equal(ZoneOutputModes.ScaleBreath, z.OutputMode);
+        Assert.Equal(2, z.ScaleBreathRoot);
+        Assert.Equal(ScaleBreathScaleNames.NaturalMinor, z.ScaleBreathScale);
+        Assert.Equal(3, z.ScaleBreathOctave);
+        Assert.Equal(12, z.ScaleBreathHoleCount);
+        Assert.Equal(0.6, z.ScaleBreathRowSplit);
+        Assert.False(z.ScaleBreathSendCc);
     }
 
     [Fact]
@@ -63,6 +77,7 @@ public sealed class ZoneEditorServiceTests
             Enabled = true,
             MidiChannel = 7,
             ReleaseBehavior = ZoneReleaseBehaviors.Hold,
+            OutputMode = ZoneOutputModes.ScaleBreath,
         });
 
         var vm = new TestZoneEditorState();
@@ -70,6 +85,7 @@ public sealed class ZoneEditorServiceTests
 
         Assert.Equal(7, vm.ZoneMidiChannel);
         Assert.Equal(ZoneReleaseBehaviors.Hold, vm.ZoneReleaseBehavior);
+        Assert.Equal(ZoneOutputModes.ScaleBreath, vm.ZoneOutputMode);
         Assert.True(vm.ZoneDetailsEnabled);
     }
 
@@ -92,6 +108,10 @@ public sealed class ZoneEditorServiceTests
         public System.Collections.ObjectModel.ObservableCollection<int> MidiChannels { get; } = [];
 
         public System.Collections.ObjectModel.ObservableCollection<string> ReleaseBehaviorOptions { get; } = [];
+
+        public System.Collections.ObjectModel.ObservableCollection<string> ZoneOutputModeOptions { get; } = [];
+
+        public System.Collections.ObjectModel.ObservableCollection<string> ScaleBreathScaleOptions { get; } = [];
 
         public System.Collections.ObjectModel.ObservableCollection<ZoneListItemViewModel> Zones { get; } = [];
 
@@ -136,5 +156,23 @@ public sealed class ZoneEditorServiceTests
         public bool ZoneSendPressure { get; set; }
 
         public string ZoneReleaseBehavior { get; set; } = string.Empty;
+
+        public string ZoneOutputMode { get; set; } = ZoneOutputModes.CcPad;
+
+        public string ScaleBreathRootText { get; set; } = "0";
+
+        public string ScaleBreathScale { get; set; } = ScaleBreathScaleNames.Major;
+
+        public string ScaleBreathOctaveText { get; set; } = "4";
+
+        public string ScaleBreathHoleCountText { get; set; } = "10";
+
+        public string ScaleBreathRowSplitText { get; set; } = "0.5";
+
+        public bool ScaleBreathSendCc { get; set; } = true;
+
+        public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
+
+        public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
     }
 }

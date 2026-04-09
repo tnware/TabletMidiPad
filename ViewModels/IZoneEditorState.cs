@@ -8,6 +8,10 @@ internal interface IZoneEditorState
 
     ObservableCollection<string> ReleaseBehaviorOptions { get; }
 
+    ObservableCollection<string> ZoneOutputModeOptions { get; }
+
+    ObservableCollection<string> ScaleBreathScaleOptions { get; }
+
     ObservableCollection<ZoneListItemViewModel> Zones { get; }
 
     string MaxZoneRowsText { get; set; }
@@ -51,4 +55,22 @@ internal interface IZoneEditorState
     bool ZoneSendPressure { get; set; }
 
     string ZoneReleaseBehavior { get; set; }
+
+    string ZoneOutputMode { get; set; }
+
+    string ScaleBreathRootText { get; set; }
+
+    string ScaleBreathScale { get; set; }
+
+    string ScaleBreathOctaveText { get; set; }
+
+    string ScaleBreathHoleCountText { get; set; }
+
+    string ScaleBreathRowSplitText { get; set; }
+
+    bool ScaleBreathSendCc { get; set; }
+
+    bool IsCcPadMode { get; }
+
+    bool IsScaleBreathMode { get; }
 }

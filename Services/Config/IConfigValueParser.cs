@@ -44,4 +44,14 @@ internal interface IConfigValueParser
     /// Normalizes express-key action values to known actions.
     /// </summary>
     string NormalizeExpressKeyAction(string? text);
+
+    /// <summary>
+    /// Normalizes zone output mode values.
+    /// </summary>
+    string NormalizeZoneOutputMode(string? text);
+
+    /// <summary>
+    /// Normalizes Scale Breath scale values.
+    /// </summary>
+    string NormalizeScaleBreathScale(string? text);
 }

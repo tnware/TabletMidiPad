@@ -54,5 +54,25 @@ public static class InteractionConstants
         public const string ResetAll = "Reset All";
         public const string NoSendOnRelease = "No Send On Release";
     }
+
+    /// <summary>
+    /// Supported zone output mode names.
+    /// </summary>
+    public static class ZoneOutputModes
+    {
+        public const string CcPad = "CC Pad";
+        public const string ScaleBreath = "Scale Breath";
+    }
+
+    /// <summary>
+    /// Supported Scale Breath scale names.
+    /// </summary>
+    public static class ScaleBreathScales
+    {
+        public const string Major = "Major";
+        public const string NaturalMinor = "Natural Minor";
+        public const string MajorPentatonic = "Major Pentatonic";
+        public const string MinorPentatonic = "Minor Pentatonic";
+    }
 }
 

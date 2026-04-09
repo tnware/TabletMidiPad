@@ -28,6 +28,13 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private bool _zoneInvertY;
     private bool _zoneSendPressure = true;
     private string _zoneReleaseBehavior = string.Empty;
+    private string _zoneOutputMode = ZoneOutputModes.CcPad;
+    private string _scaleBreathRootText = "0";
+    private string _scaleBreathScale = ScaleBreathScaleNames.Major;
+    private string _scaleBreathOctaveText = "4";
+    private string _scaleBreathHoleCountText = "10";
+    private string _scaleBreathRowSplitText = "0.5";
+    private bool _scaleBreathSendCc = true;
     private string _maxZoneRowsText = string.Empty;
     private string _maxZonesPerRowText = string.Empty;
     private bool _isCanvasLocked;
@@ -52,11 +59,21 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.Hold);
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetPressureOnly);
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
+        ZoneOutputModeOptions.Add(ZoneOutputModes.CcPad);
+        ZoneOutputModeOptions.Add(ZoneOutputModes.ScaleBreath);
+        ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.Major);
+        ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.NaturalMinor);
+        ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.MajorPentatonic);
+        ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.MinorPentatonic);
     }
 
     public ObservableCollection<int> MidiChannels { get; } = new();
 
     public ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
+
+    public ObservableCollection<string> ZoneOutputModeOptions { get; } = new();
+
+    public ObservableCollection<string> ScaleBreathScaleOptions { get; } = new();
 
     public ObservableCollection<PageListItemViewModel> Pages { get; } = new();
 
@@ -225,6 +242,61 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         get => _zoneReleaseBehavior;
         set => SetProperty(ref _zoneReleaseBehavior, value);
     }
+
+    public string ZoneOutputMode
+    {
+        get => _zoneOutputMode;
+        set
+        {
+            if (!SetProperty(ref _zoneOutputMode, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(IsCcPadMode));
+            OnPropertyChanged(nameof(IsScaleBreathMode));
+        }
+    }
+
+    public string ScaleBreathRootText
+    {
+        get => _scaleBreathRootText;
+        set => SetProperty(ref _scaleBreathRootText, value);
+    }
+
+    public string ScaleBreathScale
+    {
+        get => _scaleBreathScale;
+        set => SetProperty(ref _scaleBreathScale, value);
+    }
+
+    public string ScaleBreathOctaveText
+    {
+        get => _scaleBreathOctaveText;
+        set => SetProperty(ref _scaleBreathOctaveText, value);
+    }
+
+    public string ScaleBreathHoleCountText
+    {
+        get => _scaleBreathHoleCountText;
+        set => SetProperty(ref _scaleBreathHoleCountText, value);
+    }
+
+    public string ScaleBreathRowSplitText
+    {
+        get => _scaleBreathRowSplitText;
+        set => SetProperty(ref _scaleBreathRowSplitText, value);
+    }
+
+    public bool ScaleBreathSendCc
+    {
+        get => _scaleBreathSendCc;
+        set => SetProperty(ref _scaleBreathSendCc, value);
+    }
+
+    public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
+
+    public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
 
     public void NotifySelectedZoneIndexChanged() => OnPropertyChanged(nameof(SelectedZoneIndex));
 

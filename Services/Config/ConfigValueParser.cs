@@ -137,4 +137,30 @@ internal sealed class ConfigValueParser : IConfigValueParser
             _ => ExpressKeyActions.None
         };
     }
+
+    /// <inheritdoc />
+    public string NormalizeZoneOutputMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.ScaleBreath => value,
+            _ => ZoneOutputModes.CcPad
+        };
+    }
+
+    /// <inheritdoc />
+    public string NormalizeScaleBreathScale(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ScaleBreathScaleNames.Major => value,
+            ScaleBreathScaleNames.NaturalMinor => value,
+            ScaleBreathScaleNames.MajorPentatonic => value,
+            ScaleBreathScaleNames.MinorPentatonic => value,
+            _ => ScaleBreathScaleNames.Major
+        };
+    }
 }

@@ -67,6 +67,13 @@ internal sealed class ZoneEditorService : IZoneEditorService
             viewModel.ZoneInvertY = false;
             viewModel.ZoneSendPressure = false;
             viewModel.ZoneReleaseBehavior = string.Empty;
+            viewModel.ZoneOutputMode = ZoneOutputModes.CcPad;
+            viewModel.ScaleBreathRootText = "0";
+            viewModel.ScaleBreathScale = ScaleBreathScaleNames.Major;
+            viewModel.ScaleBreathOctaveText = "4";
+            viewModel.ScaleBreathHoleCountText = "10";
+            viewModel.ScaleBreathRowSplitText = "0.5";
+            viewModel.ScaleBreathSendCc = true;
             return;
         }
 
@@ -89,6 +96,13 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ZoneInvertY = zone.InvertY;
         viewModel.ZoneSendPressure = zone.SendPressure;
         viewModel.ZoneReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(zone.ReleaseBehavior);
+        viewModel.ZoneOutputMode = _configValueParser.NormalizeZoneOutputMode(zone.OutputMode);
+        viewModel.ScaleBreathRootText = Math.Clamp(zone.ScaleBreathRoot, 0, 11).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleBreathScale = _configValueParser.NormalizeScaleBreathScale(zone.ScaleBreathScale);
+        viewModel.ScaleBreathOctaveText = Math.Clamp(zone.ScaleBreathOctave, 0, 8).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleBreathHoleCountText = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleBreathRowSplitText = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9).ToString("0.###", CultureInfo.InvariantCulture);
+        viewModel.ScaleBreathSendCc = zone.ScaleBreathSendCc;
     }
 
     /// <inheritdoc />
@@ -125,6 +139,13 @@ internal sealed class ZoneEditorService : IZoneEditorService
         zone.SendPressure = viewModel.ZoneSendPressure;
         zone.ReleaseBehavior = _configValueParser.NormalizeReleaseBehavior(viewModel.ZoneReleaseBehavior);
         zone.ResetPressureOnRelease = string.Equals(zone.ReleaseBehavior, ZoneReleaseBehaviors.ResetPressureOnly, StringComparison.Ordinal);
+        zone.OutputMode = _configValueParser.NormalizeZoneOutputMode(viewModel.ZoneOutputMode);
+        zone.ScaleBreathRoot = _configValueParser.ReadInt(viewModel.ScaleBreathRootText, 0, 11, "Scale Breath Root");
+        zone.ScaleBreathScale = _configValueParser.NormalizeScaleBreathScale(viewModel.ScaleBreathScale);
+        zone.ScaleBreathOctave = _configValueParser.ReadInt(viewModel.ScaleBreathOctaveText, 0, 8, "Scale Breath Octave");
+        zone.ScaleBreathHoleCount = _configValueParser.ReadInt(viewModel.ScaleBreathHoleCountText, 4, 16, "Scale Breath Hole Count");
+        zone.ScaleBreathRowSplit = _configValueParser.ReadDouble(viewModel.ScaleBreathRowSplitText, 0.1, 0.9, "Scale Breath Row Split");
+        zone.ScaleBreathSendCc = viewModel.ScaleBreathSendCc;
         SetZoneSelectionSummary(viewModel, zone);
     }
 
@@ -140,9 +161,10 @@ internal sealed class ZoneEditorService : IZoneEditorService
 
         string enabled = zone.Enabled ? "Enabled" : "Disabled";
         viewModel.ZoneSelectionSummaryPrimaryText =
-            $"Channel {zone.MidiChannel}  •  CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  {enabled}";
+            $"Channel {zone.MidiChannel}  •  Mode {_configValueParser.NormalizeZoneOutputMode(zone.OutputMode)}  •  {enabled}";
         viewModel.ZoneSelectionSummarySecondaryText =
             $"Bounds {zone.Left:0.###}, {zone.Top:0.###}, {zone.Width:0.###}, {zone.Height:0.###}  •  " +
+            $"CC X/Y/P {zone.CcX}/{zone.CcY}/{zone.CcPressure}  •  " +
             $"Release {_configValueParser.NormalizeReleaseBehavior(zone.ReleaseBehavior)}";
     }
 }

@@ -60,7 +60,16 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
                 Left: z.Left,
                 Top: z.Top,
                 Width: z.Width,
-                Height: z.Height))];
+                Height: z.Height)
+            {
+                OutputMode = z.OutputMode,
+                ScaleBreathRoot = z.ScaleBreathRoot,
+                ScaleBreathScale = z.ScaleBreathScale,
+                ScaleBreathOctave = z.ScaleBreathOctave,
+                ScaleBreathHoleCount = z.ScaleBreathHoleCount,
+                ScaleBreathRowSplit = z.ScaleBreathRowSplit,
+                ScaleBreathSendCc = z.ScaleBreathSendCc
+            })];
     }
 
     /// <inheritdoc />

@@ -232,5 +232,216 @@ public sealed class PadInteractionEngineTests
             m.Value == 0 &&
             m.Force);
     }
-}
 
+    [Fact]
+    public void ScaleBreathEmitsNoteOnAndLegatoSwitchWhenCrossingHole()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "S",
+                Enabled: true,
+                MidiChannel: 2,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: false,
+                SendY: false,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: false,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.ScaleBreath,
+                ScaleBreathRoot = 0,
+                ScaleBreathScale = InteractionConstants.ScaleBreathScales.Major,
+                ScaleBreathOctave = 4,
+                ScaleBreathHoleCount = 10,
+                ScaleBreathRowSplit = 0.5
+            },
+        };
+
+        var state = new InteractionState();
+
+        InteractionResult first = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(
+                XNorm: 0.02,
+                YNorm: 0.25,
+                Pressure: 100,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0,
+                Backend: InteractionBackend.Wintab));
+
+        MidiMessage on = Assert.Single(first.MidiMessages);
+        Assert.Equal(MidiMessageKind.Note, on.Kind);
+        Assert.Equal(2, on.Channel);
+        Assert.True(on.Value > 0);
+
+        InteractionResult second = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(
+                XNorm: 0.55,
+                YNorm: 0.25,
+                Pressure: 100,
+                IsDown: true,
+                IsHovering: false,
+                PenButtons: 0,
+                Backend: InteractionBackend.Wintab));
+
+        Assert.Equal(2, second.MidiMessages.Count);
+        Assert.Equal(MidiMessageKind.Note, second.MidiMessages[0].Kind);
+        Assert.Equal(0, second.MidiMessages[0].Value);
+        Assert.Equal(MidiMessageKind.Note, second.MidiMessages[1].Kind);
+        Assert.True(second.MidiMessages[1].Value > 0);
+    }
+
+    [Fact]
+    public void ScaleBreathReleaseAlwaysEmitsNoteOff()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "S",
+                Enabled: true,
+                MidiChannel: 3,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: true,
+                SendY: true,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.Hold,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.ScaleBreath
+            },
+        };
+
+        var state = new InteractionState();
+        _ = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.3, 0.8, 90, true, false, 0, InteractionBackend.Wintab));
+
+        InteractionResult release = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.3, 0.8, 0, false, false, 0, InteractionBackend.Wintab));
+
+        Assert.Contains(release.MidiMessages, m =>
+            m.Kind == MidiMessageKind.Note &&
+            m.Channel == 3 &&
+            m.Value == 0 &&
+            m.Force);
+    }
+
+    [Fact]
+    public void ScaleBreathCanDisableAllCcModulation()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "S",
+                Enabled: true,
+                MidiChannel: 1,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: true,
+                SendY: true,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.ScaleBreath,
+                ScaleBreathSendCc = false
+            },
+        };
+
+        var state = new InteractionState();
+        InteractionResult result = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.2, 0.2, 127, true, false, 0, InteractionBackend.MouseFallback));
+
+        MidiMessage note = Assert.Single(result.MidiMessages);
+        Assert.Equal(MidiMessageKind.Note, note.Kind);
+    }
+}
