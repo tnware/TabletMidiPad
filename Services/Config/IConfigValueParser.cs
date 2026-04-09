@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Parses and normalizes user-facing configuration values.

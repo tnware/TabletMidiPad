@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Handles zone editor projection and commit logic.

@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Pad-local zone selection and edge-resize orchestration for the main window (mouse path only).

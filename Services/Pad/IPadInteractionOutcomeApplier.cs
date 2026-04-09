@@ -3,7 +3,7 @@ using System.Windows;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Pad;
 
 /// <summary>
 /// Applies pad interaction engine output: MIDI sends, on-screen telemetry, and zone marker positions for the overlay.

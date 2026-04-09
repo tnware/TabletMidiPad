@@ -1,6 +1,6 @@
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Shell;
 
 /// <summary>
 /// View host callbacks required by <see cref="IMainShellCommandController"/>.

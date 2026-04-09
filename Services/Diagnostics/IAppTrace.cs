@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Diagnostics;
 
 /// <summary>
 /// Lightweight diagnostic sink for developer-facing traces (DebugView, log collectors). Not a user-visible UI channel.

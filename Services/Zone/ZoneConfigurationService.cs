@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Encapsulates zone-configuration operations such as validation, auto-tiling,

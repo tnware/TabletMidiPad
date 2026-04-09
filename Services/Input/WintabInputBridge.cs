@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default Wintab input bridge for <see cref="Views.MainWindow"/>.

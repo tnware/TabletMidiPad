@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Diagnostics;
 
 /// <summary>
 /// No-op trace sink (designer / tests / default ctor paths).

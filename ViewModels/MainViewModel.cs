@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using TabletMidiPad;
-using TabletMidiPad.Services;
 
 namespace TabletMidiPad.ViewModels;
 

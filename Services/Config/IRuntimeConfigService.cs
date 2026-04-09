@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Owns the active runtime configuration and its load/replace/reset persistence lifecycle.

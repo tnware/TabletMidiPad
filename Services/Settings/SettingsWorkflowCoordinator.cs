@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// Default settings/preferences decision logic for apply/save workflows.

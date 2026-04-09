@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default formatter for input backend status text shown in the main view-model.

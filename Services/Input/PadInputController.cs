@@ -5,7 +5,7 @@ using System.Windows.Input;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default pad/tablet session for <see cref="Views.MainWindow"/>.

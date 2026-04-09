@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using TabletMidiPad.Core.Interaction;
-using TabletMidiPad.Services;
 using Xunit;
 
 namespace TabletMidiPad.Tests;

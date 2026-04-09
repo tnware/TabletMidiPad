@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// Toolbar quick settings (pressure curve and input backend mode) applied to <see cref="AppConfig"/>.

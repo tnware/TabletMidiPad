@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Loads and saves the application configuration.

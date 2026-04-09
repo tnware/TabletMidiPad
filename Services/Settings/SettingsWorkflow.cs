@@ -1,7 +1,7 @@
 using System;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// Default settings/preferences orchestration for <see cref="Views.MainWindow"/>.

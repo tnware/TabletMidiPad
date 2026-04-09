@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Windows;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Encapsulates zone hit-testing and drag-resize orchestration.

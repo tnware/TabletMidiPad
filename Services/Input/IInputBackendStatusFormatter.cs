@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Builds input backend status text for the main window view-model.

@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Default factory for <see cref="PadInputController"/>.

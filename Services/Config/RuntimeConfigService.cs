@@ -1,6 +1,6 @@
 using System;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Default runtime configuration owner backed by <see cref="IConfigStore"/>.

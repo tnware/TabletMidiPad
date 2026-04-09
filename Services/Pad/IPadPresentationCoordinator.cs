@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Pad;
 
 /// <summary>
 /// Builds pad overlay render requests and cursor chrome for interaction ticks.

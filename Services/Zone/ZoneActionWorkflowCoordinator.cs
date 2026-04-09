@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Default workflow coordinator for zone action operations.

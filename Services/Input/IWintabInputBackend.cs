@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Manages Wintab lifecycle and emits normalized input backend events.

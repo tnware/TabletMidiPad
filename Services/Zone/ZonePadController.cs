@@ -1,7 +1,7 @@
 using System.Windows;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Default zone pick + edge-resize session for <see cref="Views.MainWindow"/> pad mouse input.

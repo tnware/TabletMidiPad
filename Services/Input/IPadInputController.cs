@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Pad/tablet input controller: rebind, reset, Wintab bridge, and stylus/mouse fallback routing for the main window.

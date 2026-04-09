@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// Opens the preferences dialog and returns edited values when accepted.

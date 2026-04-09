@@ -2,7 +2,7 @@ using System.Windows.Controls;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// View-owned surface required by <see cref="IPadInputController"/> (pad visuals, config, and VM sync).

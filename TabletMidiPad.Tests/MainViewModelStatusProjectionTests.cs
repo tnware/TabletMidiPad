@@ -1,4 +1,3 @@
-using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
 using Xunit;
 

@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Builds normalized interaction samples for stylus/mouse fallback input.

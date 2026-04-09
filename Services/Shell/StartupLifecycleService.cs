@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using TabletMidiPad.ViewModels;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Shell;
 
 /// <summary>
 /// Default startup/exit lifecycle orchestration for <see cref="Views.MainWindow"/>.

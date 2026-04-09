@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
 /// Maps <see cref="ZoneResizeEdge"/> flags to a pad resize cursor hint (matches legacy MainWindow edge ordering).

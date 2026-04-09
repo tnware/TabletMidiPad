@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Settings;
 
 /// <summary>
 /// Sequences settings/preferences/reset flows using workflow coordinators and coordinates follow-up UI refresh and tablet rebind.

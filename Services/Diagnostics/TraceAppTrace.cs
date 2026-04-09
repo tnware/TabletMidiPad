@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Diagnostics;
 
 /// <summary>
 /// Emits traces via <see cref="Trace"/> so they appear in the debugger and tools listening to default trace output.

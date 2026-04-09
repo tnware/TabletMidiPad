@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Config;
 
 /// <summary>
 /// Loads and saves <see cref="AppConfig"/> to a JSON file.

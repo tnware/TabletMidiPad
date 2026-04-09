@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.UiProjection.Models;
 
 /// <summary>
 /// Toolbar label + selection state mapped from configuration.

@@ -1,7 +1,7 @@
 using System.Windows;
 using TabletMidiPad.Core.Interaction;
 
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Input;
 
 /// <summary>
 /// Coordinates main-window input backend lifecycle, rebind/reset orchestration, and Wintab vs fallback routing decisions.

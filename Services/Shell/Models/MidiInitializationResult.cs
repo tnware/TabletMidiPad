@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Shell.Models;
 
 /// <summary>
 /// Outcome of async MIDI initialization during startup.

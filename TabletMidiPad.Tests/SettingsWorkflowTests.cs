@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
-using TabletMidiPad.Services;
 using TabletMidiPad.ViewModels;
 using Xunit;
 

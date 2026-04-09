@@ -1,4 +1,4 @@
-namespace TabletMidiPad.Services;
+namespace TabletMidiPad.Services.Wacom;
 
 /// <summary>
 /// Coordinates Wacom service startup/recovery workflow decisions for MainWindow.
