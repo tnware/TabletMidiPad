@@ -13,7 +13,7 @@ public sealed class SettingsWorkflowTests
     public void ApplySettings_WhenPersistFails_SetsErrorAndSkipsUiRefresh()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(false, "bad") };
+        var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(false, "bad") };
         var sut = CreateController(host, workflow);
 
         sut.ApplySettings();
@@ -30,7 +30,7 @@ public sealed class SettingsWorkflowTests
     public void ApplySettings_WhenPersistSucceeds_RefreshesUiAndSuccessMessage()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
+        var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
         var sut = CreateController(host, workflow);
 
         sut.ApplySettings();
@@ -47,7 +47,7 @@ public sealed class SettingsWorkflowTests
     public void ApplySettings_OnException_SetsErrorFromMessage()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new ThrowingWorkflowCoordinator();
+        var workflow = new ThrowingSettingsWorkflowCoordinator();
         var sut = CreateController(host, workflow);
 
         sut.ApplySettings();
@@ -61,7 +61,7 @@ public sealed class SettingsWorkflowTests
     public void ResetToDefaultsAndApply_ReplacesConfigAutoTilesLoadsAndApplies()
     {
         var host = new RecordingSettingsHost();
-        var workflow = new StubWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
+        var workflow = new StubSettingsWorkflowCoordinator { ValidateAndSaveResult = new WorkflowSaveResult(true, null) };
         var zones = new RecordingZoneConfigurationService();
         var sut = CreateController(host, workflow, zones);
 
@@ -130,7 +130,7 @@ public sealed class SettingsWorkflowTests
         }
     }
 
-    private sealed class StubWorkflowCoordinator : ISettingsWorkflowCoordinator
+    private sealed class StubSettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
     {
         public WorkflowSaveResult ValidateAndSaveResult { get; set; } = new(true, null);
 
@@ -145,7 +145,7 @@ public sealed class SettingsWorkflowTests
 
     }
 
-    private sealed class ThrowingWorkflowCoordinator : ISettingsWorkflowCoordinator
+    private sealed class ThrowingSettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 

@@ -5,12 +5,12 @@ using Xunit;
 
 namespace TabletMidiPad.Tests;
 
-public sealed class WorkflowCoordinatorTests
+public sealed class SettingsWorkflowCoordinatorTests
 {
     [Fact]
     public void GetEffectiveExpressKeyCount_ReturnsMaxConfiguredOrDetected()
     {
-        SettingsWorkflowCoordinator coordinator = CreateSettingsCoordinator();
+        SettingsWorkflowCoordinator coordinator = CreateCoordinator();
 
         int result = coordinator.GetEffectiveExpressKeyCount(4, 8);
 
@@ -20,7 +20,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ValidateAndSave_ReturnsFailureForOutOfBoundsZone()
     {
-        SettingsWorkflowCoordinator coordinator = CreateSettingsCoordinator();
+        SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.Zones = new List<ZoneConfig>
         {
@@ -43,7 +43,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ApplyPreferences_DetectsRoutingAndInputBackendChanges()
     {
-        SettingsWorkflowCoordinator coordinator = CreateSettingsCoordinator();
+        SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.AppPortName = "Old App";
         config.DawPortName = "Old Daw";
@@ -81,21 +81,9 @@ public sealed class WorkflowCoordinatorTests
     }
 
     [Fact]
-    public void BuildWacomServiceMenuState_MapsFieldsDirectly()
-    {
-        UiStateProjectionService coordinator = CreateUiProjectionCoordinator();
-
-        WacomServiceMenuState menu = coordinator.BuildWacomServiceMenuState(
-            new WacomServiceStatus("Service: running", CanStart: false, IsServiceRunning: true));
-
-        Assert.Equal("Service: running", menu.Header);
-        Assert.False(menu.StartEnabled);
-    }
-
-    [Fact]
     public void ApplyPreferencesWhenZonesInvalidReturnsSaveFailed()
     {
-        SettingsWorkflowCoordinator coordinator = CreateSettingsCoordinator();
+        SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.Zones = new List<ZoneConfig>();
 
@@ -110,7 +98,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ApplyPreferencesWhenUnchangedWithOpenMidiDoesNotFlagRestartOrRebind()
     {
-        SettingsWorkflowCoordinator coordinator = CreateSettingsCoordinator();
+        SettingsWorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(
@@ -149,75 +137,5 @@ public sealed class WorkflowCoordinatorTests
         };
     }
 
-    [Fact]
-    public void BuildToolbarState_MapsAutoInputAndCurveLabels()
-    {
-        UiStateProjectionService coordinator = CreateUiProjectionCoordinator();
-        var config = new AppConfig
-        {
-            InputBackendMode = "Auto",
-            PressureCurve = "Logarithmic"
-        };
-
-        ToolbarState state = coordinator.BuildToolbarState(config);
-
-        Assert.Equal("Pressure (Log)", state.ToolbarPressureLabelText);
-        Assert.Equal("Logarithmic", state.SelectedPressureCurve);
-        Assert.Equal("Input (Auto)", state.ToolbarInputBackendLabelText);
-        Assert.Equal("Auto", state.SelectedInputBackendMode);
-        Assert.False(state.IsPressureCurveLinearChecked);
-        Assert.True(state.IsPressureCurveLogarithmicChecked);
-        Assert.False(state.IsPressureCurveExponentialChecked);
-        Assert.True(state.IsInputBackendAutoChecked);
-        Assert.False(state.IsInputBackendWintabChecked);
-        Assert.False(state.IsInputBackendMouseChecked);
-    }
-
-    [Fact]
-    public void BuildToolbarState_NormalizesInputBackendAliases_AndMapsCheckmarks()
-    {
-        UiStateProjectionService coordinator = CreateUiProjectionCoordinator();
-        var config = new AppConfig
-        {
-            InputBackendMode = "Wintab",
-            PressureCurve = "Exponential",
-        };
-
-        ToolbarState state = coordinator.BuildToolbarState(config);
-
-        Assert.Equal("Input (Wintab)", state.ToolbarInputBackendLabelText);
-        Assert.Equal("Wintab", state.SelectedInputBackendMode);
-        Assert.True(state.IsInputBackendWintabChecked);
-        Assert.False(state.IsInputBackendAutoChecked);
-        Assert.True(state.IsPressureCurveExponentialChecked);
-    }
-
-    [Fact]
-    public void BuildConnectedState_PreservesSummaryAndBaselineTexts()
-    {
-        UiStateProjectionService coordinator = CreateUiProjectionCoordinator();
-        var config = new AppConfig
-        {
-            DawPortName = "DAW X",
-            AppPortName = "APP X",
-            MaxZoneRows = 3,
-            MaxZonesPerRow = 4,
-            AllowZoneSwitchWhilePressed = false
-        };
-        config.Zones.Add(ZoneConfig.CreateDefault());
-
-        ConnectedState state = coordinator.BuildConnectedState(config);
-
-        Assert.Equal("Connected", state.StatusText);
-        Assert.Equal("Send to 'DAW X' via 'APP X'", state.RoutingText);
-        Assert.Contains("lock zone until release", state.ConfigSummaryText);
-        Assert.Equal("Active zone: none", state.ActiveZoneText);
-        Assert.Equal("X: -, Y: -, Pressure: -", state.ValueText);
-        Assert.Equal("Pen buttons: -", state.PenButtonsText);
-        Assert.Equal("Modifiers: none", state.ModifiersText);
-    }
-
-    private static SettingsWorkflowCoordinator CreateSettingsCoordinator() => new(new ZoneConfigurationService());
-
-    private static UiStateProjectionService CreateUiProjectionCoordinator() => new();
+    private static SettingsWorkflowCoordinator CreateCoordinator() => new(new ZoneConfigurationService());
 }
