@@ -47,7 +47,8 @@ public sealed record PadOverlayTheme(
     Brush TextSoftBrush,
     Brush DangerBrush,
     Brush AccentBrushHover,
-    Brush SurfaceBrush);
+    Brush SurfaceBrush,
+    ZoneOverlayStyle OverlayStyle);
 
 /// <summary>
 /// Cursor dot layout for one application step.

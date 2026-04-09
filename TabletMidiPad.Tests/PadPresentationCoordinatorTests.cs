@@ -73,7 +73,8 @@ public sealed class PadPresentationCoordinatorTests
             TextSoftBrush: Brushes.DarkGray,
             DangerBrush: Brushes.Red,
             AccentBrushHover: Brushes.White,
-            SurfaceBrush: Brushes.Black);
+            SurfaceBrush: Brushes.Black,
+            OverlayStyle: ZoneOverlayStyle.Plain);
 
         ZoneOverlayRenderRequest request = _sut.BuildZoneOverlayRequest(
             zones,

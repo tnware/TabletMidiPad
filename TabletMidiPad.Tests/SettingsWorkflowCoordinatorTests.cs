@@ -67,7 +67,8 @@ public sealed class SettingsWorkflowCoordinatorTests
             UpperPenButtonNote = 61,
             SendPressureGlobally = true,
             AllowZoneSwitchWhilePressed = true,
-            ExpressKeys = []
+            ExpressKeys = [],
+            ZoneOverlayStyle = ZoneOverlayStyle.Plain
         };
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(config, result, IntPtr.Zero);
@@ -131,6 +132,7 @@ public sealed class SettingsWorkflowCoordinatorTests
             SendPressureGlobally = config.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed,
             ExpressKeys = [.. config.ExpressKeys],
+            ZoneOverlayStyle = config.ZoneOverlayStyle,
         };
     }
 

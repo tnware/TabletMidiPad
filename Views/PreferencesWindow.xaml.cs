@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using TabletMidiPad.Services.Zone.Models;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Views;
@@ -31,6 +32,7 @@ internal partial class PreferencesWindow : Window
     public int UpperPenButtonNote { get; private set; }
     public bool SendPressureGlobally => _viewModel.SendPressureGlobally;
     public bool AllowZoneSwitchWhilePressed => _viewModel.AllowZoneSwitchWhilePressed;
+    public ZoneOverlayStyle ZoneOverlayStyle { get; private set; } = ZoneOverlayStyle.Plain;
 
     private readonly int _expressKeyCount;
 
@@ -51,6 +53,7 @@ internal partial class PreferencesWindow : Window
         SetMidiChannelComboSelection(UpperPenButtonMidiChannelComboBox, 1);
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);
         BuildExpressKeyRows();
+        BuildStyleCards();
         ConfigureNumericInputs();
     }
 
@@ -103,6 +106,7 @@ internal partial class PreferencesWindow : Window
         _viewModel.UpperPenButtonNoteText = config.UpperPenButtonNote.ToString(CultureInfo.InvariantCulture);
         _viewModel.SendPressureGlobally = config.SendPressureGlobally;
         _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
+        SelectZoneOverlayStyle(config.ZoneOverlayStyle);
 
         ExpressKeyConfig.EnsureCount(config.ExpressKeys, _expressKeyCount);
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);
@@ -414,6 +418,114 @@ internal partial class PreferencesWindow : Window
             card.Child = stack;
 
             ExpressKeysPanel.Children.Add(card);
+        }
+    }
+
+    private static readonly (ZoneOverlayStyle Style, string Name, string Description)[] OverlayStyleOptions =
+    [
+        (ZoneOverlayStyle.Plain,        "Plain",        "Solid fill with no interior markings."),
+        (ZoneOverlayStyle.VignetteGrid, "Vignette Grid", "Grid lines that fade toward the edges."),
+        (ZoneOverlayStyle.DotArray,     "Dot Array",    "Regular dot pattern across the zone."),
+        (ZoneOverlayStyle.XYGraph,      "XY Graph",     "Axis lines crossing at the zone center."),
+    ];
+
+    private readonly Dictionary<ZoneOverlayStyle, Border> _styleCards = new();
+
+    private void BuildStyleCards()
+    {
+        StyleCardPanel.Children.Clear();
+        _styleCards.Clear();
+
+        Brush textPrimary = ResolveThemeBrush("TextPrimaryBrush", Brushes.White);
+        Brush textMuted = ResolveThemeBrush("TextMutedBrush", Brushes.Gray);
+        Brush panelBrush = ResolveThemeBrush("PanelBrush", Brushes.Black);
+        Brush panelBorder = ResolveThemeBrush("PanelBorderBrush", Brushes.DimGray);
+        Brush accentSurface = ResolveThemeBrush("AccentSurfaceBrush", Brushes.DarkGreen);
+        Brush accentBorder = ResolveThemeBrush("AccentBrush", Brushes.LimeGreen);
+
+        foreach ((ZoneOverlayStyle style, string name, string description) in OverlayStyleOptions)
+        {
+            var preview = new ZoneStylePreviewElement
+            {
+                OverlayStyle = style,
+                Width = 140,
+                Height = 88,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var nameLabel = new TextBlock
+            {
+                Text = name,
+                Foreground = textPrimary,
+                FontWeight = FontWeights.SemiBold,
+                TextAlignment = TextAlignment.Center
+            };
+
+            var descLabel = new TextBlock
+            {
+                Text = description,
+                Foreground = textMuted,
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+
+            var inner = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            inner.Children.Add(preview);
+            inner.Children.Add(nameLabel);
+            inner.Children.Add(descLabel);
+
+            var card = new Border
+            {
+                Background = panelBrush,
+                BorderBrush = panelBorder,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 0, 12, 12),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Child = inner,
+                Width = 172
+            };
+
+            ZoneOverlayStyle capturedStyle = style;
+            card.MouseLeftButtonUp += (_, _) => SelectZoneOverlayStyle(capturedStyle);
+
+            _styleCards[style] = card;
+            StyleCardPanel.Children.Add(card);
+        }
+
+        ApplyStyleCardHighlight(panelBrush, panelBorder, accentSurface, accentBorder);
+    }
+
+    private void SelectZoneOverlayStyle(ZoneOverlayStyle style)
+    {
+        ZoneOverlayStyle = style;
+
+        if (_styleCards.Count == 0)
+        {
+            return;
+        }
+
+        Brush panelBrush = ResolveThemeBrush("PanelBrush", Brushes.Black);
+        Brush panelBorder = ResolveThemeBrush("PanelBorderBrush", Brushes.DimGray);
+        Brush accentSurface = ResolveThemeBrush("AccentSurfaceBrush", Brushes.DarkGreen);
+        Brush accentBorder = ResolveThemeBrush("AccentBrush", Brushes.LimeGreen);
+        ApplyStyleCardHighlight(panelBrush, panelBorder, accentSurface, accentBorder);
+    }
+
+    private void ApplyStyleCardHighlight(Brush panelBrush, Brush panelBorder, Brush accentSurface, Brush accentBorder)
+    {
+        foreach ((ZoneOverlayStyle style, Border card) in _styleCards)
+        {
+            bool selected = style == ZoneOverlayStyle;
+            card.Background = selected ? accentSurface : panelBrush;
+            card.BorderBrush = selected ? accentBorder : panelBorder;
+            card.BorderThickness = new Thickness(selected ? 2 : 1);
         }
     }
 

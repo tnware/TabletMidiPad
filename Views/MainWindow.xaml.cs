@@ -277,7 +277,7 @@ public partial class MainWindow : Window
     }
 
     private void RefreshPadZoneOverlay()
-        => PadSurface.RefreshZoneOverlay(Config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
+        => PadSurface.RefreshZoneOverlay(Config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex, Config.ZoneOverlayStyle);
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

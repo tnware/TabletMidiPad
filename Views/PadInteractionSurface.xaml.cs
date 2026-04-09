@@ -103,7 +103,8 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
     internal void RefreshZoneOverlay(
         IReadOnlyList<ZoneConfig> zones,
         IReadOnlyDictionary<ZoneConfig, Point> lastZonePoints,
-        int selectedZoneIndex)
+        int selectedZoneIndex,
+        ZoneOverlayStyle overlayStyle = ZoneOverlayStyle.Plain)
     {
         EnsureServices();
 
@@ -115,7 +116,8 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
             TextSoftBrush: ThemeBrush("TextSoftBrush", Brushes.Gray),
             DangerBrush: ThemeBrush("DangerBrush", Brushes.IndianRed),
             AccentBrushHover: ThemeBrush("AccentBrushHover", Brushes.White),
-            SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black));
+            SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black),
+            OverlayStyle: overlayStyle);
 
         ZoneOverlayRenderRequest request = _presentationCoordinator!.BuildZoneOverlayRequest(
             zones,

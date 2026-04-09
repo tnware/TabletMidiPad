@@ -84,6 +84,7 @@ internal sealed class PadPresentationCoordinator : IPadPresentationCoordinator
             TextSoftBrush: theme.TextSoftBrush,
             DangerBrush: theme.DangerBrush,
             AccentBrushHover: theme.AccentBrushHover,
-            SurfaceBrush: theme.SurfaceBrush);
+            SurfaceBrush: theme.SurfaceBrush,
+            OverlayStyle: theme.OverlayStyle);
     }
 }

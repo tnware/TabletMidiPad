@@ -419,6 +419,19 @@
                     </Border>
                 </ScrollViewer>
             </TabItem>
+
+            <TabItem Header="Appearance">
+                <ScrollViewer Margin="0,14,0,0"
+                              HorizontalContentAlignment="Stretch">
+                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
+                        <StackPanel>
+                            <TextBlock Text="Zone Overlay Style" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Choose how the interior of each zone is decorated on the pad." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,16"/>
+                            <WrapPanel Name="StyleCardPanel"/>
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
 
         <Border Grid.Row="2"

@@ -62,7 +62,8 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
             UpperPenButtonNote = preferencesWindow.UpperPenButtonNote,
             SendPressureGlobally = preferencesWindow.SendPressureGlobally,
             AllowZoneSwitchWhilePressed = preferencesWindow.AllowZoneSwitchWhilePressed,
-            ExpressKeys = preferencesWindow.GetExpressKeyConfigs()
+            ExpressKeys = preferencesWindow.GetExpressKeyConfigs(),
+            ZoneOverlayStyle = preferencesWindow.ZoneOverlayStyle
         };
     }
 }

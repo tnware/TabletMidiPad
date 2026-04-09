@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TabletMidiPad;
 
@@ -32,6 +33,9 @@ public sealed partial class AppConfig
     public int MaxZoneRows { get; set; } = 2;
     public int MaxZonesPerRow { get; set; } = 2;
     public List<ZoneConfig> Zones { get; set; } = new() { ZoneConfig.CreateDefault() };
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ZoneOverlayStyle ZoneOverlayStyle { get; set; } = ZoneOverlayStyle.Plain;
 
     public static AppConfig Default => new();
 

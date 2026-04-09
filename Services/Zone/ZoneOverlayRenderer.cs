@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using TabletMidiPad.Services.Zone.Models;
 
 namespace TabletMidiPad.Services.Zone;
 
@@ -95,10 +96,12 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
 
             Canvas.SetLeft(rect, rectLeft);
             Canvas.SetTop(rect, rectTop);
-            Canvas.SetLeft(label, rectLeft + 6);
-            Canvas.SetTop(label, rectTop + 6);
 
             overlayCanvas.Children.Add(rect);
+            AddStyleDecoration(overlayCanvas, request.OverlayStyle, rectLeft, rectTop, rectWidth, rectHeight, baseColor);
+
+            Canvas.SetLeft(label, rectLeft + 6);
+            Canvas.SetTop(label, rectTop + 6);
             overlayCanvas.Children.Add(label);
 
             if (selected)
@@ -140,6 +143,137 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
                 overlayCanvas.Children.Add(markerDot);
             }
         }
+    }
+
+    private static void AddStyleDecoration(
+        Canvas canvas,
+        ZoneOverlayStyle style,
+        double left,
+        double top,
+        double width,
+        double height,
+        Color baseColor)
+    {
+        switch (style)
+        {
+            case ZoneOverlayStyle.VignetteGrid:
+                AddVignetteGrid(canvas, left, top, width, height, baseColor);
+                break;
+            case ZoneOverlayStyle.DotArray:
+                AddDotArray(canvas, left, top, width, height, baseColor);
+                break;
+            case ZoneOverlayStyle.XYGraph:
+                AddXYGraph(canvas, left, top, width, height, baseColor);
+                break;
+        }
+    }
+
+    private static void AddVignetteGrid(Canvas canvas, double left, double top, double width, double height, Color baseColor)
+    {
+        const int divisions = 8;
+        const byte maxAlpha = 115;
+
+        for (int i = 1; i < divisions; i++)
+        {
+            double t = (double)i / divisions;
+            double distFromCenter = Math.Abs(t - 0.5) * 2; // 0 at center, 1 at edge
+            byte alpha = (byte)(maxAlpha * (1 - distFromCenter * distFromCenter));
+
+            var pen = new SolidColorBrush(WithAlpha(baseColor, alpha));
+
+            // Vertical line
+            double xPos = left + t * width;
+            var vLine = new Line
+            {
+                X1 = xPos, Y1 = top,
+                X2 = xPos, Y2 = top + height,
+                Stroke = pen,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(vLine);
+
+            // Horizontal line
+            double yPos = top + t * height;
+            var hLine = new Line
+            {
+                X1 = left, Y1 = yPos,
+                X2 = left + width, Y2 = yPos,
+                Stroke = pen,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(hLine);
+        }
+    }
+
+    private static void AddDotArray(Canvas canvas, double left, double top, double width, double height, Color baseColor)
+    {
+        const double dotRadius = 2.0;
+        const double spacing = 18.0;
+
+        var dotGeometry = new EllipseGeometry(new Point(spacing / 2, spacing / 2), dotRadius, dotRadius);
+        var dotBrush = new DrawingBrush(new GeometryDrawing(
+            new SolidColorBrush(WithAlpha(baseColor, 130)),
+            null,
+            dotGeometry))
+        {
+            TileMode = TileMode.Tile,
+            Viewport = new Rect(left % spacing, top % spacing, spacing, spacing),
+            ViewportUnits = BrushMappingMode.Absolute,
+            Stretch = Stretch.None
+        };
+
+        var dotRect = new Rectangle
+        {
+            Width = width,
+            Height = height,
+            Fill = dotBrush
+        };
+        Canvas.SetLeft(dotRect, left);
+        Canvas.SetTop(dotRect, top);
+        canvas.Children.Add(dotRect);
+    }
+
+    private static void AddXYGraph(Canvas canvas, double left, double top, double width, double height, Color baseColor)
+    {
+        const double margin = 10;
+        const byte axisAlpha = 180;
+        var pen = new SolidColorBrush(WithAlpha(baseColor, axisAlpha));
+
+        double cx = left + width / 2;
+        double cy = top + height / 2;
+
+        var xAxis = new Line
+        {
+            X1 = left + margin,
+            Y1 = cy,
+            X2 = left + width - margin,
+            Y2 = cy,
+            Stroke = pen,
+            StrokeThickness = 1.5
+        };
+
+        var yAxis = new Line
+        {
+            X1 = cx,
+            Y1 = top + margin,
+            X2 = cx,
+            Y2 = top + height - margin,
+            Stroke = pen,
+            StrokeThickness = 1.5
+        };
+
+        var origin = new Ellipse
+        {
+            Width = 5,
+            Height = 5,
+            Fill = pen
+        };
+        Canvas.SetLeft(origin, cx - 2.5);
+        Canvas.SetTop(origin, cy - 2.5);
+
+        canvas.Children.Add(xAxis);
+        canvas.Children.Add(yAxis);
+        canvas.Children.Add(origin);
     }
 
     private static void AddResizeHandles(

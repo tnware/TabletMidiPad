@@ -18,7 +18,8 @@ public sealed record ZoneOverlayRenderRequest(
     Brush TextSoftBrush,
     Brush DangerBrush,
     Brush AccentBrushHover,
-    Brush SurfaceBrush);
+    Brush SurfaceBrush,
+    ZoneOverlayStyle OverlayStyle);
 
 /// <summary>
 /// View-only zone snapshot used by the overlay renderer.
