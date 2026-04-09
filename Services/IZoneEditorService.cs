@@ -10,14 +10,14 @@ internal interface IZoneEditorService
 {
     void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> zones, AppConfig config);
 
-    void LoadSelectedZoneIntoEditor(MainViewModel viewModel, AppConfig config, int selectedZoneIndex);
+    void LoadSelectedZoneIntoEditor(IZoneEditorState viewModel, AppConfig config, int selectedZoneIndex);
 
     void CommitCurrentZoneEdits(
         AppConfig config,
-        MainViewModel viewModel,
+        IZoneEditorState viewModel,
         int selectedZoneIndex,
         string? maxZoneRowsText,
         string? maxZonesPerRowText);
 
-    void SetZoneSelectionSummary(MainViewModel viewModel, ZoneConfig? zone);
+    void SetZoneSelectionSummary(IZoneEditorState viewModel, ZoneConfig? zone);
 }

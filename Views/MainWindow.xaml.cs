@@ -11,18 +11,15 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
-    private bool _isLoadingUi;
-
     private readonly PadInputSessionState _padState = new();
     private readonly PadInputHost _padInputHost;
     private readonly IMainWindowPadInputSession _padInputSession;
     private readonly IMainWindowZonePadSession _zonePadSession;
-    private readonly IMainWindowZoneEditorSession _zoneEditorSession;
     private readonly IMainWindowSettingsSession _settingsSession;
     private readonly StartupHost _startupHost;
-    private readonly IMainWindowZoneListSession _zoneListSession;
 
     private readonly IConfigStore _configStore;
+    private readonly IRuntimeConfigService _runtimeConfig;
     private readonly IMidiEngine _midiEngine;
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IWintabInputBackend _wintabInputBackend;
@@ -37,30 +34,29 @@ public partial class MainWindow : Window
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IMainWindowLifecycleCoordinator _lifecycleCoordinator;
     private readonly IMainWindowStartupLifecycleService _startupLifecycle;
-    private readonly IMainWindowToolbarSession _toolbarSession;
-    private readonly MainWindowToolbarChrome _toolbarChrome;
-    private readonly MainWindowViewModelConfigBinder _vmConfigBinder;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
-    private AppConfig _config = AppConfig.Default;
     private readonly InteractionState _interactionState = new();
 
     private Canvas Pad => PadSurface.PadInputElement;
 
+    private AppConfig Config => _runtimeConfig.Current;
+
     private int SelectedZoneIndex
     {
-        get => _viewModel.SelectedZoneIndex;
-        set => _viewModel.SelectedZoneIndex = value;
+        get => _viewModel.ZoneEditor.SelectedZoneIndex;
+        set => _viewModel.ZoneEditor.SelectedZoneIndex = value;
     }
 
     private void ApplyInteractionResult(InteractionResult result)
-        => _interactionOutcomeApplier.Apply(result, _interactionState, _config, _viewModel);
+        => _interactionOutcomeApplier.Apply(result, _interactionState, Config, _viewModel);
 
     /// <summary>
     /// Application entry constructs the window via <see cref="TabletMidiPad.Composition.AppBootstrapper.CreateApplicationShell"/>.
     /// </summary>
     internal MainWindow(
         IConfigStore configStore,
+        IRuntimeConfigService runtimeConfig,
         IMidiEngine midiEngine,
         IWacomServiceController wacomServiceController,
         IWintabInputBackend wintabInputBackend,
@@ -82,10 +78,10 @@ public partial class MainWindow : Window
         IMainWindowPadPresentationCoordinator padPresentationCoordinator,
         IMainWindowToolbarSession toolbarSession,
         IZoneActionWorkflowCoordinator zoneActionWorkflowCoordinator,
-        MainViewModel viewModel,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
     {
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
+        _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
         _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
@@ -105,18 +101,25 @@ public partial class MainWindow : Window
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         ArgumentNullException.ThrowIfNull(wintabInputBridge);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
-        _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
+        ArgumentNullException.ThrowIfNull(toolbarSession);
         ArgumentNullException.ThrowIfNull(zoneActionWorkflowCoordinator);
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
-        _toolbarChrome = new MainWindowToolbarChrome(
-            this,
-            PressureSplitBorder,
-            InputBackendSplitBorder,
-            _viewModel,
-            () => _config,
-            _workflowCoordinator);
+        ZoneEditorViewModel zoneEditorViewModel = new(_runtimeConfig, _zoneEditorService);
+        ZoneListViewModel zoneListViewModel = new(_runtimeConfig, zoneActionWorkflowCoordinator, zoneEditorViewModel);
+        ToolbarViewModel toolbarViewModel = new(_runtimeConfig, toolbarSession, _workflowCoordinator);
+        _viewModel = new MainViewModel(
+            zoneListViewModel,
+            zoneEditorViewModel,
+            toolbarViewModel,
+            saveSettings: () => _settingsSession.ApplySettings(),
+            resetDefaults: () => _settingsSession.ResetToDefaultsAndApply(),
+            openPreferences: () => _settingsSession.RunPreferencesFlow(),
+            exit: Close,
+            refreshWacomStatus: RefreshWacomServiceStatus,
+            reconnectPen: ReconnectPenCore,
+            startWacomService: () => _ = StartWacomServiceAsync(),
+            showAbout: MenuAbout);
         _padInputHost = new PadInputHost(this);
         _padInputSession = new MainWindowPadInputSession(
             _padInputHost,
@@ -129,16 +132,6 @@ public partial class MainWindow : Window
             inputInteractionOrchestrator,
             _inputBackendStatusFormatter);
         _zonePadSession = new MainWindowZonePadSession(new ZonePadHost(this), _zoneResizeService);
-        _zoneEditorSession = new MainWindowZoneEditorSession(
-            new ZoneEditorHost(this),
-            _zoneEditorService,
-            _workflowCoordinator);
-        _vmConfigBinder = new MainWindowViewModelConfigBinder(
-            () => _isLoadingUi,
-            () => _config,
-            _viewModel,
-            () => _toolbarChrome.SyncPressureSplitBorder(),
-            () => _zoneEditorSession.UpdateUiForCurrentConfig());
         _settingsSession = new MainWindowSettingsSession(
             new SettingsSessionHost(this),
             _workflowCoordinator,
@@ -148,7 +141,11 @@ public partial class MainWindow : Window
             _midiEngine,
             _padInputSession);
         _startupHost = new StartupHost(this);
-        _zoneListSession = new MainWindowZoneListSession(new ZoneListHost(this), zoneActionWorkflowCoordinator);
+        _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
+        _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
+        _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
+        _viewModel.Toolbar.PressureChromeRefreshRequested += SyncPressureSplitBorder;
+        _viewModel.Toolbar.RoutingStatusRefreshRequested += UpdateUiForCurrentConfig;
         PadSurface.AttachPresentationServices(padPresentationCoordinator, zoneOverlayRenderer);
         PadSurface.PadLayoutChanged += (_, _) => RefreshPadZoneOverlay();
         PadSurface.PadStylusDown += Pad_StylusDown;
@@ -158,8 +155,7 @@ public partial class MainWindow : Window
         PadSurface.PadMouseMove += Pad_MouseMove;
         PadSurface.PadMouseUp += Pad_MouseUp;
         DataContext = _viewModel;
-        InitializeCommands();
-        _viewModel.PropertyChanged += _vmConfigBinder.OnPropertyChanged;
+        ApplyInputBackendSplitBorderChrome();
         _wintabInputBackend.PacketReceived += (_, e) => _padInputSession.HandleWintabPacket(e);
         _wintabInputBackend.ExpressKeyReceived += (_, e) => _padInputSession.HandleExpressKeyPacket(e);
         _wintabInputBackend.ProximityChanged += (_, e) => _padInputSession.HandleProximityChanged(e);
@@ -171,7 +167,7 @@ public partial class MainWindow : Window
         {
             _startupLifecycle.ShutdownForExit(
                 _midiEngine,
-                _config,
+                Config,
                 _inputBackendCoordinator,
                 _wintabInputBackend,
                 r => _padInputSession.ApplyTabletLifecycle(r, refreshInputBackendStatusText: false));
@@ -204,35 +200,6 @@ public partial class MainWindow : Window
             NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Decimal);
             textBox.HorizontalContentAlignment = HorizontalAlignment.Right;
         }
-    }
-
-    private void InitializeCommands()
-    {
-        _viewModel.ConfigureCommands(
-            saveSettings: _settingsSession.ApplySettings,
-            resetDefaults: _settingsSession.ResetToDefaultsAndApply,
-            openPreferences: _settingsSession.RunPreferencesFlow,
-            exit: Close,
-            refreshWacomStatus: RefreshWacomServiceStatus,
-            reconnectPen: ReconnectPenCore,
-            startWacomService: () => _ = StartWacomServiceAsync(),
-            showAbout: MenuAbout,
-            addZone: _zoneListSession.AddZone,
-            removeZone: _zoneListSession.RemoveZone,
-            autoLayout: _zoneListSession.AutoLayoutZones);
-        _viewModel.ConfigureToolbarCommands(
-            selectPressureCurveLinear: () => SetPressureCurve("Linear"),
-            selectPressureCurveLogarithmic: () => SetPressureCurve("Logarithmic"),
-            selectPressureCurveExponential: () => SetPressureCurve("Exponential"),
-            selectInputBackendAuto: () => SetInputBackendMode("Auto"),
-            selectInputBackendWintab: () => SetInputBackendMode("Wintab Only"),
-            selectInputBackendMouse: () => SetInputBackendMode("Mouse"),
-            cycleInputBackend: CycleInputBackend);
-    }
-
-    private void CycleInputBackend()
-    {
-        SetInputBackendMode(_toolbarSession.GetNextCycledInputBackendModeLabel(_config));
     }
 
     private async void OnContentRendered(object? sender, EventArgs e)
@@ -284,7 +251,7 @@ public partial class MainWindow : Window
             _midiEngine,
             _viewModel,
             a => Dispatcher.Invoke(a),
-            _zoneEditorSession.UpdateUiForCurrentConfig);
+            UpdateUiForCurrentConfig);
     }
 
     private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
@@ -294,7 +261,7 @@ public partial class MainWindow : Window
 
     private void ReconnectPenCore()
     {
-        _zoneEditorSession.CommitCurrentZoneEdits();
+        _viewModel.ZoneEditor.CommitCurrentZoneEdits();
         _padInputSession.RebindInputBackend();
         SetSettingsResult("Input backend reconnected.", SettingsResultKind.Success);
     }
@@ -319,33 +286,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SetPressureCurve(string curve)
-    {
-        _toolbarSession.ApplyPressureCurve(_config, curve);
-        SyncToolbar();
-    }
-
-    private void SetInputBackendMode(string mode)
-    {
-        ToolbarInputModeApplyResult result = _toolbarSession.TryApplyInputBackendMode(_config, mode);
-        if (!result.ModeChanged)
-        {
-            SyncToolbar();
-            return;
-        }
-
-        if (result.RequiresInputRebind)
-        {
-            _padInputSession.RebindInputBackend();
-        }
-
-        SyncToolbar();
-    }
-
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        => _zoneEditorSession.OnZoneListSelectionChanged();
+    {
+        if (_viewModel.ZoneEditor.OnZoneListSelectionChanged())
+        {
+            RefreshPadZoneOverlay();
+        }
+    }
 
-    private void SyncToolbar() => _toolbarChrome.SyncAll();
+    private void SyncToolbar() => _viewModel.Toolbar.SyncFromConfig();
 
     private void Pad_StylusDown(object sender, StylusDownEventArgs e)
         => _padInputSession.HandleStylusDown(e);
@@ -416,11 +365,11 @@ public partial class MainWindow : Window
     }
 
     private void RefreshPadZoneOverlay()
-        => PadSurface.RefreshZoneOverlay(_config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
+        => PadSurface.RefreshZoneOverlay(Config.Zones, _interactionOutcomeApplier.LastZoneMarkers, SelectedZoneIndex);
 
     private void TabletDeviceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_isLoadingUi)
+        if (_viewModel.ZoneEditor.IsLoadingUi)
         {
             return;
         }
@@ -455,6 +404,46 @@ public partial class MainWindow : Window
         WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
         _viewModel.WacomServiceStatusHeader = menuState.Header;
         _viewModel.IsWacomServiceStartEnabled = menuState.StartEnabled;
+    }
+
+    private void LoadConfigIntoUi()
+    {
+        _viewModel.ZoneEditor.LoadConfigIntoUi();
+        SyncToolbar();
+        UpdateUiForCurrentConfig();
+        RefreshPadZoneOverlay();
+    }
+
+    private void UpdateUiForCurrentConfig()
+    {
+        MainWindowConnectedState statusState = _workflowCoordinator.BuildConnectedState(Config);
+        _viewModel.StatusText = statusState.StatusText;
+        _viewModel.RoutingText = statusState.RoutingText;
+        UpdateInputBackendStatus();
+        _viewModel.ActiveZoneText = statusState.ActiveZoneText;
+        _viewModel.ConfigSummaryText = statusState.ConfigSummaryText;
+        _viewModel.ValueText = statusState.ValueText;
+        _viewModel.PenButtonsText = statusState.PenButtonsText;
+        _viewModel.ModifiersText = statusState.ModifiersText;
+    }
+
+    private void ApplyInputBackendSplitBorderChrome()
+    {
+        InputBackendSplitBorder.Background = TryFindResource("AccentSurfaceBrush") as System.Windows.Media.Brush
+            ?? System.Windows.Media.Brushes.Transparent;
+        InputBackendSplitBorder.BorderBrush = TryFindResource("AccentBrush") as System.Windows.Media.Brush
+            ?? System.Windows.Media.Brushes.Transparent;
+    }
+
+    private void SyncPressureSplitBorder()
+    {
+        bool on = _viewModel.Toolbar.SendPressureGlobally;
+        PressureSplitBorder.Background = on
+            ? TryFindResource("AccentSurfaceBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.Transparent
+            : System.Windows.Media.Brushes.Transparent;
+        PressureSplitBorder.BorderBrush = on
+            ? TryFindResource("AccentBrush") as System.Windows.Media.Brush ?? System.Windows.Media.Brushes.Transparent
+            : System.Windows.Media.Brushes.Transparent;
     }
 
     private void SetSettingsResult(string message, SettingsResultKind kind)

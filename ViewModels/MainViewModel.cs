@@ -6,9 +6,9 @@ using TabletMidiPad;
 namespace TabletMidiPad.ViewModels;
 
 /// <summary>
-/// View-model surface for MainWindow status and telemetry text.
+/// Root shell view-model for <see cref="Views.MainWindow"/>.
 /// </summary>
-internal sealed class MainViewModel : ViewModelBase
+internal sealed class MainViewModel : ViewModelBase, IZoneEditorState
 {
     private string _statusText = "Waiting for MIDI port...";
     private string _routingText = string.Empty;
@@ -19,85 +19,72 @@ internal sealed class MainViewModel : ViewModelBase
     private string _inputBackendText = string.Empty;
     private string _configSummaryText = string.Empty;
     private string _midiStatusText = "Connecting MIDI...";
-    private string _toolbarPressureLabelText = "Pressure (Lin)";
-    private string _toolbarInputBackendLabelText = "Input (Auto)";
-    private string _selectedPressureCurve = "Linear";
-    private string _selectedInputBackendMode = "Auto";
-    private bool _isPressureCurveLinearChecked = true;
-    private bool _isPressureCurveLogarithmicChecked;
-    private bool _isPressureCurveExponentialChecked;
-    private bool _isInputBackendAutoChecked = true;
-    private bool _isInputBackendWintabChecked;
-    private bool _isInputBackendMouseChecked;
-    private string _zoneSelectionSummaryPrimaryText = "No zone selected";
-    private string _zoneSelectionSummarySecondaryText = "Select a zone to edit its routing and bounds.";
-    private int _selectedZoneIndex = -1;
-    private bool _zoneDetailsEnabled;
-    private string _zoneName = string.Empty;
-    private bool _zoneEnabled;
-    private int _zoneMidiChannel = 1;
-    private string _zoneCcX = string.Empty;
-    private string _zoneCcY = string.Empty;
-    private string _zoneCcPressure = string.Empty;
-    private string _zoneLeft = string.Empty;
-    private string _zoneTop = string.Empty;
-    private string _zoneWidth = string.Empty;
-    private string _zoneHeight = string.Empty;
-    private bool _zoneSendX = true;
-    private bool _zoneSendY = true;
-    private bool _zoneInvertX;
-    private bool _zoneInvertY;
-    private bool _zoneSendPressure = true;
-    private string _zoneReleaseBehavior = string.Empty;
     private string _settingsResultMessage = string.Empty;
     private SettingsResultKind _settingsResultKind = SettingsResultKind.None;
-    private string _maxZoneRowsText = string.Empty;
-    private string _maxZonesPerRowText = string.Empty;
     private bool _isMidiStatusPanelVisible;
     private bool _isMidiProgressVisible = true;
     private MidiStatusSeverity _midiStatusSeverity = MidiStatusSeverity.Normal;
-    private bool _sendPressureGlobally = true;
-    private bool _allowZoneSwitchWhilePressed = true;
     private string _wacomServiceStatusHeader = "Service: checking...";
     private bool _isWacomServiceStartEnabled = true;
     private TabletDeviceListItemViewModel? _selectedTabletDevice;
     private bool _isTabletDevicePickerEnabled = true;
 
     public MainViewModel()
+        : this(
+            new ZoneListViewModel(
+                new DesignRuntimeConfigService(),
+                new DesignZoneActionWorkflowCoordinator(),
+                new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService())),
+            new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService()),
+            new ToolbarViewModel(new DesignRuntimeConfigService(), new DesignToolbarSession(), new DesignWorkflowCoordinator()),
+            saveSettings: () => { },
+            resetDefaults: () => { },
+            openPreferences: () => { },
+            exit: () => { },
+            refreshWacomStatus: () => { },
+            reconnectPen: () => { },
+            startWacomService: () => { },
+            showAbout: () => { })
     {
-        SaveSettingsCommand = new DelegateCommand(() => { });
-        ResetDefaultsCommand = new DelegateCommand(() => { });
-        OpenPreferencesCommand = new DelegateCommand(() => { });
-        ExitCommand = new DelegateCommand(() => { });
-        RefreshWacomStatusCommand = new DelegateCommand(() => { });
-        ReconnectPenCommand = new DelegateCommand(() => { });
-        StartWacomServiceCommand = new DelegateCommand(() => { });
-        AboutCommand = new DelegateCommand(() => { });
-        AddZoneCommand = new DelegateCommand(() => { });
-        RemoveZoneCommand = new DelegateCommand(() => { });
-        AutoLayoutCommand = new DelegateCommand(() => { });
-        SelectPressureCurveLinearCommand = new DelegateCommand(() => { });
-        SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => { });
-        SelectPressureCurveExponentialCommand = new DelegateCommand(() => { });
-        SelectInputBackendAutoCommand = new DelegateCommand(() => { });
-        SelectInputBackendWintabCommand = new DelegateCommand(() => { });
-        SelectInputBackendMouseCommand = new DelegateCommand(() => { });
-        CycleInputBackendCommand = new DelegateCommand(() => { });
-
-        for (int ch = 1; ch <= 16; ch++)
-        {
-            MidiChannels.Add(ch);
-        }
-
-        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.NoSendOnRelease);
-        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.Hold);
-        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetPressureOnly);
-        ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
     }
 
-    public ObservableCollection<int> MidiChannels { get; } = new();
+    public MainViewModel(
+        ZoneListViewModel zoneList,
+        ZoneEditorViewModel zoneEditor,
+        ToolbarViewModel toolbar,
+        Action saveSettings,
+        Action resetDefaults,
+        Action openPreferences,
+        Action exit,
+        Action refreshWacomStatus,
+        Action reconnectPen,
+        Action startWacomService,
+        Action showAbout)
+    {
+        ZoneList = zoneList ?? throw new ArgumentNullException(nameof(zoneList));
+        ZoneEditor = zoneEditor ?? throw new ArgumentNullException(nameof(zoneEditor));
+        Toolbar = toolbar ?? throw new ArgumentNullException(nameof(toolbar));
+        SaveSettingsCommand = new DelegateCommand(saveSettings ?? throw new ArgumentNullException(nameof(saveSettings)));
+        ResetDefaultsCommand = new DelegateCommand(resetDefaults ?? throw new ArgumentNullException(nameof(resetDefaults)));
+        OpenPreferencesCommand = new DelegateCommand(openPreferences ?? throw new ArgumentNullException(nameof(openPreferences)));
+        ExitCommand = new DelegateCommand(exit ?? throw new ArgumentNullException(nameof(exit)));
+        RefreshWacomStatusCommand = new DelegateCommand(refreshWacomStatus ?? throw new ArgumentNullException(nameof(refreshWacomStatus)));
+        ReconnectPenCommand = new DelegateCommand(reconnectPen ?? throw new ArgumentNullException(nameof(reconnectPen)));
+        StartWacomServiceCommand = new DelegateCommand(startWacomService ?? throw new ArgumentNullException(nameof(startWacomService)));
+        AboutCommand = new DelegateCommand(showAbout ?? throw new ArgumentNullException(nameof(showAbout)));
+    }
 
-    public ObservableCollection<string> ReleaseBehaviorOptions { get; } = new();
+    public ZoneListViewModel ZoneList { get; }
+
+    public ZoneEditorViewModel ZoneEditor { get; }
+
+    public ToolbarViewModel Toolbar { get; }
+
+    public ObservableCollection<int> MidiChannels => ZoneEditor.MidiChannels;
+
+    public ObservableCollection<string> ReleaseBehaviorOptions => ZoneEditor.ReleaseBehaviorOptions;
+
+    public ObservableCollection<ZoneListItemViewModel> Zones => ZoneEditor.Zones;
 
     public ObservableCollection<TabletDeviceListItemViewModel> TabletDevices { get; } = new();
 
@@ -111,18 +98,6 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _settingsResultKind;
         set => SetProperty(ref _settingsResultKind, value);
-    }
-
-    public string MaxZoneRowsText
-    {
-        get => _maxZoneRowsText;
-        set => SetProperty(ref _maxZoneRowsText, value);
-    }
-
-    public string MaxZonesPerRowText
-    {
-        get => _maxZonesPerRowText;
-        set => SetProperty(ref _maxZonesPerRowText, value);
     }
 
     public bool IsMidiStatusPanelVisible
@@ -141,18 +116,6 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _midiStatusSeverity;
         set => SetProperty(ref _midiStatusSeverity, value);
-    }
-
-    public bool SendPressureGlobally
-    {
-        get => _sendPressureGlobally;
-        set => SetProperty(ref _sendPressureGlobally, value);
-    }
-
-    public bool AllowZoneSwitchWhilePressed
-    {
-        get => _allowZoneSwitchWhilePressed;
-        set => SetProperty(ref _allowZoneSwitchWhilePressed, value);
     }
 
     public string WacomServiceStatusHeader
@@ -179,96 +142,93 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _isTabletDevicePickerEnabled, value);
     }
 
-    public ICommand SaveSettingsCommand { get; private set; }
-    public ICommand ResetDefaultsCommand { get; private set; }
-    public ICommand OpenPreferencesCommand { get; private set; }
-    public ICommand ExitCommand { get; private set; }
-    public ICommand RefreshWacomStatusCommand { get; private set; }
-    public ICommand ReconnectPenCommand { get; private set; }
-    public ICommand StartWacomServiceCommand { get; private set; }
-    public ICommand AboutCommand { get; private set; }
-    public ICommand AddZoneCommand { get; private set; }
-    public ICommand RemoveZoneCommand { get; private set; }
-    public ICommand AutoLayoutCommand { get; private set; }
-
-    public ICommand SelectPressureCurveLinearCommand { get; private set; }
-
-    public ICommand SelectPressureCurveLogarithmicCommand { get; private set; }
-
-    public ICommand SelectPressureCurveExponentialCommand { get; private set; }
-
-    public ICommand SelectInputBackendAutoCommand { get; private set; }
-
-    public ICommand SelectInputBackendWintabCommand { get; private set; }
-
-    public ICommand SelectInputBackendMouseCommand { get; private set; }
-
-    public ICommand CycleInputBackendCommand { get; private set; }
-
-    public void ConfigureCommands(
-        Action saveSettings,
-        Action resetDefaults,
-        Action openPreferences,
-        Action exit,
-        Action refreshWacomStatus,
-        Action reconnectPen,
-        Action startWacomService,
-        Action showAbout,
-        Action addZone,
-        Action removeZone,
-        Action autoLayout)
+    public bool SendPressureGlobally
     {
-        SaveSettingsCommand = new DelegateCommand(saveSettings);
-        ResetDefaultsCommand = new DelegateCommand(resetDefaults);
-        OpenPreferencesCommand = new DelegateCommand(openPreferences);
-        ExitCommand = new DelegateCommand(exit);
-        RefreshWacomStatusCommand = new DelegateCommand(refreshWacomStatus);
-        ReconnectPenCommand = new DelegateCommand(reconnectPen);
-        StartWacomServiceCommand = new DelegateCommand(startWacomService);
-        AboutCommand = new DelegateCommand(showAbout);
-        AddZoneCommand = new DelegateCommand(addZone);
-        RemoveZoneCommand = new DelegateCommand(removeZone);
-        AutoLayoutCommand = new DelegateCommand(autoLayout);
-        OnPropertyChanged(nameof(SaveSettingsCommand));
-        OnPropertyChanged(nameof(ResetDefaultsCommand));
-        OnPropertyChanged(nameof(OpenPreferencesCommand));
-        OnPropertyChanged(nameof(ExitCommand));
-        OnPropertyChanged(nameof(RefreshWacomStatusCommand));
-        OnPropertyChanged(nameof(ReconnectPenCommand));
-        OnPropertyChanged(nameof(StartWacomServiceCommand));
-        OnPropertyChanged(nameof(AboutCommand));
-        OnPropertyChanged(nameof(AddZoneCommand));
-        OnPropertyChanged(nameof(RemoveZoneCommand));
-        OnPropertyChanged(nameof(AutoLayoutCommand));
+        get => Toolbar.SendPressureGlobally;
+        set => Toolbar.SendPressureGlobally = value;
     }
 
-    /// <summary>
-    /// Wires toolbar pressure-curve and input-backend commands (invoked from the view after construction).
-    /// </summary>
-    public void ConfigureToolbarCommands(
-        Action selectPressureCurveLinear,
-        Action selectPressureCurveLogarithmic,
-        Action selectPressureCurveExponential,
-        Action selectInputBackendAuto,
-        Action selectInputBackendWintab,
-        Action selectInputBackendMouse,
-        Action cycleInputBackend)
+    public bool AllowZoneSwitchWhilePressed
     {
-        SelectPressureCurveLinearCommand = new DelegateCommand(selectPressureCurveLinear);
-        SelectPressureCurveLogarithmicCommand = new DelegateCommand(selectPressureCurveLogarithmic);
-        SelectPressureCurveExponentialCommand = new DelegateCommand(selectPressureCurveExponential);
-        SelectInputBackendAutoCommand = new DelegateCommand(selectInputBackendAuto);
-        SelectInputBackendWintabCommand = new DelegateCommand(selectInputBackendWintab);
-        SelectInputBackendMouseCommand = new DelegateCommand(selectInputBackendMouse);
-        CycleInputBackendCommand = new DelegateCommand(cycleInputBackend);
-        OnPropertyChanged(nameof(SelectPressureCurveLinearCommand));
-        OnPropertyChanged(nameof(SelectPressureCurveLogarithmicCommand));
-        OnPropertyChanged(nameof(SelectPressureCurveExponentialCommand));
-        OnPropertyChanged(nameof(SelectInputBackendAutoCommand));
-        OnPropertyChanged(nameof(SelectInputBackendWintabCommand));
-        OnPropertyChanged(nameof(SelectInputBackendMouseCommand));
-        OnPropertyChanged(nameof(CycleInputBackendCommand));
+        get => Toolbar.AllowZoneSwitchWhilePressed;
+        set => Toolbar.AllowZoneSwitchWhilePressed = value;
     }
+
+    public string ToolbarPressureLabelText
+    {
+        get => Toolbar.ToolbarPressureLabelText;
+        set => Toolbar.ToolbarPressureLabelText = value;
+    }
+
+    public string ToolbarInputBackendLabelText
+    {
+        get => Toolbar.ToolbarInputBackendLabelText;
+        set => Toolbar.ToolbarInputBackendLabelText = value;
+    }
+
+    public string SelectedPressureCurve
+    {
+        get => Toolbar.SelectedPressureCurve;
+        set => Toolbar.SelectedPressureCurve = value;
+    }
+
+    public string SelectedInputBackendMode
+    {
+        get => Toolbar.SelectedInputBackendMode;
+        set => Toolbar.SelectedInputBackendMode = value;
+    }
+
+    public bool IsPressureCurveLinearChecked
+    {
+        get => Toolbar.IsPressureCurveLinearChecked;
+        set => Toolbar.IsPressureCurveLinearChecked = value;
+    }
+
+    public bool IsPressureCurveLogarithmicChecked
+    {
+        get => Toolbar.IsPressureCurveLogarithmicChecked;
+        set => Toolbar.IsPressureCurveLogarithmicChecked = value;
+    }
+
+    public bool IsPressureCurveExponentialChecked
+    {
+        get => Toolbar.IsPressureCurveExponentialChecked;
+        set => Toolbar.IsPressureCurveExponentialChecked = value;
+    }
+
+    public bool IsInputBackendAutoChecked
+    {
+        get => Toolbar.IsInputBackendAutoChecked;
+        set => Toolbar.IsInputBackendAutoChecked = value;
+    }
+
+    public bool IsInputBackendWintabChecked
+    {
+        get => Toolbar.IsInputBackendWintabChecked;
+        set => Toolbar.IsInputBackendWintabChecked = value;
+    }
+
+    public bool IsInputBackendMouseChecked
+    {
+        get => Toolbar.IsInputBackendMouseChecked;
+        set => Toolbar.IsInputBackendMouseChecked = value;
+    }
+
+    public ICommand SaveSettingsCommand { get; }
+
+    public ICommand ResetDefaultsCommand { get; }
+
+    public ICommand OpenPreferencesCommand { get; }
+
+    public ICommand ExitCommand { get; }
+
+    public ICommand RefreshWacomStatusCommand { get; }
+
+    public ICommand ReconnectPenCommand { get; }
+
+    public ICommand StartWacomServiceCommand { get; }
+
+    public ICommand AboutCommand { get; }
 
     public string StatusText
     {
@@ -324,193 +284,224 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _midiStatusText, value);
     }
 
-    public string ToolbarPressureLabelText
+    public string MaxZoneRowsText
     {
-        get => _toolbarPressureLabelText;
-        set => SetProperty(ref _toolbarPressureLabelText, value);
+        get => ZoneEditor.MaxZoneRowsText;
+        set => ZoneEditor.MaxZoneRowsText = value;
     }
 
-    public string ToolbarInputBackendLabelText
+    public string MaxZonesPerRowText
     {
-        get => _toolbarInputBackendLabelText;
-        set => SetProperty(ref _toolbarInputBackendLabelText, value);
+        get => ZoneEditor.MaxZonesPerRowText;
+        set => ZoneEditor.MaxZonesPerRowText = value;
     }
-
-    public string SelectedPressureCurve
-    {
-        get => _selectedPressureCurve;
-        set => SetProperty(ref _selectedPressureCurve, value);
-    }
-
-    public string SelectedInputBackendMode
-    {
-        get => _selectedInputBackendMode;
-        set => SetProperty(ref _selectedInputBackendMode, value);
-    }
-
-    public bool IsPressureCurveLinearChecked
-    {
-        get => _isPressureCurveLinearChecked;
-        set => SetProperty(ref _isPressureCurveLinearChecked, value);
-    }
-
-    public bool IsPressureCurveLogarithmicChecked
-    {
-        get => _isPressureCurveLogarithmicChecked;
-        set => SetProperty(ref _isPressureCurveLogarithmicChecked, value);
-    }
-
-    public bool IsPressureCurveExponentialChecked
-    {
-        get => _isPressureCurveExponentialChecked;
-        set => SetProperty(ref _isPressureCurveExponentialChecked, value);
-    }
-
-    public bool IsInputBackendAutoChecked
-    {
-        get => _isInputBackendAutoChecked;
-        set => SetProperty(ref _isInputBackendAutoChecked, value);
-    }
-
-    public bool IsInputBackendWintabChecked
-    {
-        get => _isInputBackendWintabChecked;
-        set => SetProperty(ref _isInputBackendWintabChecked, value);
-    }
-
-    public bool IsInputBackendMouseChecked
-    {
-        get => _isInputBackendMouseChecked;
-        set => SetProperty(ref _isInputBackendMouseChecked, value);
-    }
-
-    public ObservableCollection<ZoneListItemViewModel> Zones { get; } = new();
 
     public string ZoneSelectionSummaryPrimaryText
     {
-        get => _zoneSelectionSummaryPrimaryText;
-        set => SetProperty(ref _zoneSelectionSummaryPrimaryText, value);
+        get => ZoneEditor.ZoneSelectionSummaryPrimaryText;
+        set => ZoneEditor.ZoneSelectionSummaryPrimaryText = value;
     }
 
     public string ZoneSelectionSummarySecondaryText
     {
-        get => _zoneSelectionSummarySecondaryText;
-        set => SetProperty(ref _zoneSelectionSummarySecondaryText, value);
+        get => ZoneEditor.ZoneSelectionSummarySecondaryText;
+        set => ZoneEditor.ZoneSelectionSummarySecondaryText = value;
     }
 
     public int SelectedZoneIndex
     {
-        get => _selectedZoneIndex;
-        set => SetProperty(ref _selectedZoneIndex, value);
+        get => ZoneEditor.SelectedZoneIndex;
+        set => ZoneEditor.SelectedZoneIndex = value;
     }
 
-    /// <summary>
-    /// Raises <see cref="SelectedZoneIndex"/> after the zone list collection is replaced so the ListBox binding re-applies.
-    /// </summary>
-    internal void NotifySelectedZoneIndexChanged()
-    {
-        OnPropertyChanged(nameof(SelectedZoneIndex));
-    }
+    internal void NotifySelectedZoneIndexChanged() => ZoneEditor.NotifySelectedZoneIndexChanged();
 
     public bool ZoneDetailsEnabled
     {
-        get => _zoneDetailsEnabled;
-        set => SetProperty(ref _zoneDetailsEnabled, value);
+        get => ZoneEditor.ZoneDetailsEnabled;
+        set => ZoneEditor.ZoneDetailsEnabled = value;
     }
 
     public string ZoneName
     {
-        get => _zoneName;
-        set => SetProperty(ref _zoneName, value);
+        get => ZoneEditor.ZoneName;
+        set => ZoneEditor.ZoneName = value;
     }
 
     public bool ZoneEnabled
     {
-        get => _zoneEnabled;
-        set => SetProperty(ref _zoneEnabled, value);
+        get => ZoneEditor.ZoneEnabled;
+        set => ZoneEditor.ZoneEnabled = value;
     }
 
     public int ZoneMidiChannel
     {
-        get => _zoneMidiChannel;
-        set => SetProperty(ref _zoneMidiChannel, value);
+        get => ZoneEditor.ZoneMidiChannel;
+        set => ZoneEditor.ZoneMidiChannel = value;
     }
 
     public string ZoneCcX
     {
-        get => _zoneCcX;
-        set => SetProperty(ref _zoneCcX, value);
+        get => ZoneEditor.ZoneCcX;
+        set => ZoneEditor.ZoneCcX = value;
     }
 
     public string ZoneCcY
     {
-        get => _zoneCcY;
-        set => SetProperty(ref _zoneCcY, value);
+        get => ZoneEditor.ZoneCcY;
+        set => ZoneEditor.ZoneCcY = value;
     }
 
     public string ZoneCcPressure
     {
-        get => _zoneCcPressure;
-        set => SetProperty(ref _zoneCcPressure, value);
+        get => ZoneEditor.ZoneCcPressure;
+        set => ZoneEditor.ZoneCcPressure = value;
     }
 
     public string ZoneLeft
     {
-        get => _zoneLeft;
-        set => SetProperty(ref _zoneLeft, value);
+        get => ZoneEditor.ZoneLeft;
+        set => ZoneEditor.ZoneLeft = value;
     }
 
     public string ZoneTop
     {
-        get => _zoneTop;
-        set => SetProperty(ref _zoneTop, value);
+        get => ZoneEditor.ZoneTop;
+        set => ZoneEditor.ZoneTop = value;
     }
 
     public string ZoneWidth
     {
-        get => _zoneWidth;
-        set => SetProperty(ref _zoneWidth, value);
+        get => ZoneEditor.ZoneWidth;
+        set => ZoneEditor.ZoneWidth = value;
     }
 
     public string ZoneHeight
     {
-        get => _zoneHeight;
-        set => SetProperty(ref _zoneHeight, value);
+        get => ZoneEditor.ZoneHeight;
+        set => ZoneEditor.ZoneHeight = value;
     }
 
     public bool ZoneSendX
     {
-        get => _zoneSendX;
-        set => SetProperty(ref _zoneSendX, value);
+        get => ZoneEditor.ZoneSendX;
+        set => ZoneEditor.ZoneSendX = value;
     }
 
     public bool ZoneSendY
     {
-        get => _zoneSendY;
-        set => SetProperty(ref _zoneSendY, value);
+        get => ZoneEditor.ZoneSendY;
+        set => ZoneEditor.ZoneSendY = value;
     }
 
     public bool ZoneInvertX
     {
-        get => _zoneInvertX;
-        set => SetProperty(ref _zoneInvertX, value);
+        get => ZoneEditor.ZoneInvertX;
+        set => ZoneEditor.ZoneInvertX = value;
     }
 
     public bool ZoneInvertY
     {
-        get => _zoneInvertY;
-        set => SetProperty(ref _zoneInvertY, value);
+        get => ZoneEditor.ZoneInvertY;
+        set => ZoneEditor.ZoneInvertY = value;
     }
 
     public bool ZoneSendPressure
     {
-        get => _zoneSendPressure;
-        set => SetProperty(ref _zoneSendPressure, value);
+        get => ZoneEditor.ZoneSendPressure;
+        set => ZoneEditor.ZoneSendPressure = value;
     }
 
     public string ZoneReleaseBehavior
     {
-        get => _zoneReleaseBehavior;
-        set => SetProperty(ref _zoneReleaseBehavior, value);
+        get => ZoneEditor.ZoneReleaseBehavior;
+        set => ZoneEditor.ZoneReleaseBehavior = value;
+    }
+
+    private sealed class DesignRuntimeConfigService : Services.IRuntimeConfigService
+    {
+        public AppConfig Current { get; private set; } = AppConfig.Default;
+
+        public event EventHandler? CurrentChanged;
+
+        public AppConfig Load()
+        {
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return Current;
+        }
+
+        public void Replace(AppConfig config)
+        {
+            Current = config;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ResetToDefaults() => Replace(AppConfig.Default);
+
+        public void SaveCurrent()
+        {
+        }
+    }
+
+    private sealed class DesignZoneEditorService : Services.IZoneEditorService
+    {
+        public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> zones, AppConfig config)
+        {
+        }
+
+        public void LoadSelectedZoneIntoEditor(IZoneEditorState viewModel, AppConfig config, int selectedZoneIndex)
+        {
+        }
+
+        public void CommitCurrentZoneEdits(AppConfig config, IZoneEditorState viewModel, int selectedZoneIndex, string? maxZoneRowsText, string? maxZonesPerRowText)
+        {
+        }
+
+        public void SetZoneSelectionSummary(IZoneEditorState viewModel, ZoneConfig? zone)
+        {
+        }
+    }
+
+    private sealed class DesignZoneActionWorkflowCoordinator : Services.IZoneActionWorkflowCoordinator
+    {
+        public Services.ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
+
+        public Services.ZoneActionWorkflowResult AddZone(AppConfig config) => new(false, 0, string.Empty);
+
+        public Services.ZoneActionWorkflowResult RemoveZone(AppConfig config, int selectedZoneIndex) => new(false, selectedZoneIndex, string.Empty);
+    }
+
+    private sealed class DesignToolbarSession : Services.IMainWindowToolbarSession
+    {
+        public void ApplyPressureCurve(AppConfig config, string curve)
+        {
+        }
+
+        public Services.ToolbarInputModeApplyResult TryApplyInputBackendMode(AppConfig config, string mode)
+            => new(false, false);
+
+        public string GetNextCycledInputBackendModeLabel(AppConfig config) => "Auto";
+    }
+
+    private sealed class DesignWorkflowCoordinator : Services.IMainWindowWorkflowCoordinator
+    {
+        public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
+
+        public Services.WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
+
+        public Services.WorkflowSaveResult ApplySettingsAndPersist(AppConfig config, Services.IConfigStore store) => new(true, null);
+
+        public Services.WorkflowSaveResult PersistConfigToDisk(AppConfig config, Services.IConfigStore store) => new(true, null);
+
+        public Services.PreferencesWorkflowResult ApplyPreferences(AppConfig config, Services.PreferencesDialogResult result, IntPtr midiOutHandle)
+            => new(true, null, false, false);
+
+        public Services.WacomServiceMenuState BuildWacomServiceMenuState(Services.WacomServiceStatus status) => new(string.Empty, false);
+
+        public Services.MainWindowToolbarState BuildToolbarState(AppConfig config)
+            => new("Pressure (Lin)", "Linear", "Input (Auto)", "Auto", true, false, false, true, false, false);
+
+        public Services.MainWindowConnectedState BuildConnectedState(AppConfig config)
+            => new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
     }
 }

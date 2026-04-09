@@ -37,7 +37,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
     }
 
     /// <inheritdoc />
-    public void LoadSelectedZoneIntoEditor(MainViewModel viewModel, AppConfig config, int selectedZoneIndex)
+    public void LoadSelectedZoneIntoEditor(IZoneEditorState viewModel, AppConfig config, int selectedZoneIndex)
     {
         if (selectedZoneIndex < 0 || selectedZoneIndex >= config.Zones.Count)
         {
@@ -86,7 +86,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
     /// <inheritdoc />
     public void CommitCurrentZoneEdits(
         AppConfig config,
-        MainViewModel viewModel,
+        IZoneEditorState viewModel,
         int selectedZoneIndex,
         string? maxZoneRowsText,
         string? maxZonesPerRowText)
@@ -120,7 +120,7 @@ internal sealed class ZoneEditorService : IZoneEditorService
     }
 
     /// <inheritdoc />
-    public void SetZoneSelectionSummary(MainViewModel viewModel, ZoneConfig? zone)
+    public void SetZoneSelectionSummary(IZoneEditorState viewModel, ZoneConfig? zone)
     {
         if (zone is null)
         {

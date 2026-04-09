@@ -23,6 +23,7 @@ internal static class AppBootstrapper
 
         // Core services.
         container.AddSingleton<IConfigStore>(_ => new JsonConfigStore(AppConfig.GetConfigPath()));
+        container.AddSingleton<IRuntimeConfigService>(c => new RuntimeConfigService(c.GetRequiredService<IConfigStore>()));
         container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
         container.AddSingleton<IAppTrace>(_ => new TraceAppTrace());
@@ -59,8 +60,6 @@ internal static class AppBootstrapper
         container.AddSingleton<IPadInteractionOutcomeApplier>(c => new PadInteractionOutcomeApplier(
             c.GetRequiredService<IMidiEngine>()));
 
-        container.AddTransient<MainViewModel>(_ => new MainViewModel());
-
         container.AddTransient(CreateMainWindow);
 
         return container;
@@ -80,6 +79,7 @@ internal static class AppBootstrapper
     {
         return new MainWindow(
             c.GetRequiredService<IConfigStore>(),
+            c.GetRequiredService<IRuntimeConfigService>(),
             c.GetRequiredService<IMidiEngine>(),
             c.GetRequiredService<IWacomServiceController>(),
             c.GetRequiredService<IWintabInputBackend>(),
@@ -101,7 +101,6 @@ internal static class AppBootstrapper
             c.GetRequiredService<IMainWindowPadPresentationCoordinator>(),
             c.GetRequiredService<IMainWindowToolbarSession>(),
             c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
-            c.GetRequiredService<MainViewModel>(),
             c.GetRequiredService<IPadInteractionOutcomeApplier>());
     }
 }

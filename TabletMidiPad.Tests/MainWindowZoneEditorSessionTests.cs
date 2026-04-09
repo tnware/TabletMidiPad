@@ -134,12 +134,12 @@ public sealed class MainWindowZoneEditorSessionTests
         public void RefreshZoneList(ObservableCollection<ZoneListItemViewModel> zones, AppConfig config)
             => RefreshZoneListCount++;
 
-        public void LoadSelectedZoneIntoEditor(MainViewModel viewModel, AppConfig config, int selectedZoneIndex)
+        public void LoadSelectedZoneIntoEditor(IZoneEditorState viewModel, AppConfig config, int selectedZoneIndex)
             => LoadSelectedZoneIntoEditorCount++;
 
         public void CommitCurrentZoneEdits(
             AppConfig config,
-            MainViewModel viewModel,
+            IZoneEditorState viewModel,
             int selectedZoneIndex,
             string? maxZoneRowsText,
             string? maxZonesPerRowText)
@@ -148,7 +148,7 @@ public sealed class MainWindowZoneEditorSessionTests
             LastCommitSelectedIndex = selectedZoneIndex;
         }
 
-        public void SetZoneSelectionSummary(MainViewModel viewModel, ZoneConfig? zone)
+        public void SetZoneSelectionSummary(IZoneEditorState viewModel, ZoneConfig? zone)
         {
         }
     }
