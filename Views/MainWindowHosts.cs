@@ -147,7 +147,8 @@ public partial class MainWindow
         public void ShowAboutDialog()
         {
             MessageBox.Show(
-                "Tablet MIDI Pad\n\nTurns a Wacom tablet into a MIDI XY controller with configurable zones.",
+                $"Tablet MIDI Pad  {AppVersionInfo.InformationalVersionOrFallback}\n\n" +
+                "Turns a Wacom tablet into a MIDI XY controller with configurable zones.",
                 "About Tablet MIDI Pad",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);

@@ -2,13 +2,13 @@
 ; From repo root: make installer   or   make release
 ; Or after dotnet publish: makensis installer\TabletMidiPad.nsi
 ; Paths below are relative to this .nsi file's directory.
+!include "VersionDefines.generated.nsh"
 
 Unicode true
 RequestExecutionLevel admin
 
 !define APP_NAME "TabletMidiPad"
 !define APP_PUBLISHER "TabletMidiPad"
-!define APP_VERSION "1.0.0"
 !define MAIN_EXE "TabletMidiPad.exe"
 
 ; Published output from: dotnet publish -c Release -r win-x64 -o artifacts\publish
