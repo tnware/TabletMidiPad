@@ -58,7 +58,20 @@ public sealed class PadPresentationCoordinatorTests
     {
         var zones = new List<ZoneConfig>
         {
-            new() { Name = "A", Left = 0, Top = 0, Width = 0.5, Height = 1 },
+            new()
+            {
+                Name = "A",
+                Left = 0,
+                Top = 0,
+                Width = 0.5,
+                Height = 1,
+                OutputMode = ZoneOutputModes.ScaleBreath,
+                ScaleBreathRoot = 2,
+                ScaleBreathScale = ScaleBreathScaleNames.NaturalMinor,
+                ScaleBreathOctave = 3,
+                ScaleBreathHoleCount = 12,
+                ScaleBreathRowSplit = 0.4
+            },
             new() { Name = "B", Left = 0.5, Top = 0, Width = 0.5, Height = 1 },
         };
         var lastPoints = new Dictionary<ZoneConfig, Point>
@@ -91,5 +104,8 @@ public sealed class PadPresentationCoordinatorTests
         Assert.Single(request.LastLocalByZoneIndex);
         Assert.True(request.LastLocalByZoneIndex.ContainsKey(0));
         Assert.Equal(2, request.ZonePalette.Count);
+        Assert.Equal(ZoneOutputModes.ScaleBreath, request.Zones[0].OutputMode);
+        Assert.Equal(12, request.Zones[0].ScaleBreathHoleCount);
+        Assert.Equal(0.4, request.Zones[0].ScaleBreathRowSplit);
     }
 }

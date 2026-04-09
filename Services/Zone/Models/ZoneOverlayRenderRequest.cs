@@ -30,8 +30,13 @@ public sealed record ZoneOverlayZone(
     bool SendX,
     bool SendY,
     bool SendPressure,
+    string OutputMode,
+    int ScaleBreathRoot,
+    string ScaleBreathScale,
+    int ScaleBreathOctave,
+    int ScaleBreathHoleCount,
+    double ScaleBreathRowSplit,
     double Left,
     double Top,
     double Width,
     double Height);
-

@@ -99,6 +99,7 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
 
             overlayCanvas.Children.Add(rect);
             AddStyleDecoration(overlayCanvas, request.OverlayStyle, rectLeft, rectTop, rectWidth, rectHeight, baseColor);
+            AddModeDecoration(overlayCanvas, zone, rectLeft, rectTop, rectWidth, rectHeight, baseColor, selected);
 
             Canvas.SetLeft(label, rectLeft + 6);
             Canvas.SetTop(label, rectTop + 6);
@@ -141,6 +142,105 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
 
                 overlayCanvas.Children.Add(markerRing);
                 overlayCanvas.Children.Add(markerDot);
+            }
+        }
+    }
+
+    private static void AddModeDecoration(
+        Canvas canvas,
+        ZoneOverlayZone zone,
+        double left,
+        double top,
+        double width,
+        double height,
+        Color baseColor,
+        bool selected)
+    {
+        string mode = NormalizeZoneOutputMode(zone.OutputMode);
+        if (!string.Equals(mode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        AddScaleBreathOverlay(canvas, zone, left, top, width, height, baseColor, selected);
+    }
+
+    private static void AddScaleBreathOverlay(
+        Canvas canvas,
+        ZoneOverlayZone zone,
+        double left,
+        double top,
+        double width,
+        double height,
+        Color baseColor,
+        bool selected)
+    {
+        int holes = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16);
+        double split = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9);
+        byte lineAlpha = selected ? (byte)150 : (byte)110;
+        var lineBrush = new SolidColorBrush(WithAlpha(baseColor, lineAlpha));
+
+        for (int i = 1; i < holes; i++)
+        {
+            double x = left + ((width * i) / holes);
+            var divider = new Line
+            {
+                X1 = x,
+                Y1 = top,
+                X2 = x,
+                Y2 = top + height,
+                Stroke = lineBrush,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(divider);
+        }
+
+        double splitY = top + (height * split);
+        var splitLine = new Line
+        {
+            X1 = left,
+            Y1 = splitY,
+            X2 = left + width,
+            Y2 = splitY,
+            Stroke = lineBrush,
+            StrokeThickness = 1.2
+        };
+        canvas.Children.Add(splitLine);
+
+        bool drawLabels = (width / holes) >= 26 && height >= 64;
+        if (!drawLabels)
+        {
+            return;
+        }
+
+        var labelBrush = new SolidColorBrush(WithAlpha(baseColor, selected ? (byte)245 : (byte)215));
+        for (int hole = 0; hole < holes; hole++)
+        {
+            for (int row = 0; row < 2; row++)
+            {
+                int streamIndex = (hole * 2) + row;
+                int note = BuildScaleBreathNote(zone.ScaleBreathRoot, zone.ScaleBreathScale, zone.ScaleBreathOctave, streamIndex);
+                string labelText = FormatNoteName(note);
+                var label = new TextBlock
+                {
+                    Text = labelText,
+                    FontSize = 9,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = labelBrush
+                };
+
+                label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double cellLeft = left + ((hole * width) / holes);
+                double cellRight = left + (((hole + 1) * width) / holes);
+                double centerX = (cellLeft + cellRight) / 2;
+
+                double rowTop = row == 0 ? top : splitY;
+                double rowBottom = row == 0 ? splitY : top + height;
+                double centerY = (rowTop + rowBottom) / 2;
+
+                Canvas.SetLeft(label, centerX - (label.DesiredSize.Width / 2));
+                Canvas.SetTop(label, centerY - (label.DesiredSize.Height / 2));
+                canvas.Children.Add(label);
             }
         }
     }
@@ -458,4 +558,56 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
     }
 
     private static Color WithAlpha(Color color, byte alpha) => Color.FromArgb(alpha, color.R, color.G, color.B);
+
+    private static string NormalizeZoneOutputMode(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.ScaleBreath => value,
+            _ => ZoneOutputModes.CcPad
+        };
+    }
+
+    private static string NormalizeScaleBreathScale(string? text)
+    {
+        string value = (text ?? string.Empty).Trim();
+        return value switch
+        {
+            ScaleBreathScaleNames.Major => value,
+            ScaleBreathScaleNames.NaturalMinor => value,
+            ScaleBreathScaleNames.MajorPentatonic => value,
+            ScaleBreathScaleNames.MinorPentatonic => value,
+            _ => ScaleBreathScaleNames.Major
+        };
+    }
+
+    private static int BuildScaleBreathNote(int root, string scale, int octave, int streamIndex)
+    {
+        int[] steps = BuildScaleSteps(NormalizeScaleBreathScale(scale));
+        int rootMidi = Math.Clamp((Math.Clamp(octave, 0, 8) * 12) + Math.Clamp(root, 0, 11), 0, 127);
+        int octaveStride = streamIndex / steps.Length;
+        int stepIndex = streamIndex % steps.Length;
+        return Math.Clamp(rootMidi + (octaveStride * 12) + steps[stepIndex], 0, 127);
+    }
+
+    private static int[] BuildScaleSteps(string scale)
+    {
+        return scale switch
+        {
+            ScaleBreathScaleNames.NaturalMinor => [0, 2, 3, 5, 7, 8, 10],
+            ScaleBreathScaleNames.MajorPentatonic => [0, 2, 4, 7, 9],
+            ScaleBreathScaleNames.MinorPentatonic => [0, 3, 5, 7, 10],
+            _ => [0, 2, 4, 5, 7, 9, 11]
+        };
+    }
+
+    private static string FormatNoteName(int note)
+    {
+        string[] names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        int clamped = Math.Clamp(note, 0, 127);
+        int octave = (clamped / 12) - 1;
+        return $"{names[clamped % 12]}{octave}";
+    }
 }
