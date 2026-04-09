@@ -227,9 +227,99 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Storyboard x:Key="AmbientDriftStoryboard"
+                    RepeatBehavior="Forever"
+                    AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="AmbientBlobNorthTransform"
+                             Storyboard.TargetProperty="X"
+                             From="0"
+                             To="28"
+                             Duration="0:0:26"/>
+            <DoubleAnimation Storyboard.TargetName="AmbientBlobNorthTransform"
+                             Storyboard.TargetProperty="Y"
+                             From="0"
+                             To="18"
+                             Duration="0:0:30"/>
+            <DoubleAnimation Storyboard.TargetName="AmbientBlobSouthTransform"
+                             Storyboard.TargetProperty="X"
+                             From="0"
+                             To="-24"
+                             Duration="0:0:30"/>
+            <DoubleAnimation Storyboard.TargetName="AmbientBlobSouthTransform"
+                             Storyboard.TargetProperty="Y"
+                             From="0"
+                             To="-14"
+                             Duration="0:0:24"/>
+        </Storyboard>
     </Window.Resources>
 
-    <Grid Margin="0">
+    <Grid>
+        <Grid.Triggers>
+            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                <BeginStoryboard Storyboard="{StaticResource AmbientDriftStoryboard}"/>
+            </EventTrigger>
+        </Grid.Triggers>
+
+        <Grid IsHitTestVisible="False">
+            <Rectangle>
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0"
+                                         EndPoint="1,1">
+                        <GradientStop Color="#FF050906"
+                                      Offset="0"/>
+                        <GradientStop Color="#FF0A120E"
+                                      Offset="0.52"/>
+                        <GradientStop Color="#FF0E1812"
+                                      Offset="1"/>
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <Ellipse Width="620"
+                     Height="620"
+                     Margin="-260,-200,0,0"
+                     HorizontalAlignment="Left"
+                     VerticalAlignment="Top"
+                     Opacity="0.3"
+                     RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="AmbientBlobNorthTransform"/>
+                </Ellipse.RenderTransform>
+                <Ellipse.Fill>
+                    <RadialGradientBrush RadiusX="0.85"
+                                         RadiusY="0.85">
+                        <GradientStop Color="#2A67D68A"
+                                      Offset="0"/>
+                        <GradientStop Color="#0067D68A"
+                                      Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <Ellipse Width="700"
+                     Height="700"
+                     Margin="0,0,-300,-250"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Bottom"
+                     Opacity="0.24"
+                     RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="AmbientBlobSouthTransform"/>
+                </Ellipse.RenderTransform>
+                <Ellipse.Fill>
+                    <RadialGradientBrush RadiusX="0.9"
+                                         RadiusY="0.9">
+                        <GradientStop Color="#208AE0C2"
+                                      Offset="0"/>
+                        <GradientStop Color="#008AE0C2"
+                                      Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Grid>
+
+        <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
@@ -646,5 +736,6 @@
             </Button>
             </Grid>
         </Border>
+        </Grid>
     </Grid>
 </Window>
