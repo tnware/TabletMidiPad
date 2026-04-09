@@ -70,6 +70,8 @@ public partial class MainWindow
             set => _w.SelectedZoneIndex = value;
         }
 
+        public bool IsCanvasLocked => _w._viewModel.ZoneEditor.IsCanvasLocked;
+
         public double PadActualWidth => _w.Pad.ActualWidth;
 
         public double PadActualHeight => _w.Pad.ActualHeight;

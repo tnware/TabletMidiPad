@@ -25,6 +25,11 @@ internal sealed class ZonePadController : IZonePadController
     /// <inheritdoc />
     public bool TryHandleMouseDown(Point position)
     {
+        if (_host.IsCanvasLocked)
+        {
+            return false;
+        }
+
         SelectZoneAtPoint(position);
         (int Zone, ZoneResizeEdge Edge) = HitTestZoneEdge(position);
         if (Zone < 0)
@@ -39,6 +44,12 @@ internal sealed class ZonePadController : IZonePadController
     /// <inheritdoc />
     public bool TryConsumeMouseMove(Point position, out ZonePadResizeCursorKind cursorKind)
     {
+        if (_host.IsCanvasLocked)
+        {
+            cursorKind = ZonePadResizeCursorKind.None;
+            return false;
+        }
+
         if (_isResizingZone)
         {
             UpdateZoneResize(position);

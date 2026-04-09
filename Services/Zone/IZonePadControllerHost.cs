@@ -12,6 +12,8 @@ internal interface IZonePadControllerHost
 
     int SelectedZoneIndex { get; set; }
 
+    bool IsCanvasLocked { get; }
+
     double PadActualWidth { get; }
 
     double PadActualHeight { get; }

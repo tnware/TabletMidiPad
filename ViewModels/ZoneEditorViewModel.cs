@@ -29,6 +29,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private string _zoneReleaseBehavior = string.Empty;
     private string _maxZoneRowsText = string.Empty;
     private string _maxZonesPerRowText = string.Empty;
+    private bool _isCanvasLocked;
 
     public ZoneEditorViewModel(IRuntimeConfigService runtimeConfig, IZoneEditorService zoneEditorService)
     {
@@ -64,6 +65,24 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     {
         get => _maxZonesPerRowText;
         set => SetProperty(ref _maxZonesPerRowText, value);
+    }
+
+    public bool IsCanvasLocked
+    {
+        get => _isCanvasLocked;
+        set
+        {
+            if (!SetProperty(ref _isCanvasLocked, value))
+            {
+                return;
+            }
+
+            if (value && SelectedZoneIndex >= 0)
+            {
+                SelectedZoneIndex = -1;
+                LoadSelectedZoneIntoEditor();
+            }
+        }
     }
 
     public string ZoneSelectionSummaryPrimaryText

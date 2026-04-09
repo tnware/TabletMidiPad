@@ -862,12 +862,12 @@
 
                         <ListBox Name="ZoneListBox"
                                  Height="132"
-                                 Style="{StaticResource ZoneListStyle}"
                                  ItemContainerStyle="{StaticResource ZoneListBoxItemStyle}"
                                  ItemTemplate="{StaticResource ZoneListItemTemplate}"
                                  ItemsSource="{Binding ZoneEditor.Zones}"
                                  SelectedIndex="{Binding ZoneEditor.SelectedZoneIndex, Mode=TwoWay}"
-                                 SelectionChanged="ZoneListBox_SelectionChanged"/>
+                                 SelectionChanged="ZoneListBox_SelectionChanged"
+                                 Style="{StaticResource ZoneListStyle}"/>
 
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -875,6 +875,8 @@
                                 <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
@@ -895,7 +897,7 @@
                                     FontFamily="{StaticResource SymbolThemeFontFamily}"/>
 
                             <Button Name="AutoLayoutButton"
-                                    Grid.Column="4"
+                                    Grid.Column="6"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     MinWidth="86"
                                     Command="{Binding ZoneList.AutoLayoutCommand}">
@@ -907,6 +909,14 @@
                                     <TextBlock Text="Auto Tile"/>
                                 </StackPanel>
                             </Button>
+
+                            <CheckBox Name="LockCanvasCheckBox"
+                                      Grid.Column="4"
+                                      Margin="0,0,4,0"
+                                      VerticalAlignment="Center"
+                                      Foreground="{StaticResource TextSoftBrush}"
+                                      IsChecked="{Binding ZoneEditor.IsCanvasLocked, Mode=TwoWay}"
+                                      Content="Lock Canvas"/>
                         </Grid>
 
                         <!-- Selected zone properties -->

@@ -86,6 +86,7 @@ public partial class MainWindow : Window
         _viewModel = mainViewModelFactory.Create(workflows.ShellCommandsViewModel);
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
         _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
+        _viewModel.ZoneEditor.PropertyChanged += ZoneEditor_PropertyChanged;
         _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
         _viewModel.Toolbar.PressureChromeRefreshRequested += SyncPressureSplitBorder;
         _viewModel.Toolbar.RoutingStatusRefreshRequested += UpdateUiForCurrentConfig;
@@ -349,5 +350,13 @@ public partial class MainWindow : Window
     {
         _viewModel.SettingsResultMessage = message;
         _viewModel.SettingsResultKind = kind;
+    }
+
+    private void ZoneEditor_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ZoneEditorViewModel.IsCanvasLocked))
+        {
+            RefreshPadZoneOverlay();
+        }
     }
 }
