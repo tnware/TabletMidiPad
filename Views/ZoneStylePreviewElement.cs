@@ -9,9 +9,6 @@ namespace TabletMidiPad.Views;
 /// </summary>
 internal sealed class ZoneStylePreviewElement : FrameworkElement
 {
-    // Default zone palette green — matches ZonePalette1Color in ThemeResources.
-    private static readonly Color PreviewColor = Color.FromRgb(0x67, 0xD6, 0x8A);
-
     public static readonly DependencyProperty OverlayStyleProperty =
         DependencyProperty.Register(
             nameof(OverlayStyle),
@@ -34,7 +31,7 @@ internal sealed class ZoneStylePreviewElement : FrameworkElement
             return;
         }
 
-        Color color = PreviewColor;
+        Color color = ResolveAccentColor();
         var fillBrush = new SolidColorBrush(Color.FromArgb(56, color.R, color.G, color.B));
         var strokePen = new Pen(new SolidColorBrush(Color.FromArgb(200, color.R, color.G, color.B)), 1.5);
         double r = 6;
@@ -200,5 +197,16 @@ internal sealed class ZoneStylePreviewElement : FrameworkElement
         }
 
         dc.DrawText(formattedText, new Point(x, y));
+    }
+
+    private Color ResolveAccentColor()
+    {
+        object? raw = TryFindResource("AccentFillColorDefaultBrush") ?? Application.Current?.TryFindResource("AccentFillColorDefaultBrush");
+        if (raw is SolidColorBrush brush)
+        {
+            return brush.Color;
+        }
+
+        return Color.FromRgb(0x4C, 0xA0, 0xFF);
     }
 }

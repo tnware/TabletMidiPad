@@ -11,15 +11,6 @@ namespace TabletMidiPad.Views;
 /// </summary>
 public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
 {
-    private static readonly string[] ZonePaletteColorKeys = [
-        "ZonePalette1Color",
-        "ZonePalette2Color",
-        "ZonePalette3Color",
-        "ZonePalette4Color",
-        "ZonePalette5Color",
-        "ZonePalette6Color",
-    ];
-
     private IPadPresentationCoordinator? _presentationCoordinator;
     private IZoneOverlayRenderer? _zoneOverlayRenderer;
 
@@ -110,13 +101,13 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
 
         var theme = new PadOverlayTheme(
             ZonePalette: [.. Enumerable.Range(0, zones.Count).Select(GetZonePaletteColor)],
-            ColorWindow: ThemeColor("ColorWindow", Colors.Black),
-            TextPrimaryBrush: ThemeBrush("TextPrimaryBrush", Brushes.White),
-            TextMutedBrush: ThemeBrush("TextMutedBrush", Brushes.Gainsboro),
-            TextSoftBrush: ThemeBrush("TextSoftBrush", Brushes.Gray),
-            DangerBrush: ThemeBrush("DangerBrush", Brushes.IndianRed),
-            AccentBrushHover: ThemeBrush("AccentBrushHover", Brushes.White),
-            SurfaceBrush: ThemeBrush("SurfaceBrush", Brushes.Black),
+            ColorWindow: ThemeColor("LayerFillColorDefaultBrush", Color.FromRgb(0x08, 0x12, 0x20)),
+            TextPrimaryBrush: ThemeBrush("TextFillColorPrimaryBrush", Brushes.White),
+            TextMutedBrush: ThemeBrush("TextFillColorSecondaryBrush", Brushes.Gainsboro),
+            TextSoftBrush: ThemeBrush("TextFillColorDisabledBrush", Brushes.Gray),
+            DangerBrush: ThemeBrush("SystemFillColorCriticalBrush", Brushes.IndianRed),
+            AccentBrushHover: ThemeBrush("AccentFillColorSecondaryBrush", Brushes.White),
+            SurfaceBrush: ThemeBrush("LayerFillColorDefaultBrush", Brushes.Black),
             OverlayStyle: overlayStyle);
 
         ZoneOverlayRenderRequest request = _presentationCoordinator!.BuildZoneOverlayRequest(
@@ -160,7 +151,28 @@ public partial class PadInteractionSurface : UserControl, IPadInputChromeSurface
     }
 
     private Color GetZonePaletteColor(int index)
-        => ThemeColor(ZonePaletteColorKeys[index % ZonePaletteColorKeys.Length], Color.FromRgb(0x67, 0xD6, 0x8A));
+    {
+        Color accent = ThemeColor("AccentFillColorDefaultBrush", Color.FromRgb(0x4C, 0xA0, 0xFF));
+        Color[] palette =
+        [
+            accent,
+            Mix(accent, Colors.White, 0.18),
+            Mix(accent, Colors.White, 0.34),
+            Mix(accent, Colors.Black, 0.12),
+            Mix(accent, Colors.Black, 0.24),
+            Mix(Mix(accent, Colors.White, 0.10), Colors.Black, 0.08),
+        ];
+        return palette[index % palette.Length];
+    }
+
+    private static Color Mix(Color from, Color to, double amount)
+    {
+        double t = Math.Clamp(amount, 0.0, 1.0);
+        byte r = (byte)Math.Round(from.R + ((to.R - from.R) * t));
+        byte g = (byte)Math.Round(from.G + ((to.G - from.G) * t));
+        byte b = (byte)Math.Round(from.B + ((to.B - from.B) * t));
+        return Color.FromRgb(r, g, b);
+    }
 
     private void Pad_SizeChanged(object sender, SizeChangedEventArgs e)
     {
