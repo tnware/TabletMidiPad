@@ -29,7 +29,10 @@ internal sealed class ZoneEditorService : IZoneEditorService
             string enabled = zone.Enabled ? "on" : "off";
             target.Add(new ZoneListItemViewModel
             {
+                DisplayIndex = i + 1,
                 Index = i,
+                Name = zone.Name,
+                IsEnabled = zone.Enabled,
                 DisplayText = $"{i + 1}. {zone.Name} [{enabled}]",
             });
         }

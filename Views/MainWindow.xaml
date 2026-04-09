@@ -36,6 +36,86 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
+        <Style x:Key="ZoneListStyle" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6"/>
+        </Style>
+
+        <Style x:Key="ZoneListBoxItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{StaticResource SurfaceAltBrush}"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="5">
+                            <ContentPresenter Margin="10,7"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource PanelBorderStrongBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource AccentSurfaceBrush}"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="ZoneListItemTemplate" DataType="{x:Type vm:ZoneListItemViewModel}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                               FontSize="13"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="0,0,8,0"
+                               Text="&#xE81E;"/>
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Text="{Binding DisplayIndex, StringFormat=Zone {0}}"/>
+                    <TextBlock Foreground="{StaticResource TextSoftBrush}"
+                               FontSize="12"
+                               Margin="8,0,0,0"
+                               Text="{Binding Name}"/>
+                </StackPanel>
+                <Border x:Name="StatusBadge"
+                        Grid.Column="1"
+                        CornerRadius="4"
+                        Padding="6,1"
+                        Background="{StaticResource AccentSurfaceStrongBrush}"
+                        BorderBrush="{StaticResource AccentBrush}"
+                        BorderThickness="1">
+                    <TextBlock x:Name="StatusBadgeText"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AccentBrushHover}"
+                               Text="{Binding StatusText}"/>
+                </Border>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                    <Setter TargetName="StatusBadge" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
+                    <Setter TargetName="StatusBadge" Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
+                    <Setter TargetName="StatusBadgeText" Property="Foreground" Value="{StaticResource TextSoftBrush}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
         <Style x:Key="TopLevelMenuItemWithSub" TargetType="MenuItem">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -779,9 +859,11 @@
 
                         <ListBox Name="ZoneListBox"
                                  Height="132"
+                                 Style="{StaticResource ZoneListStyle}"
+                                 ItemContainerStyle="{StaticResource ZoneListBoxItemStyle}"
+                                 ItemTemplate="{StaticResource ZoneListItemTemplate}"
                                  ItemsSource="{Binding ZoneEditor.Zones}"
                                  SelectedIndex="{Binding ZoneEditor.SelectedZoneIndex, Mode=TwoWay}"
-                                 DisplayMemberPath="DisplayText"
                                  SelectionChanged="ZoneListBox_SelectionChanged"/>
 
                         <Grid Margin="0,8,0,0">
