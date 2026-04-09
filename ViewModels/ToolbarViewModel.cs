@@ -8,7 +8,7 @@ internal sealed class ToolbarViewModel : ViewModelBase
 {
     private readonly IRuntimeConfigService _runtimeConfig;
     private readonly IToolbarConfigService _toolbarSession;
-    private readonly IWorkflowCoordinator _workflowCoordinator;
+    private readonly IUiStateProjectionService _uiStateProjectionService;
     private string _toolbarPressureLabelText = "Pressure (Lin)";
     private string _toolbarInputBackendLabelText = "Input (Auto)";
     private string _selectedPressureCurve = "Linear";
@@ -26,11 +26,11 @@ internal sealed class ToolbarViewModel : ViewModelBase
     public ToolbarViewModel(
         IRuntimeConfigService runtimeConfig,
         IToolbarConfigService toolbarSession,
-        IWorkflowCoordinator workflowCoordinator)
+        IUiStateProjectionService uiStateProjectionService)
     {
         _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
         _toolbarSession = toolbarSession ?? throw new ArgumentNullException(nameof(toolbarSession));
-        _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
+        _uiStateProjectionService = uiStateProjectionService ?? throw new ArgumentNullException(nameof(uiStateProjectionService));
         SelectPressureCurveLinearCommand = new DelegateCommand(() => SetPressureCurve("Linear"));
         SelectPressureCurveLogarithmicCommand = new DelegateCommand(() => SetPressureCurve("Logarithmic"));
         SelectPressureCurveExponentialCommand = new DelegateCommand(() => SetPressureCurve("Exponential"));
@@ -156,7 +156,7 @@ internal sealed class ToolbarViewModel : ViewModelBase
         AppConfig config = _runtimeConfig.Current;
         SendPressureGlobally = config.SendPressureGlobally;
         AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
-        ToolbarState toolbarState = _workflowCoordinator.BuildToolbarState(config);
+        ToolbarState toolbarState = _uiStateProjectionService.BuildToolbarState(config);
         ToolbarPressureLabelText = toolbarState.ToolbarPressureLabelText;
         SelectedPressureCurve = toolbarState.SelectedPressureCurve;
         ToolbarInputBackendLabelText = toolbarState.ToolbarInputBackendLabelText;

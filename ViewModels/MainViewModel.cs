@@ -36,7 +36,7 @@ internal sealed class MainViewModel : ViewModelBase
                 new DesignZoneActionWorkflowCoordinator(),
                 new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService())),
             new ZoneEditorViewModel(new DesignRuntimeConfigService(), new DesignZoneEditorService()),
-            new ToolbarViewModel(new DesignRuntimeConfigService(), new DesignToolbarSession(), new DesignWorkflowCoordinator()),
+            new ToolbarViewModel(new DesignRuntimeConfigService(), new DesignToolbarSession(), new DesignUiStateProjectionService()),
             new MainShellCommandsViewModel(new DesignMainShellCommandController()))
     {
     }
@@ -171,6 +171,23 @@ internal sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref _midiStatusText, value);
     }
 
+    public void ApplyWacomServiceMenuState(WacomServiceMenuState menuState)
+    {
+        WacomServiceStatusHeader = menuState.Header;
+        IsWacomServiceStartEnabled = menuState.StartEnabled;
+    }
+
+    public void ApplyConnectedState(ConnectedState state)
+    {
+        StatusText = state.StatusText;
+        RoutingText = state.RoutingText;
+        ActiveZoneText = state.ActiveZoneText;
+        ConfigSummaryText = state.ConfigSummaryText;
+        ValueText = state.ValueText;
+        PenButtonsText = state.PenButtonsText;
+        ModifiersText = state.ModifiersText;
+    }
+
     private sealed class DesignRuntimeConfigService : Services.IRuntimeConfigService
     {
         public AppConfig Current { get; private set; } = AppConfig.Default;
@@ -236,15 +253,8 @@ internal sealed class MainViewModel : ViewModelBase
         public string GetNextCycledInputBackendModeLabel(AppConfig config) => "Auto";
     }
 
-    private sealed class DesignWorkflowCoordinator : Services.IWorkflowCoordinator
+    private sealed class DesignUiStateProjectionService : Services.IUiStateProjectionService
     {
-        public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
-
-        public Services.WorkflowSaveResult ValidateAndSave(AppConfig config) => new(true, null);
-
-        public Services.PreferencesWorkflowResult ApplyPreferences(AppConfig config, Services.PreferencesDialogResult result, IntPtr midiOutHandle)
-            => new(true, null, false, false);
-
         public Services.WacomServiceMenuState BuildWacomServiceMenuState(Services.WacomServiceStatus status) => new(string.Empty, false);
 
         public Services.ToolbarState BuildToolbarState(AppConfig config)

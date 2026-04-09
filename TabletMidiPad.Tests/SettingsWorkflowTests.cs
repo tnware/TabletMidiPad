@@ -76,7 +76,7 @@ public sealed class SettingsWorkflowTests
 
     private static SettingsWorkflow CreateController(
         RecordingSettingsHost host,
-        IWorkflowCoordinator workflow,
+        ISettingsWorkflowCoordinator workflow,
         RecordingZoneConfigurationService? zones = null)
     {
         var runtime = new RuntimeConfigService(new MemoryConfigStore());
@@ -130,7 +130,7 @@ public sealed class SettingsWorkflowTests
         }
     }
 
-    private sealed class StubWorkflowCoordinator : IWorkflowCoordinator
+    private sealed class StubWorkflowCoordinator : ISettingsWorkflowCoordinator
     {
         public WorkflowSaveResult ValidateAndSaveResult { get; set; } = new(true, null);
 
@@ -143,31 +143,9 @@ public sealed class SettingsWorkflowTests
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => ApplyPreferencesResult;
 
-        public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status) => new(string.Empty, false);
-
-        public ToolbarState BuildToolbarState(AppConfig config) => new(
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false);
-
-        public ConnectedState BuildConnectedState(AppConfig config) => new(
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty,
-            string.Empty);
     }
 
-    private sealed class ThrowingWorkflowCoordinator : IWorkflowCoordinator
+    private sealed class ThrowingWorkflowCoordinator : ISettingsWorkflowCoordinator
     {
         public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount) => 0;
 
@@ -175,12 +153,6 @@ public sealed class SettingsWorkflowTests
 
         public PreferencesWorkflowResult ApplyPreferences(AppConfig config, PreferencesDialogResult result, IntPtr midiOutHandle)
             => throw new NotImplementedException();
-
-        public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status) => throw new System.NotImplementedException();
-
-        public ToolbarState BuildToolbarState(AppConfig config) => throw new System.NotImplementedException();
-
-        public ConnectedState BuildConnectedState(AppConfig config) => throw new System.NotImplementedException();
     }
 
     private sealed class StubPreferencesDialogService : IPreferencesDialogService

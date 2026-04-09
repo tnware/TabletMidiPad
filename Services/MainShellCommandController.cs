@@ -13,7 +13,7 @@ internal sealed class MainShellCommandController : IMainShellCommandController
     private readonly ISettingsWorkflow _settingsWorkflow;
     private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
     private readonly IWacomServiceController _wacomServiceController;
-    private readonly IWorkflowCoordinator _workflowCoordinator;
+    private readonly IUiStateProjectionService _uiStateProjectionService;
     private readonly IPadInputController _padInputController;
 
     public MainShellCommandController(
@@ -21,14 +21,14 @@ internal sealed class MainShellCommandController : IMainShellCommandController
         ISettingsWorkflow settingsWorkflow,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IWacomServiceController wacomServiceController,
-        IWorkflowCoordinator workflowCoordinator,
+        IUiStateProjectionService uiStateProjectionService,
         IPadInputController padInputController)
     {
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _settingsWorkflow = settingsWorkflow ?? throw new ArgumentNullException(nameof(settingsWorkflow));
         _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
         _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
-        _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
+        _uiStateProjectionService = uiStateProjectionService ?? throw new ArgumentNullException(nameof(uiStateProjectionService));
         _padInputController = padInputController ?? throw new ArgumentNullException(nameof(padInputController));
     }
 
@@ -86,7 +86,7 @@ internal sealed class MainShellCommandController : IMainShellCommandController
 
     private void ApplyWacomServiceMenuState(WacomServiceStatus status)
     {
-        WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
+        WacomServiceMenuState menuState = _uiStateProjectionService.BuildWacomServiceMenuState(status);
         _host.SetWacomServiceState(menuState.Header, menuState.StartEnabled);
     }
 }

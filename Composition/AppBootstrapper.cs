@@ -42,8 +42,9 @@ internal static class AppBootstrapper
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
             c.GetRequiredService<IPadInteractionEngine>()));
         container.AddSingleton<IInputBackendStatusFormatter>(_ => new InputBackendStatusFormatter());
-        container.AddSingleton<IWorkflowCoordinator>(c => new WorkflowCoordinator(
+        container.AddSingleton<ISettingsWorkflowCoordinator>(c => new SettingsWorkflowCoordinator(
             c.GetRequiredService<IZoneConfigurationService>()));
+        container.AddSingleton<IUiStateProjectionService>(_ => new UiStateProjectionService());
         container.AddSingleton<IInputBackendCoordinator>(_ => new InputBackendCoordinator());
         container.AddSingleton<IWacomServiceWorkflowCoordinator>(_ => new WacomServiceWorkflowCoordinator());
         container.AddSingleton<IPadInputControllerFactory>(c => new PadInputControllerFactory(
@@ -73,7 +74,7 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneEditorService>(),
             c.GetRequiredService<IZoneActionWorkflowCoordinator>(),
             c.GetRequiredService<IToolbarConfigService>(),
-            c.GetRequiredService<IWorkflowCoordinator>()));
+            c.GetRequiredService<IUiStateProjectionService>()));
 
         container.AddTransient(CreateMainWindow);
 
@@ -99,13 +100,14 @@ internal static class AppBootstrapper
             c.GetRequiredService<IWintabInputBackend>(),
             c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
-            c.GetRequiredService<IWorkflowCoordinator>(),
+            c.GetRequiredService<IUiStateProjectionService>(),
             c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),
             c.GetRequiredService<IStartupLifecycleService>(),
             c.GetRequiredService<IPadInputControllerFactory>(),
             c.GetRequiredService<IZoneResizeService>(),
             c.GetRequiredService<IPreferencesDialogService>(),
             c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<ISettingsWorkflowCoordinator>(),
             c.GetRequiredService<IPadPresentationCoordinator>(),
             c.GetRequiredService<IMainViewModelFactory>(),
             c.GetRequiredService<IPadInteractionOutcomeApplier>());

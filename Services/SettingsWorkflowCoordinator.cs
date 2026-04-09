@@ -3,13 +3,13 @@ using System;
 namespace TabletMidiPad.Services;
 
 /// <summary>
-/// Default workflow coordinator for main-window preference/apply decision logic.
+/// Default settings/preferences decision logic for apply/save workflows.
 /// </summary>
-internal sealed class WorkflowCoordinator : IWorkflowCoordinator
+internal sealed class SettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
 {
     private readonly IZoneConfigurationService _zoneConfigurationService;
 
-    public WorkflowCoordinator(IZoneConfigurationService zoneConfigurationService)
+    public SettingsWorkflowCoordinator(IZoneConfigurationService zoneConfigurationService)
     {
         _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
     }
@@ -85,66 +85,5 @@ internal sealed class WorkflowCoordinator : IWorkflowCoordinator
             ErrorMessage: null,
             ShouldRestartMidi: routingChanged || midiOutHandle == IntPtr.Zero,
             ShouldRebindInputBackend: inputBackendChanged);
-    }
-
-    /// <inheritdoc />
-    public WacomServiceMenuState BuildWacomServiceMenuState(WacomServiceStatus status)
-    {
-        return new WacomServiceMenuState(
-            Header: status.StatusText,
-            StartEnabled: status.CanStart);
-    }
-
-    /// <inheritdoc />
-    public ToolbarState BuildToolbarState(AppConfig config)
-    {
-        string normalizedInputMode = InputBackendModeNormalizer.Normalize(config.InputBackendMode);
-        string curveShort = config.PressureCurve switch
-        {
-            "Logarithmic" => "Log",
-            "Exponential" => "Exp",
-            _ => "Lin"
-        };
-
-        string toolbarInputLabel = normalizedInputMode switch
-        {
-            "Wintab Only" => "Input (Wintab)",
-            "Stylus/Mouse Only" => "Input (Mouse)",
-            _ => "Input (Auto)"
-        };
-
-        string selectedInputMode = normalizedInputMode switch
-        {
-            "Wintab Only" => "Wintab",
-            "Stylus/Mouse Only" => "Mouse",
-            _ => "Auto"
-        };
-
-        string curve = config.PressureCurve;
-        return new ToolbarState(
-            ToolbarPressureLabelText: $"Pressure ({curveShort})",
-            SelectedPressureCurve: curve,
-            ToolbarInputBackendLabelText: toolbarInputLabel,
-            SelectedInputBackendMode: selectedInputMode,
-            IsPressureCurveLinearChecked: string.Equals(curve, "Linear", StringComparison.Ordinal),
-            IsPressureCurveLogarithmicChecked: string.Equals(curve, "Logarithmic", StringComparison.Ordinal),
-            IsPressureCurveExponentialChecked: string.Equals(curve, "Exponential", StringComparison.Ordinal),
-            IsInputBackendAutoChecked: string.Equals(selectedInputMode, "Auto", StringComparison.Ordinal),
-            IsInputBackendWintabChecked: string.Equals(selectedInputMode, "Wintab", StringComparison.Ordinal),
-            IsInputBackendMouseChecked: string.Equals(selectedInputMode, "Mouse", StringComparison.Ordinal));
-    }
-
-    /// <inheritdoc />
-    public ConnectedState BuildConnectedState(AppConfig config)
-    {
-        string switchMode = config.AllowZoneSwitchWhilePressed ? "latch on enter" : "lock zone until release";
-        return new ConnectedState(
-            StatusText: "Connected",
-            RoutingText: $"Send to '{config.DawPortName}' via '{config.AppPortName}'",
-            ActiveZoneText: "Active zone: none",
-            ConfigSummaryText: $"{config.Zones.Count} zone(s) configured | layout {config.MaxZoneRows} row(s) max / {config.MaxZonesPerRow} per row | {switchMode}",
-            ValueText: "X: -, Y: -, Pressure: -",
-            PenButtonsText: "Pen buttons: -",
-            ModifiersText: "Modifiers: none");
     }
 }

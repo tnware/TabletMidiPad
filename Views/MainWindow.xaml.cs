@@ -21,7 +21,7 @@ public partial class MainWindow : Window
     private readonly IWacomServiceController _wacomServiceController;
     private readonly IWintabInputBackend _wintabInputBackend;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
-    private readonly IWorkflowCoordinator _workflowCoordinator;
+    private readonly IUiStateProjectionService _uiStateProjectionService;
     private readonly IStartupLifecycleService _startupLifecycle;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
@@ -50,13 +50,14 @@ public partial class MainWindow : Window
         IWintabInputBackend wintabInputBackend,
         IZoneOverlayRenderer zoneOverlayRenderer,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
-        IWorkflowCoordinator workflowCoordinator,
+        IUiStateProjectionService uiStateProjectionService,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IStartupLifecycleService startupLifecycle,
         IPadInputControllerFactory padInputControllerFactory,
         IZoneResizeService zoneResizeService,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
+        ISettingsWorkflowCoordinator settingsWorkflowCoordinator,
         IPadPresentationCoordinator padPresentationCoordinator,
         IMainViewModelFactory mainViewModelFactory,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
@@ -67,13 +68,14 @@ public partial class MainWindow : Window
         _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
-        _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
+        _uiStateProjectionService = uiStateProjectionService ?? throw new ArgumentNullException(nameof(uiStateProjectionService));
         ArgumentNullException.ThrowIfNull(wacomServiceWorkflowCoordinator);
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         ArgumentNullException.ThrowIfNull(padInputControllerFactory);
         ArgumentNullException.ThrowIfNull(zoneResizeService);
         ArgumentNullException.ThrowIfNull(preferencesDialogService);
         ArgumentNullException.ThrowIfNull(zoneConfigurationService);
+        ArgumentNullException.ThrowIfNull(settingsWorkflowCoordinator);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         ArgumentNullException.ThrowIfNull(mainViewModelFactory);
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
@@ -83,7 +85,7 @@ public partial class MainWindow : Window
         _zonePadSession = new ZonePadController(new ZonePadViewHost(this), zoneResizeService);
         ISettingsWorkflow settingsWorkflow = new SettingsWorkflow(
             new SettingsWorkflowViewHost(this),
-            workflowCoordinator,
+            settingsWorkflowCoordinator,
             preferencesDialogService,
             zoneConfigurationService,
             runtimeConfig,
@@ -95,7 +97,7 @@ public partial class MainWindow : Window
             settingsWorkflow,
             wacomServiceWorkflowCoordinator,
             _wacomServiceController,
-            _workflowCoordinator,
+            _uiStateProjectionService,
             _padInputSession);
         _viewModel = mainViewModelFactory.Create(new MainShellCommandsViewModel(shellCommandController));
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
@@ -309,9 +311,8 @@ public partial class MainWindow : Window
 
     private void RefreshWacomServiceStatus(WacomServiceStatus status)
     {
-        WacomServiceMenuState menuState = _workflowCoordinator.BuildWacomServiceMenuState(status);
-        _viewModel.WacomServiceStatusHeader = menuState.Header;
-        _viewModel.IsWacomServiceStartEnabled = menuState.StartEnabled;
+        WacomServiceMenuState menuState = _uiStateProjectionService.BuildWacomServiceMenuState(status);
+        _viewModel.ApplyWacomServiceMenuState(menuState);
     }
 
     private void LoadConfigIntoUi()
@@ -323,15 +324,9 @@ public partial class MainWindow : Window
 
     private void UpdateUiForCurrentConfig()
     {
-        ConnectedState statusState = _workflowCoordinator.BuildConnectedState(Config);
-        _viewModel.StatusText = statusState.StatusText;
-        _viewModel.RoutingText = statusState.RoutingText;
+        ConnectedState statusState = _uiStateProjectionService.BuildConnectedState(Config);
+        _viewModel.ApplyConnectedState(statusState);
         UpdateInputBackendStatus();
-        _viewModel.ActiveZoneText = statusState.ActiveZoneText;
-        _viewModel.ConfigSummaryText = statusState.ConfigSummaryText;
-        _viewModel.ValueText = statusState.ValueText;
-        _viewModel.PenButtonsText = statusState.PenButtonsText;
-        _viewModel.ModifiersText = statusState.ModifiersText;
     }
 
     private void ApplyInputBackendSplitBorderChrome()

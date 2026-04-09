@@ -9,7 +9,7 @@ namespace TabletMidiPad.Services;
 internal sealed class SettingsWorkflow : ISettingsWorkflow
 {
     private readonly ISettingsWorkflowHost _host;
-    private readonly IWorkflowCoordinator _workflowCoordinator;
+    private readonly ISettingsWorkflowCoordinator _workflowCoordinator;
     private readonly IPreferencesDialogService _preferencesDialogService;
     private readonly IZoneConfigurationService _zoneConfigurationService;
     private readonly IRuntimeConfigService _runtimeConfig;
@@ -21,7 +21,7 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
     /// </summary>
     public SettingsWorkflow(
         ISettingsWorkflowHost host,
-        IWorkflowCoordinator workflowCoordinator,
+        ISettingsWorkflowCoordinator workflowCoordinator,
         IPreferencesDialogService preferencesDialogService,
         IZoneConfigurationService zoneConfigurationService,
         IRuntimeConfigService runtimeConfig,
