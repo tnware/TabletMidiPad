@@ -1186,12 +1186,87 @@
                                                                    FontSize="11"/>
                                                         <TextBox Name="ZoneScaleBreathRowSplitTextBox"
                                                                  Margin="0,4,0,0"
-                                                         Text="{Binding ZoneEditor.ScaleBreathRowSplitText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                 Text="{Binding ZoneEditor.ScaleBreathRowSplitText, UpdateSourceTrigger=PropertyChanged}"/>
                                                     </StackPanel>
                                                 </Grid>
                                                 <CheckBox Margin="0,8,0,0"
                                                           IsChecked="{Binding ZoneEditor.ScaleBreathSendCc}"
                                                           Content="Send CC modulation while in Scale Breath"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Margin="0,12,0,0"
+                                                Padding="10,8"
+                                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                                BorderThickness="1"
+                                                Background="{StaticResource SurfaceRaisedBrush}"
+                                                CornerRadius="8"
+                                                Visibility="{Binding ZoneEditor.IsScaleGridMode, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel>
+                                                <TextBlock Text="Scale Grid Settings"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Margin="0,0,0,6"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Root (0-11)"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11"/>
+                                                        <TextBox Name="ZoneScaleGridRootTextBox"
+                                                                 Margin="0,4,0,0"
+                                                                 Text="{Binding ZoneEditor.ScaleGridRootText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Scale"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11"/>
+                                                        <ComboBox Margin="0,4,0,0"
+                                                                  ItemsSource="{Binding ZoneEditor.ScaleBreathScaleOptions}"
+                                                                  SelectedItem="{Binding ZoneEditor.ScaleGridScale, Mode=TwoWay}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Octave (0-8)"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11"/>
+                                                        <TextBox Name="ZoneScaleGridOctaveTextBox"
+                                                                 Margin="0,4,0,0"
+                                                                 Text="{Binding ZoneEditor.ScaleGridOctaveText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <Grid Margin="0,8,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Rows (1-16)"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11"/>
+                                                        <TextBox Name="ZoneScaleGridRowsTextBox"
+                                                                 Margin="0,4,0,0"
+                                                                 Text="{Binding ZoneEditor.ScaleGridRowsText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Columns (1-16)"
+                                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                                   FontSize="11"/>
+                                                        <TextBox Name="ZoneScaleGridColumnsTextBox"
+                                                                 Margin="0,4,0,0"
+                                                                 Text="{Binding ZoneEditor.ScaleGridColumnsText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <CheckBox Margin="0,8,0,0"
+                                                          IsChecked="{Binding ZoneEditor.ScaleGridSendCc}"
+                                                          Content="Send CC modulation while in Scale Grid"/>
                                             </StackPanel>
                                         </Border>
 

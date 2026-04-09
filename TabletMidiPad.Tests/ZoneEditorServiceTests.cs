@@ -39,6 +39,12 @@ public sealed class ZoneEditorServiceTests
             ScaleBreathHoleCountText = "12",
             ScaleBreathRowSplitText = "0.6",
             ScaleBreathSendCc = false,
+            ScaleGridRootText = "7",
+            ScaleGridScale = ScaleBreathScaleNames.MinorPentatonic,
+            ScaleGridOctaveText = "5",
+            ScaleGridRowsText = "6",
+            ScaleGridColumnsText = "8",
+            ScaleGridSendCc = false,
         };
 
         sut.CommitCurrentZoneEdits(config, vm, 0, "1", "2");
@@ -62,6 +68,12 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(12, z.ScaleBreathHoleCount);
         Assert.Equal(0.6, z.ScaleBreathRowSplit);
         Assert.False(z.ScaleBreathSendCc);
+        Assert.Equal(7, z.ScaleGridRoot);
+        Assert.Equal(ScaleBreathScaleNames.MinorPentatonic, z.ScaleGridScale);
+        Assert.Equal(5, z.ScaleGridOctave);
+        Assert.Equal(6, z.ScaleGridRows);
+        Assert.Equal(8, z.ScaleGridColumns);
+        Assert.False(z.ScaleGridSendCc);
     }
 
     [Fact]
@@ -78,6 +90,12 @@ public sealed class ZoneEditorServiceTests
             MidiChannel = 7,
             ReleaseBehavior = ZoneReleaseBehaviors.Hold,
             OutputMode = ZoneOutputModes.ScaleBreath,
+            ScaleGridRoot = 9,
+            ScaleGridScale = ScaleBreathScaleNames.MajorPentatonic,
+            ScaleGridOctave = 2,
+            ScaleGridRows = 7,
+            ScaleGridColumns = 5,
+            ScaleGridSendCc = false,
         });
 
         var vm = new TestZoneEditorState();
@@ -86,6 +104,12 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(7, vm.ZoneMidiChannel);
         Assert.Equal(ZoneReleaseBehaviors.Hold, vm.ZoneReleaseBehavior);
         Assert.Equal(ZoneOutputModes.ScaleBreath, vm.ZoneOutputMode);
+        Assert.Equal("9", vm.ScaleGridRootText);
+        Assert.Equal(ScaleBreathScaleNames.MajorPentatonic, vm.ScaleGridScale);
+        Assert.Equal("2", vm.ScaleGridOctaveText);
+        Assert.Equal("7", vm.ScaleGridRowsText);
+        Assert.Equal("5", vm.ScaleGridColumnsText);
+        Assert.False(vm.ScaleGridSendCc);
         Assert.True(vm.ZoneDetailsEnabled);
     }
 
@@ -101,6 +125,12 @@ public sealed class ZoneEditorServiceTests
 
         Assert.False(vm.ZoneDetailsEnabled);
         Assert.Equal(1, vm.ZoneMidiChannel);
+        Assert.Equal("0", vm.ScaleGridRootText);
+        Assert.Equal(ScaleBreathScaleNames.Major, vm.ScaleGridScale);
+        Assert.Equal("4", vm.ScaleGridOctaveText);
+        Assert.Equal("4", vm.ScaleGridRowsText);
+        Assert.Equal("4", vm.ScaleGridColumnsText);
+        Assert.True(vm.ScaleGridSendCc);
     }
 
     private sealed class TestZoneEditorState : IZoneEditorState
@@ -171,8 +201,22 @@ public sealed class ZoneEditorServiceTests
 
         public bool ScaleBreathSendCc { get; set; } = true;
 
+        public string ScaleGridRootText { get; set; } = "0";
+
+        public string ScaleGridScale { get; set; } = ScaleBreathScaleNames.Major;
+
+        public string ScaleGridOctaveText { get; set; } = "4";
+
+        public string ScaleGridRowsText { get; set; } = "4";
+
+        public string ScaleGridColumnsText { get; set; } = "4";
+
+        public bool ScaleGridSendCc { get; set; } = true;
+
         public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
 
         public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
+
+        public bool IsScaleGridMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal);
     }
 }

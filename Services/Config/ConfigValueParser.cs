@@ -146,6 +146,7 @@ internal sealed class ConfigValueParser : IConfigValueParser
         {
             ZoneOutputModes.CcPad => value,
             ZoneOutputModes.ScaleBreath => value,
+            ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad
         };
     }

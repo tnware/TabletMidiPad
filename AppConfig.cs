@@ -137,6 +137,11 @@ public sealed partial class AppConfig
                 zone.ScaleBreathOctave = Math.Clamp(zone.ScaleBreathOctave, 0, 8);
                 zone.ScaleBreathHoleCount = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16);
                 zone.ScaleBreathRowSplit = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9);
+                zone.ScaleGridScale = NormalizeScaleBreathScale(zone.ScaleGridScale);
+                zone.ScaleGridRoot = Math.Clamp(zone.ScaleGridRoot, 0, 11);
+                zone.ScaleGridOctave = Math.Clamp(zone.ScaleGridOctave, 0, 8);
+                zone.ScaleGridRows = Math.Clamp(zone.ScaleGridRows, 1, 16);
+                zone.ScaleGridColumns = Math.Clamp(zone.ScaleGridColumns, 1, 16);
             }
         }
 
@@ -151,6 +156,7 @@ public sealed partial class AppConfig
         {
             ZoneOutputModes.CcPad => value,
             ZoneOutputModes.ScaleBreath => value,
+            ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad
         };
     }
@@ -315,6 +321,7 @@ public static class ZoneOutputModes
 {
     public const string CcPad = "CC Pad";
     public const string ScaleBreath = "Scale Breath";
+    public const string ScaleGrid = "Scale Grid";
 }
 
 public static class ScaleBreathScaleNames
@@ -374,6 +381,12 @@ public sealed class ZoneConfig
     public int ScaleBreathHoleCount { get; set; } = 10;
     public double ScaleBreathRowSplit { get; set; } = 0.5;
     public bool ScaleBreathSendCc { get; set; } = true;
+    public int ScaleGridRoot { get; set; }
+    public string ScaleGridScale { get; set; } = ScaleBreathScaleNames.Major;
+    public int ScaleGridOctave { get; set; } = 4;
+    public int ScaleGridRows { get; set; } = 4;
+    public int ScaleGridColumns { get; set; } = 4;
+    public bool ScaleGridSendCc { get; set; } = true;
 
     public double Left { get; set; }
     public double Top { get; set; }

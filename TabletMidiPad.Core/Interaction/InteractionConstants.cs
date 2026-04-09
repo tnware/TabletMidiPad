@@ -62,6 +62,7 @@ public static class InteractionConstants
     {
         public const string CcPad = "CC Pad";
         public const string ScaleBreath = "Scale Breath";
+        public const string ScaleGrid = "Scale Grid";
     }
 
     /// <summary>

@@ -35,6 +35,12 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private string _scaleBreathHoleCountText = "10";
     private string _scaleBreathRowSplitText = "0.5";
     private bool _scaleBreathSendCc = true;
+    private string _scaleGridRootText = "0";
+    private string _scaleGridScale = ScaleBreathScaleNames.Major;
+    private string _scaleGridOctaveText = "4";
+    private string _scaleGridRowsText = "4";
+    private string _scaleGridColumnsText = "4";
+    private bool _scaleGridSendCc = true;
     private string _maxZoneRowsText = string.Empty;
     private string _maxZonesPerRowText = string.Empty;
     private bool _isCanvasLocked;
@@ -61,6 +67,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
         ZoneOutputModeOptions.Add(ZoneOutputModes.CcPad);
         ZoneOutputModeOptions.Add(ZoneOutputModes.ScaleBreath);
+        ZoneOutputModeOptions.Add(ZoneOutputModes.ScaleGrid);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.Major);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.NaturalMinor);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.MajorPentatonic);
@@ -255,6 +262,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
 
             OnPropertyChanged(nameof(IsCcPadMode));
             OnPropertyChanged(nameof(IsScaleBreathMode));
+            OnPropertyChanged(nameof(IsScaleGridMode));
         }
     }
 
@@ -294,9 +302,47 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         set => SetProperty(ref _scaleBreathSendCc, value);
     }
 
+    public string ScaleGridRootText
+    {
+        get => _scaleGridRootText;
+        set => SetProperty(ref _scaleGridRootText, value);
+    }
+
+    public string ScaleGridScale
+    {
+        get => _scaleGridScale;
+        set => SetProperty(ref _scaleGridScale, value);
+    }
+
+    public string ScaleGridOctaveText
+    {
+        get => _scaleGridOctaveText;
+        set => SetProperty(ref _scaleGridOctaveText, value);
+    }
+
+    public string ScaleGridRowsText
+    {
+        get => _scaleGridRowsText;
+        set => SetProperty(ref _scaleGridRowsText, value);
+    }
+
+    public string ScaleGridColumnsText
+    {
+        get => _scaleGridColumnsText;
+        set => SetProperty(ref _scaleGridColumnsText, value);
+    }
+
+    public bool ScaleGridSendCc
+    {
+        get => _scaleGridSendCc;
+        set => SetProperty(ref _scaleGridSendCc, value);
+    }
+
     public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
 
     public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
+
+    public bool IsScaleGridMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal);
 
     public void NotifySelectedZoneIndexChanged() => OnPropertyChanged(nameof(SelectedZoneIndex));
 

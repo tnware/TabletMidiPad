@@ -159,6 +159,12 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         string mode = NormalizeZoneOutputMode(zone.OutputMode);
         if (!string.Equals(mode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal))
         {
+            if (!string.Equals(mode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            AddScaleGridOverlay(canvas, zone, left, top, width, height, baseColor, selected);
             return;
         }
 
@@ -237,6 +243,90 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
                 double rowTop = row == 0 ? top : splitY;
                 double rowBottom = row == 0 ? splitY : top + height;
                 double centerY = (rowTop + rowBottom) / 2;
+
+                Canvas.SetLeft(label, centerX - (label.DesiredSize.Width / 2));
+                Canvas.SetTop(label, centerY - (label.DesiredSize.Height / 2));
+                canvas.Children.Add(label);
+            }
+        }
+    }
+
+    private static void AddScaleGridOverlay(
+        Canvas canvas,
+        ZoneOverlayZone zone,
+        double left,
+        double top,
+        double width,
+        double height,
+        Color baseColor,
+        bool selected)
+    {
+        int rows = Math.Clamp(zone.ScaleGridRows, 1, 16);
+        int cols = Math.Clamp(zone.ScaleGridColumns, 1, 16);
+        byte lineAlpha = selected ? (byte)150 : (byte)110;
+        var lineBrush = new SolidColorBrush(WithAlpha(baseColor, lineAlpha));
+
+        for (int c = 1; c < cols; c++)
+        {
+            double x = left + ((width * c) / cols);
+            var divider = new Line
+            {
+                X1 = x,
+                Y1 = top,
+                X2 = x,
+                Y2 = top + height,
+                Stroke = lineBrush,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(divider);
+        }
+
+        for (int r = 1; r < rows; r++)
+        {
+            double y = top + ((height * r) / rows);
+            var divider = new Line
+            {
+                X1 = left,
+                Y1 = y,
+                X2 = left + width,
+                Y2 = y,
+                Stroke = lineBrush,
+                StrokeThickness = 1
+            };
+            canvas.Children.Add(divider);
+        }
+
+        bool drawLabels = (width / cols) >= 24 && (height / rows) >= 16;
+        if (!drawLabels)
+        {
+            return;
+        }
+
+        var labelBrush = new SolidColorBrush(WithAlpha(baseColor, selected ? (byte)245 : (byte)215));
+        for (int rowFromTop = 0; rowFromTop < rows; rowFromTop++)
+        {
+            int rowFromBottom = (rows - 1) - rowFromTop;
+            for (int col = 0; col < cols; col++)
+            {
+                int streamIndex = (rowFromBottom * cols) + col;
+                int note = BuildScaleBreathNote(zone.ScaleGridRoot, zone.ScaleGridScale, zone.ScaleGridOctave, streamIndex);
+                string labelText = FormatNoteName(note);
+                var label = new TextBlock
+                {
+                    Text = labelText,
+                    FontSize = 8.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = labelBrush
+                };
+
+                label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double cellLeft = left + ((col * width) / cols);
+                double cellRight = left + (((col + 1) * width) / cols);
+                double centerX = (cellLeft + cellRight) / 2;
+
+                double cellTop = top + ((rowFromTop * height) / rows);
+                double cellBottom = top + (((rowFromTop + 1) * height) / rows);
+                double centerY = (cellTop + cellBottom) / 2;
 
                 Canvas.SetLeft(label, centerX - (label.DesiredSize.Width / 2));
                 Canvas.SetTop(label, centerY - (label.DesiredSize.Height / 2));
@@ -566,6 +656,7 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         {
             ZoneOutputModes.CcPad => value,
             ZoneOutputModes.ScaleBreath => value,
+            ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad
         };
     }

@@ -59,6 +59,12 @@ public sealed record ZoneSnapshot(
     public int ScaleBreathHoleCount { get; init; } = 10;
     public double ScaleBreathRowSplit { get; init; } = 0.5;
     public bool ScaleBreathSendCc { get; init; } = true;
+    public int ScaleGridRoot { get; init; }
+    public string ScaleGridScale { get; init; } = InteractionConstants.ScaleBreathScales.Major;
+    public int ScaleGridOctave { get; init; } = 4;
+    public int ScaleGridRows { get; init; } = 4;
+    public int ScaleGridColumns { get; init; } = 4;
+    public bool ScaleGridSendCc { get; init; } = true;
 }
 
 /// <summary>

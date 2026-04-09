@@ -156,6 +156,12 @@ public sealed class InputInteractionOrchestratorTests
                     ScaleBreathHoleCount = 9,
                     ScaleBreathRowSplit = 0.4,
                     ScaleBreathSendCc = false,
+                    ScaleGridRoot = 5,
+                    ScaleGridScale = ScaleBreathScaleNames.MajorPentatonic,
+                    ScaleGridOctave = 2,
+                    ScaleGridRows = 6,
+                    ScaleGridColumns = 7,
+                    ScaleGridSendCc = false,
                     Left = 0.1,
                     Top = 0.2,
                     Width = 0.3,
@@ -186,6 +192,12 @@ public sealed class InputInteractionOrchestratorTests
         Assert.Equal(9, z.ScaleBreathHoleCount);
         Assert.Equal(0.4, z.ScaleBreathRowSplit);
         Assert.False(z.ScaleBreathSendCc);
+        Assert.Equal(5, z.ScaleGridRoot);
+        Assert.Equal(ScaleBreathScaleNames.MajorPentatonic, z.ScaleGridScale);
+        Assert.Equal(2, z.ScaleGridOctave);
+        Assert.Equal(6, z.ScaleGridRows);
+        Assert.Equal(7, z.ScaleGridColumns);
+        Assert.False(z.ScaleGridSendCc);
         Assert.Equal(0.1, z.Left);
         Assert.Equal(0.2, z.Top);
         Assert.Equal(0.3, z.Width);

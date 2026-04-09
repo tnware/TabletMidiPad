@@ -65,12 +65,17 @@ public sealed class PadPresentationCoordinatorTests
                 Top = 0,
                 Width = 0.5,
                 Height = 1,
-                OutputMode = ZoneOutputModes.ScaleBreath,
+                OutputMode = ZoneOutputModes.ScaleGrid,
                 ScaleBreathRoot = 2,
                 ScaleBreathScale = ScaleBreathScaleNames.NaturalMinor,
                 ScaleBreathOctave = 3,
                 ScaleBreathHoleCount = 12,
-                ScaleBreathRowSplit = 0.4
+                ScaleBreathRowSplit = 0.4,
+                ScaleGridRoot = 9,
+                ScaleGridScale = ScaleBreathScaleNames.MajorPentatonic,
+                ScaleGridOctave = 5,
+                ScaleGridRows = 6,
+                ScaleGridColumns = 8
             },
             new() { Name = "B", Left = 0.5, Top = 0, Width = 0.5, Height = 1 },
         };
@@ -104,8 +109,13 @@ public sealed class PadPresentationCoordinatorTests
         Assert.Single(request.LastLocalByZoneIndex);
         Assert.True(request.LastLocalByZoneIndex.ContainsKey(0));
         Assert.Equal(2, request.ZonePalette.Count);
-        Assert.Equal(ZoneOutputModes.ScaleBreath, request.Zones[0].OutputMode);
+        Assert.Equal(ZoneOutputModes.ScaleGrid, request.Zones[0].OutputMode);
         Assert.Equal(12, request.Zones[0].ScaleBreathHoleCount);
         Assert.Equal(0.4, request.Zones[0].ScaleBreathRowSplit);
+        Assert.Equal(9, request.Zones[0].ScaleGridRoot);
+        Assert.Equal(ScaleBreathScaleNames.MajorPentatonic, request.Zones[0].ScaleGridScale);
+        Assert.Equal(5, request.Zones[0].ScaleGridOctave);
+        Assert.Equal(6, request.Zones[0].ScaleGridRows);
+        Assert.Equal(8, request.Zones[0].ScaleGridColumns);
     }
 }

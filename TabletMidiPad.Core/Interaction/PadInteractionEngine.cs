@@ -203,6 +203,10 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         {
             return ProcessScaleBreathZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
         }
+        if (string.Equals(zoneMode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal))
+        {
+            return ProcessScaleGridZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
+        }
 
         var ccmessages = new List<MidiMessage>(capacity: 4);
         SendScaleBreathNoteOff(state, ccmessages);
@@ -320,6 +324,82 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
             ValueLabel: $"{zone.Name} -> Note {note} (hole {holeIndex + 1}, row {rowText}) | X: {xText}, Y: {yText}, Pressure: {pressureText}",
+            ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
+            MidiMessages: messages);
+    }
+
+    private static InteractionResult ProcessScaleGridZone(
+        PadInteractionConfig config,
+        ZoneSnapshot zone,
+        InteractionInput input,
+        InteractionState state,
+        string lowerAction,
+        string upperAction,
+        double xLocal,
+        double yLocal)
+    {
+        int rows = Math.Clamp(zone.ScaleGridRows, 1, 16);
+        int cols = Math.Clamp(zone.ScaleGridColumns, 1, 16);
+        int colIndex = Math.Clamp((int)Math.Floor(xLocal * cols), 0, cols - 1);
+        int rowFromTop = Math.Clamp((int)Math.Floor(yLocal * rows), 0, rows - 1);
+        int rowFromBottom = (rows - 1) - rowFromTop;
+        int streamIndex = (rowFromBottom * cols) + colIndex;
+        int note = BuildScaleBreathNote(zone.ScaleGridRoot, zone.ScaleGridScale, zone.ScaleGridOctave, streamIndex);
+        int velocity = Math.Clamp(ApplyPressureCurve(config, input.Pressure), 1, 127);
+
+        var messages = new List<MidiMessage>(capacity: 6);
+        bool shouldSwitch =
+            !state.HasScaleBreathActiveNote ||
+            state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
+            state.ScaleBreathActiveChannel != zone.MidiChannel ||
+            state.ScaleBreathActiveNote != note;
+        if (shouldSwitch)
+        {
+            SendScaleBreathNoteOff(state, messages);
+            messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
+            state.HasScaleBreathActiveNote = true;
+            state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
+            state.ScaleBreathActiveChannel = zone.MidiChannel;
+            state.ScaleBreathActiveNote = note;
+        }
+
+        int xCc = ToCc(xLocal, zone.InvertX);
+        int yCc = ToCc(yLocal, zone.InvertY);
+        int curvedPressure = ApplyPressureCurve(config, input.Pressure);
+        bool sendPressure = config.SendPressureGlobally && zone.SendPressure;
+        if ((state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
+        {
+            sendPressure = false;
+        }
+
+        bool pressureEnabledByButton =
+            (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
+        bool anyEnablePressureAction =
+            string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal) ||
+            string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal);
+        if (anyEnablePressureAction)
+        {
+            sendPressure = sendPressure && pressureEnabledByButton;
+        }
+
+        bool allowScaleGridCc = zone.ScaleGridSendCc;
+        if (allowScaleGridCc && zone.SendX)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
+        if (allowScaleGridCc && zone.SendY)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
+        if (allowScaleGridCc && sendPressure)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
+
+        string xText = allowScaleGridCc && zone.SendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = allowScaleGridCc && zone.SendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = allowScaleGridCc && sendPressure ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+
+        return new InteractionResult(
+            ActiveZoneIndex: state.ActiveZoneIndex,
+            ActiveZoneLabel: $"Active zone: {zone.Name}",
+            ValueLabel: $"{zone.Name} -> Note {note} (r{rowFromBottom + 1} c{colIndex + 1}) | X: {xText}, Y: {yText}, Pressure: {pressureText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -657,6 +737,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         {
             ZoneOutputModes.CcPad => value,
             ZoneOutputModes.ScaleBreath => value,
+            ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad
         };
     }

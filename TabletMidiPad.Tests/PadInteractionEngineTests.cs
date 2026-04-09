@@ -444,4 +444,83 @@ public sealed class PadInteractionEngineTests
         MidiMessage note = Assert.Single(result.MidiMessages);
         Assert.Equal(MidiMessageKind.Note, note.Kind);
     }
+
+    [Fact]
+    public void ScaleGridMapsCellsToScaleNotesAndCanDisableCc()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "G",
+                Enabled: true,
+                MidiChannel: 4,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: true,
+                SendY: true,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.ScaleGrid,
+                ScaleGridRoot = 0,
+                ScaleGridScale = InteractionConstants.ScaleBreathScales.Major,
+                ScaleGridOctave = 4,
+                ScaleGridRows = 2,
+                ScaleGridColumns = 2,
+                ScaleGridSendCc = false
+            },
+        };
+
+        var state = new InteractionState();
+        InteractionResult first = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.1, 0.8, 127, true, false, 0, InteractionBackend.MouseFallback));
+
+        MidiMessage firstOn = Assert.Single(first.MidiMessages);
+        Assert.Equal(MidiMessageKind.Note, firstOn.Kind);
+        Assert.Equal(4, firstOn.Channel);
+        Assert.Equal(60, firstOn.Number);
+        Assert.Equal(127, firstOn.Value);
+
+        InteractionResult second = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.1, 0.2, 127, true, false, 0, InteractionBackend.MouseFallback));
+
+        Assert.Equal(2, second.MidiMessages.Count);
+        Assert.Equal(MidiMessageKind.Note, second.MidiMessages[0].Kind);
+        Assert.Equal(60, second.MidiMessages[0].Number);
+        Assert.Equal(0, second.MidiMessages[0].Value);
+        Assert.Equal(MidiMessageKind.Note, second.MidiMessages[1].Kind);
+        Assert.Equal(64, second.MidiMessages[1].Number);
+        Assert.Equal(127, second.MidiMessages[1].Value);
+    }
 }

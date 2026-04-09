@@ -138,7 +138,11 @@ public partial class MainWindow : Window
             ZoneCcPressureTextBox,
             ZoneScaleBreathRootTextBox,
             ZoneScaleBreathOctaveTextBox,
-            ZoneScaleBreathHoleCountTextBox
+            ZoneScaleBreathHoleCountTextBox,
+            ZoneScaleGridRootTextBox,
+            ZoneScaleGridOctaveTextBox,
+            ZoneScaleGridRowsTextBox,
+            ZoneScaleGridColumnsTextBox
         })
         {
             NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Integer);

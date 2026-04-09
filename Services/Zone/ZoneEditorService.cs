@@ -74,6 +74,12 @@ internal sealed class ZoneEditorService : IZoneEditorService
             viewModel.ScaleBreathHoleCountText = "10";
             viewModel.ScaleBreathRowSplitText = "0.5";
             viewModel.ScaleBreathSendCc = true;
+            viewModel.ScaleGridRootText = "0";
+            viewModel.ScaleGridScale = ScaleBreathScaleNames.Major;
+            viewModel.ScaleGridOctaveText = "4";
+            viewModel.ScaleGridRowsText = "4";
+            viewModel.ScaleGridColumnsText = "4";
+            viewModel.ScaleGridSendCc = true;
             return;
         }
 
@@ -103,6 +109,12 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ScaleBreathHoleCountText = Math.Clamp(zone.ScaleBreathHoleCount, 4, 16).ToString(CultureInfo.InvariantCulture);
         viewModel.ScaleBreathRowSplitText = Math.Clamp(zone.ScaleBreathRowSplit, 0.1, 0.9).ToString("0.###", CultureInfo.InvariantCulture);
         viewModel.ScaleBreathSendCc = zone.ScaleBreathSendCc;
+        viewModel.ScaleGridRootText = Math.Clamp(zone.ScaleGridRoot, 0, 11).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleGridScale = _configValueParser.NormalizeScaleBreathScale(zone.ScaleGridScale);
+        viewModel.ScaleGridOctaveText = Math.Clamp(zone.ScaleGridOctave, 0, 8).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleGridRowsText = Math.Clamp(zone.ScaleGridRows, 1, 16).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleGridColumnsText = Math.Clamp(zone.ScaleGridColumns, 1, 16).ToString(CultureInfo.InvariantCulture);
+        viewModel.ScaleGridSendCc = zone.ScaleGridSendCc;
     }
 
     /// <inheritdoc />
@@ -146,6 +158,12 @@ internal sealed class ZoneEditorService : IZoneEditorService
         zone.ScaleBreathHoleCount = _configValueParser.ReadInt(viewModel.ScaleBreathHoleCountText, 4, 16, "Scale Breath Hole Count");
         zone.ScaleBreathRowSplit = _configValueParser.ReadDouble(viewModel.ScaleBreathRowSplitText, 0.1, 0.9, "Scale Breath Row Split");
         zone.ScaleBreathSendCc = viewModel.ScaleBreathSendCc;
+        zone.ScaleGridRoot = _configValueParser.ReadInt(viewModel.ScaleGridRootText, 0, 11, "Scale Grid Root");
+        zone.ScaleGridScale = _configValueParser.NormalizeScaleBreathScale(viewModel.ScaleGridScale);
+        zone.ScaleGridOctave = _configValueParser.ReadInt(viewModel.ScaleGridOctaveText, 0, 8, "Scale Grid Octave");
+        zone.ScaleGridRows = _configValueParser.ReadInt(viewModel.ScaleGridRowsText, 1, 16, "Scale Grid Rows");
+        zone.ScaleGridColumns = _configValueParser.ReadInt(viewModel.ScaleGridColumnsText, 1, 16, "Scale Grid Columns");
+        zone.ScaleGridSendCc = viewModel.ScaleGridSendCc;
         SetZoneSelectionSummary(viewModel, zone);
     }
 

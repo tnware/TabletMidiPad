@@ -68,7 +68,13 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
                 ScaleBreathOctave = z.ScaleBreathOctave,
                 ScaleBreathHoleCount = z.ScaleBreathHoleCount,
                 ScaleBreathRowSplit = z.ScaleBreathRowSplit,
-                ScaleBreathSendCc = z.ScaleBreathSendCc
+                ScaleBreathSendCc = z.ScaleBreathSendCc,
+                ScaleGridRoot = z.ScaleGridRoot,
+                ScaleGridScale = z.ScaleGridScale,
+                ScaleGridOctave = z.ScaleGridOctave,
+                ScaleGridRows = z.ScaleGridRows,
+                ScaleGridColumns = z.ScaleGridColumns,
+                ScaleGridSendCc = z.ScaleGridSendCc
             })];
     }
 

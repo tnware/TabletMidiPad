@@ -70,7 +70,21 @@ internal interface IZoneEditorState
 
     bool ScaleBreathSendCc { get; set; }
 
+    string ScaleGridRootText { get; set; }
+
+    string ScaleGridScale { get; set; }
+
+    string ScaleGridOctaveText { get; set; }
+
+    string ScaleGridRowsText { get; set; }
+
+    string ScaleGridColumnsText { get; set; }
+
+    bool ScaleGridSendCc { get; set; }
+
     bool IsCcPadMode { get; }
 
     bool IsScaleBreathMode { get; }
+
+    bool IsScaleGridMode { get; }
 }
