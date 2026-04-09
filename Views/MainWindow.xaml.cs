@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Globalization;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
@@ -392,5 +393,34 @@ public partial class MainWindow : Window
         {
             RefreshPadZoneOverlay();
         }
+    }
+
+    private void ZoneLearnCcXButton_Click(object sender, RoutedEventArgs e)
+        => TrySendLearnCc(_viewModel.ZoneEditor.ZoneCcX, 64, "CC X");
+
+    private void ZoneLearnCcYButton_Click(object sender, RoutedEventArgs e)
+        => TrySendLearnCc(_viewModel.ZoneEditor.ZoneCcY, 64, "CC Y");
+
+    private void ZoneLearnCcPressureButton_Click(object sender, RoutedEventArgs e)
+        => TrySendLearnCc(_viewModel.ZoneEditor.ZoneCcPressure, 100, "CC Pressure");
+
+    private void TrySendLearnCc(string? ccText, int value, string label)
+    {
+        if (!_viewModel.ZoneEditor.ZoneDetailsEnabled)
+        {
+            SetSettingsResult("Select a zone before sending a learn CC message.", SettingsResultKind.Error);
+            return;
+        }
+
+        if (!int.TryParse(ccText, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cc) || cc < 0 || cc > 127)
+        {
+            SetSettingsResult($"{label} must be a whole number between 0 and 127.", SettingsResultKind.Error);
+            return;
+        }
+
+        int channel = Math.Clamp(_viewModel.ZoneEditor.ZoneMidiChannel, 1, 16);
+        int ccValue = Math.Clamp(value, 0, 127);
+        _midiEngine.SendCcIfChanged(channel, cc, ccValue, force: true);
+        SetSettingsResult($"Sent learn message: ch {channel}, CC {cc}, value {ccValue}.", SettingsResultKind.Success);
     }
 }

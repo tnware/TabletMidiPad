@@ -1099,6 +1099,10 @@
                                                         <TextBox Name="ZoneCcXTextBox"
                                                                  Margin="0,4,0,0"
                                                                  Text="{Binding ZoneEditor.ZoneCcX, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <Button Margin="0,6,0,0"
+                                                                Padding="8,4"
+                                                                Click="ZoneLearnCcXButton_Click"
+                                                                Content="Learn CC X"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="CC Y"
@@ -1107,6 +1111,10 @@
                                                         <TextBox Name="ZoneCcYTextBox"
                                                                  Margin="0,4,0,0"
                                                                  Text="{Binding ZoneEditor.ZoneCcY, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <Button Margin="0,6,0,0"
+                                                                Padding="8,4"
+                                                                Click="ZoneLearnCcYButton_Click"
+                                                                Content="Learn CC Y"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="4">
                                                         <TextBlock Text="CC P"
@@ -1115,6 +1123,10 @@
                                                         <TextBox Name="ZoneCcPressureTextBox"
                                                                  Margin="0,4,0,0"
                                                                  Text="{Binding ZoneEditor.ZoneCcPressure, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <Button Margin="0,6,0,0"
+                                                                Padding="8,4"
+                                                                Click="ZoneLearnCcPressureButton_Click"
+                                                                Content="Learn CC P"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </StackPanel>
