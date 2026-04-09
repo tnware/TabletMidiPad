@@ -39,6 +39,7 @@ public sealed class ZoneOverlayRendererTests
                             ScaleGridOctave: 4,
                             ScaleGridRows: 4,
                             ScaleGridColumns: 4,
+                            OneNoteNote: 60,
                             MappingAssistEnabled: true,
                             MappingAssistTarget: ZoneMappingAssistTargets.CcX,
                             Left: 0,

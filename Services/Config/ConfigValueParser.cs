@@ -145,6 +145,7 @@ internal sealed class ConfigValueParser : IConfigValueParser
         return value switch
         {
             ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.OneNote => value,
             ZoneOutputModes.ScaleBreath => value,
             ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad

@@ -88,7 +88,13 @@ internal interface IZoneEditorState
 
     bool ScaleGridSendCc { get; set; }
 
+    string OneNoteNoteText { get; set; }
+
+    bool OneNoteSendCc { get; set; }
+
     bool IsCcPadMode { get; }
+
+    bool IsOneNoteMode { get; }
 
     bool IsScaleBreathMode { get; }
 

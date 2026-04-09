@@ -41,6 +41,7 @@ public sealed record ZoneOverlayZone(
     int ScaleGridOctave,
     int ScaleGridRows,
     int ScaleGridColumns,
+    int OneNoteNote,
     bool MappingAssistEnabled,
     string MappingAssistTarget,
     double Left,

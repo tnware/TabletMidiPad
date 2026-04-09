@@ -142,6 +142,7 @@ public sealed partial class AppConfig
                 zone.ScaleGridOctave = Math.Clamp(zone.ScaleGridOctave, 0, 8);
                 zone.ScaleGridRows = Math.Clamp(zone.ScaleGridRows, 1, 16);
                 zone.ScaleGridColumns = Math.Clamp(zone.ScaleGridColumns, 1, 16);
+                zone.OneNoteNote = Math.Clamp(zone.OneNoteNote, 0, 127);
                 zone.MappingAssistTarget = NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget);
             }
         }
@@ -156,6 +157,7 @@ public sealed partial class AppConfig
         return value switch
         {
             ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.OneNote => value,
             ZoneOutputModes.ScaleBreath => value,
             ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad
@@ -333,6 +335,7 @@ public static class ZoneReleaseBehaviors
 public static class ZoneOutputModes
 {
     public const string CcPad = "CC Pad";
+    public const string OneNote = "One Note";
     public const string ScaleBreath = "Scale Breath";
     public const string ScaleGrid = "Scale Grid";
 }
@@ -407,6 +410,8 @@ public sealed class ZoneConfig
     public int ScaleGridRows { get; set; } = 4;
     public int ScaleGridColumns { get; set; } = 4;
     public bool ScaleGridSendCc { get; set; } = true;
+    public int OneNoteNote { get; set; } = 60;
+    public bool OneNoteSendCc { get; set; }
     public bool MappingAssistEnabled { get; set; }
     public string MappingAssistTarget { get; set; } = ZoneMappingAssistTargets.CcX;
 

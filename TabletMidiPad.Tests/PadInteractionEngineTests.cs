@@ -525,6 +525,80 @@ public sealed class PadInteractionEngineTests
     }
 
     [Fact]
+    public void OneNoteModeEmitsFixedNoteAndReleaseNoteOff()
+    {
+        var engine = new PadInteractionEngine();
+        var config = new PadInteractionConfig(
+            SendPressureGlobally: true,
+            AllowZoneSwitchWhilePressed: true,
+            MousePressureValue: 127,
+            PositionDeadZone: 0.0,
+            PositionSmoothing: 0.0,
+            PressureCurve: "Linear",
+            LowerPenButtonAction: InteractionConstants.PenButtonActions.None,
+            LowerPenButtonMidiChannel: 1,
+            LowerPenButtonCc: 64,
+            LowerPenButtonNote: 60,
+            UpperPenButtonAction: InteractionConstants.PenButtonActions.None,
+            UpperPenButtonMidiChannel: 1,
+            UpperPenButtonCc: 65,
+            UpperPenButtonNote: 61,
+            ExpressKeys: new List<ExpressKeyConfigSnapshot>());
+
+        ZoneSnapshot[] zones = new[]
+        {
+            new ZoneSnapshot(
+                Name: "N",
+                Enabled: true,
+                MidiChannel: 5,
+                CcX: 20,
+                CcY: 21,
+                CcPressure: 22,
+                SendX: true,
+                SendY: true,
+                InvertX: false,
+                InvertY: false,
+                SendPressure: true,
+                ReleaseBehavior: InteractionConstants.ZoneReleaseBehaviors.NoSendOnRelease,
+                Left: 0.0,
+                Top: 0.0,
+                Width: 1.0,
+                Height: 1.0)
+            {
+                OutputMode = InteractionConstants.ZoneOutputModes.OneNote,
+                OneNoteNote = 36,
+                OneNoteSendCc = false
+            },
+        };
+
+        var state = new InteractionState();
+        InteractionResult first = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.1, 0.8, 90, true, false, 0, InteractionBackend.MouseFallback));
+
+        MidiMessage noteOn = Assert.Single(first.MidiMessages);
+        Assert.Equal(MidiMessageKind.Note, noteOn.Kind);
+        Assert.Equal(5, noteOn.Channel);
+        Assert.Equal(36, noteOn.Number);
+        Assert.Equal(90, noteOn.Value);
+
+        InteractionResult release = engine.Process(
+            config,
+            zones,
+            state,
+            new InteractionInput(0.1, 0.8, 0, false, false, 0, InteractionBackend.MouseFallback));
+
+        MidiMessage noteOff = Assert.Single(release.MidiMessages);
+        Assert.Equal(MidiMessageKind.Note, noteOff.Kind);
+        Assert.Equal(5, noteOff.Channel);
+        Assert.Equal(36, noteOff.Number);
+        Assert.Equal(0, noteOff.Value);
+        Assert.True(noteOff.Force);
+    }
+
+    [Fact]
     public void MappingAssistCanSoloSingleCcAndSuppressNotes()
     {
         var engine = new PadInteractionEngine();

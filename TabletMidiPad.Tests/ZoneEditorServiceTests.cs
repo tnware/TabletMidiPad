@@ -45,6 +45,8 @@ public sealed class ZoneEditorServiceTests
             ScaleGridRowsText = "6",
             ScaleGridColumnsText = "8",
             ScaleGridSendCc = false,
+            OneNoteNoteText = "42",
+            OneNoteSendCc = true,
             MappingAssistEnabled = true,
             MappingAssistTarget = ZoneMappingAssistTargets.CcPressure,
         };
@@ -76,6 +78,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal(6, z.ScaleGridRows);
         Assert.Equal(8, z.ScaleGridColumns);
         Assert.False(z.ScaleGridSendCc);
+        Assert.Equal(42, z.OneNoteNote);
+        Assert.True(z.OneNoteSendCc);
         Assert.True(z.MappingAssistEnabled);
         Assert.Equal(ZoneMappingAssistTargets.CcPressure, z.MappingAssistTarget);
     }
@@ -100,6 +104,8 @@ public sealed class ZoneEditorServiceTests
             ScaleGridRows = 7,
             ScaleGridColumns = 5,
             ScaleGridSendCc = false,
+            OneNoteNote = 77,
+            OneNoteSendCc = true,
             MappingAssistEnabled = true,
             MappingAssistTarget = ZoneMappingAssistTargets.CcY,
         });
@@ -116,6 +122,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal("7", vm.ScaleGridRowsText);
         Assert.Equal("5", vm.ScaleGridColumnsText);
         Assert.False(vm.ScaleGridSendCc);
+        Assert.Equal("77", vm.OneNoteNoteText);
+        Assert.True(vm.OneNoteSendCc);
         Assert.True(vm.MappingAssistEnabled);
         Assert.Equal(ZoneMappingAssistTargets.CcY, vm.MappingAssistTarget);
         Assert.True(vm.ZoneDetailsEnabled);
@@ -139,6 +147,8 @@ public sealed class ZoneEditorServiceTests
         Assert.Equal("4", vm.ScaleGridRowsText);
         Assert.Equal("4", vm.ScaleGridColumnsText);
         Assert.True(vm.ScaleGridSendCc);
+        Assert.Equal("60", vm.OneNoteNoteText);
+        Assert.False(vm.OneNoteSendCc);
         Assert.False(vm.MappingAssistEnabled);
         Assert.Equal(ZoneMappingAssistTargets.CcX, vm.MappingAssistTarget);
     }
@@ -229,7 +239,13 @@ public sealed class ZoneEditorServiceTests
 
         public bool ScaleGridSendCc { get; set; } = true;
 
+        public string OneNoteNoteText { get; set; } = "60";
+
+        public bool OneNoteSendCc { get; set; }
+
         public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
+
+        public bool IsOneNoteMode => string.Equals(ZoneOutputMode, ZoneOutputModes.OneNote, StringComparison.Ordinal);
 
         public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
 

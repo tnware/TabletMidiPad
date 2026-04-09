@@ -23,6 +23,7 @@ public sealed class ConfigValueParserTests
     [Fact]
     public void NormalizeZoneOutputModeFallsBackToCcPad()
     {
+        Assert.Equal(ZoneOutputModes.OneNote, _sut.NormalizeZoneOutputMode("One Note"));
         Assert.Equal(ZoneOutputModes.ScaleBreath, _sut.NormalizeZoneOutputMode("Scale Breath"));
         Assert.Equal(ZoneOutputModes.ScaleGrid, _sut.NormalizeZoneOutputMode("Scale Grid"));
         Assert.Equal(ZoneOutputModes.CcPad, _sut.NormalizeZoneOutputMode("Unknown"));

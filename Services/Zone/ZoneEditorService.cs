@@ -82,6 +82,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
             viewModel.ScaleGridRowsText = "4";
             viewModel.ScaleGridColumnsText = "4";
             viewModel.ScaleGridSendCc = true;
+            viewModel.OneNoteNoteText = "60";
+            viewModel.OneNoteSendCc = false;
             return;
         }
 
@@ -119,6 +121,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
         viewModel.ScaleGridRowsText = Math.Clamp(zone.ScaleGridRows, 1, 16).ToString(CultureInfo.InvariantCulture);
         viewModel.ScaleGridColumnsText = Math.Clamp(zone.ScaleGridColumns, 1, 16).ToString(CultureInfo.InvariantCulture);
         viewModel.ScaleGridSendCc = zone.ScaleGridSendCc;
+        viewModel.OneNoteNoteText = Math.Clamp(zone.OneNoteNote, 0, 127).ToString(CultureInfo.InvariantCulture);
+        viewModel.OneNoteSendCc = zone.OneNoteSendCc;
     }
 
     /// <inheritdoc />
@@ -170,6 +174,8 @@ internal sealed class ZoneEditorService : IZoneEditorService
         zone.ScaleGridRows = _configValueParser.ReadInt(viewModel.ScaleGridRowsText, 1, 16, "Scale Grid Rows");
         zone.ScaleGridColumns = _configValueParser.ReadInt(viewModel.ScaleGridColumnsText, 1, 16, "Scale Grid Columns");
         zone.ScaleGridSendCc = viewModel.ScaleGridSendCc;
+        zone.OneNoteNote = _configValueParser.ReadInt(viewModel.OneNoteNoteText, 0, 127, "One Note");
+        zone.OneNoteSendCc = viewModel.OneNoteSendCc;
         SetZoneSelectionSummary(viewModel, zone);
     }
 

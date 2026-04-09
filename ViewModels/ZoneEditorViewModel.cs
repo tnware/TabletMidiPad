@@ -43,6 +43,8 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
     private string _scaleGridRowsText = "4";
     private string _scaleGridColumnsText = "4";
     private bool _scaleGridSendCc = true;
+    private string _oneNoteNoteText = "60";
+    private bool _oneNoteSendCc;
     private string _maxZoneRowsText = string.Empty;
     private string _maxZonesPerRowText = string.Empty;
     private bool _isCanvasLocked;
@@ -68,6 +70,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetPressureOnly);
         ReleaseBehaviorOptions.Add(ZoneReleaseBehaviors.ResetAll);
         ZoneOutputModeOptions.Add(ZoneOutputModes.CcPad);
+        ZoneOutputModeOptions.Add(ZoneOutputModes.OneNote);
         ZoneOutputModeOptions.Add(ZoneOutputModes.ScaleBreath);
         ZoneOutputModeOptions.Add(ZoneOutputModes.ScaleGrid);
         ScaleBreathScaleOptions.Add(ScaleBreathScaleNames.Major);
@@ -268,6 +271,7 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
             }
 
             OnPropertyChanged(nameof(IsCcPadMode));
+            OnPropertyChanged(nameof(IsOneNoteMode));
             OnPropertyChanged(nameof(IsScaleBreathMode));
             OnPropertyChanged(nameof(IsScaleGridMode));
         }
@@ -357,7 +361,21 @@ internal sealed class ZoneEditorViewModel : ViewModelBase, IZoneEditorState
         set => SetProperty(ref _scaleGridSendCc, value);
     }
 
+    public string OneNoteNoteText
+    {
+        get => _oneNoteNoteText;
+        set => SetProperty(ref _oneNoteNoteText, value);
+    }
+
+    public bool OneNoteSendCc
+    {
+        get => _oneNoteSendCc;
+        set => SetProperty(ref _oneNoteSendCc, value);
+    }
+
     public bool IsCcPadMode => string.Equals(ZoneOutputMode, ZoneOutputModes.CcPad, StringComparison.Ordinal);
+
+    public bool IsOneNoteMode => string.Equals(ZoneOutputMode, ZoneOutputModes.OneNote, StringComparison.Ordinal);
 
     public bool IsScaleBreathMode => string.Equals(ZoneOutputMode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal);
 

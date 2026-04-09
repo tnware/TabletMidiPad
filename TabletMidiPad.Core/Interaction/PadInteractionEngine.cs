@@ -204,6 +204,10 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         {
             return ProcessScaleBreathZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
         }
+        if (string.Equals(zoneMode, ZoneOutputModes.OneNote, StringComparison.Ordinal))
+        {
+            return ProcessOneNoteZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
+        }
         if (string.Equals(zoneMode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal))
         {
             return ProcessScaleGridZone(config, zone, input, state, lowerAction, upperAction, xLocal, yLocal);
@@ -427,6 +431,87 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
             ActiveZoneIndex: state.ActiveZoneIndex,
             ActiveZoneLabel: $"Active zone: {zone.Name}",
             ValueLabel: $"{zone.Name} -> Note {note} (r{rowFromBottom + 1} c{colIndex + 1}) | X: {xText}, Y: {yText}, Pressure: {pressureText}{mappingText}",
+            ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
+            MidiMessages: messages);
+    }
+
+    private static InteractionResult ProcessOneNoteZone(
+        PadInteractionConfig config,
+        ZoneSnapshot zone,
+        InteractionInput input,
+        InteractionState state,
+        string lowerAction,
+        string upperAction,
+        double xLocal,
+        double yLocal)
+    {
+        int note = Math.Clamp(zone.OneNoteNote, 0, 127);
+        int velocity = Math.Clamp(ApplyPressureCurve(config, input.Pressure), 1, 127);
+
+        var messages = new List<MidiMessage>(capacity: 6);
+        bool mappingAssistEnabled = zone.MappingAssistEnabled;
+        if (mappingAssistEnabled)
+        {
+            SendScaleBreathNoteOff(state, messages);
+        }
+        else
+        {
+            bool shouldSwitch =
+                !state.HasScaleBreathActiveNote ||
+                state.ScaleBreathActiveZoneIndex != state.ActiveZoneIndex ||
+                state.ScaleBreathActiveChannel != zone.MidiChannel ||
+                state.ScaleBreathActiveNote != note;
+            if (shouldSwitch)
+            {
+                SendScaleBreathNoteOff(state, messages);
+                messages.Add(MidiMessage.Note(zone.MidiChannel, note, on: true, velocity: velocity, force: true));
+                state.HasScaleBreathActiveNote = true;
+                state.ScaleBreathActiveZoneIndex = state.ActiveZoneIndex;
+                state.ScaleBreathActiveChannel = zone.MidiChannel;
+                state.ScaleBreathActiveNote = note;
+            }
+        }
+
+        int xCc = ToCc(xLocal, zone.InvertX);
+        int yCc = ToCc(yLocal, zone.InvertY);
+        int curvedPressure = ApplyPressureCurve(config, input.Pressure);
+        bool sendPressure = config.SendPressureGlobally && zone.SendPressure;
+        if ((state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.DisablePressure, StringComparison.Ordinal)))
+        {
+            sendPressure = false;
+        }
+
+        bool enablePressureHeld =
+            (state.LowerPenButtonHeld && string.Equals(lowerAction, PenButtonActions.EnablePressure, StringComparison.Ordinal)) ||
+            (state.UpperPenButtonHeld && string.Equals(upperAction, PenButtonActions.EnablePressure, StringComparison.Ordinal));
+        if (enablePressureHeld)
+        {
+            sendPressure = true;
+        }
+
+        bool allowOneNoteCc = zone.OneNoteSendCc;
+        bool sendX = allowOneNoteCc && ShouldSendAxisCc(zone, zone.SendX, ZoneMappingAssistTargets.CcX);
+        bool sendY = allowOneNoteCc && ShouldSendAxisCc(zone, zone.SendY, ZoneMappingAssistTargets.CcY);
+        bool sendPressureCc = allowOneNoteCc && ShouldSendAxisCc(zone, sendPressure, ZoneMappingAssistTargets.CcPressure);
+        if (sendX)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcX, xCc));
+        if (sendY)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcY, yCc));
+        if (sendPressureCc)
+            messages.Add(MidiMessage.Cc(zone.MidiChannel, zone.CcPressure, curvedPressure));
+
+        string xText = sendX ? xCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string yText = sendY ? yCc.ToString(CultureInfo.InvariantCulture) : "off";
+        string pressureText = sendPressureCc ? curvedPressure.ToString(CultureInfo.InvariantCulture) : "off";
+        string mappingText = mappingAssistEnabled
+            ? $" | Learn: {NormalizeZoneMappingAssistTarget(zone.MappingAssistTarget)}"
+            : string.Empty;
+
+        return new InteractionResult(
+            ActiveZoneIndex: state.ActiveZoneIndex,
+            ActiveZoneLabel: $"Active zone: {zone.Name}",
+            ValueLabel: $"{zone.Name} -> Note {note} | X: {xText}, Y: {yText}, Pressure: {pressureText}{mappingText}",
             ModifiersLabel: BuildModifiersLabel(config, state, lowerAction, upperAction),
             MidiMessages: messages);
     }
@@ -763,6 +848,7 @@ public sealed class PadInteractionEngine : IPadInteractionEngine
         return value switch
         {
             ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.OneNote => value,
             ZoneOutputModes.ScaleBreath => value,
             ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad

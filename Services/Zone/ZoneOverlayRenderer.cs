@@ -168,6 +168,12 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         bool selected)
     {
         string mode = NormalizeZoneOutputMode(zone.OutputMode);
+        if (string.Equals(mode, ZoneOutputModes.OneNote, StringComparison.Ordinal))
+        {
+            AddOneNoteOverlay(canvas, zone, left, top, width, height, baseColor, selected);
+            return;
+        }
+
         if (!string.Equals(mode, ZoneOutputModes.ScaleBreath, StringComparison.Ordinal))
         {
             if (!string.Equals(mode, ZoneOutputModes.ScaleGrid, StringComparison.Ordinal))
@@ -180,6 +186,32 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         }
 
         AddScaleBreathOverlay(canvas, zone, left, top, width, height, baseColor, selected);
+    }
+
+    private static void AddOneNoteOverlay(
+        Canvas canvas,
+        ZoneOverlayZone zone,
+        double left,
+        double top,
+        double width,
+        double height,
+        Color baseColor,
+        bool selected)
+    {
+        int note = Math.Clamp(zone.OneNoteNote, 0, 127);
+        string labelText = FormatNoteName(note);
+        var label = new TextBlock
+        {
+            Text = labelText,
+            FontSize = 16,
+            FontWeight = FontWeights.Bold,
+            Foreground = new SolidColorBrush(WithAlpha(baseColor, selected ? (byte)245 : (byte)215))
+        };
+
+        label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(label, left + (width / 2) - (label.DesiredSize.Width / 2));
+        Canvas.SetTop(label, top + (height / 2) - (label.DesiredSize.Height / 2));
+        canvas.Children.Add(label);
     }
 
     private static void AddScaleBreathOverlay(
@@ -666,6 +698,7 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         return value switch
         {
             ZoneOutputModes.CcPad => value,
+            ZoneOutputModes.OneNote => value,
             ZoneOutputModes.ScaleBreath => value,
             ZoneOutputModes.ScaleGrid => value,
             _ => ZoneOutputModes.CcPad

@@ -75,6 +75,8 @@ internal sealed class InputInteractionOrchestrator : IInputInteractionOrchestrat
                 ScaleGridRows = z.ScaleGridRows,
                 ScaleGridColumns = z.ScaleGridColumns,
                 ScaleGridSendCc = z.ScaleGridSendCc,
+                OneNoteNote = z.OneNoteNote,
+                OneNoteSendCc = z.OneNoteSendCc,
                 MappingAssistEnabled = z.MappingAssistEnabled,
                 MappingAssistTarget = z.MappingAssistTarget
             })];

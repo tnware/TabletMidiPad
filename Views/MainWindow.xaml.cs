@@ -147,7 +147,8 @@ public partial class MainWindow : Window
             ZoneScaleGridRootTextBox,
             ZoneScaleGridOctaveTextBox,
             ZoneScaleGridRowsTextBox,
-            ZoneScaleGridColumnsTextBox
+            ZoneScaleGridColumnsTextBox,
+            ZoneOneNoteNoteTextBox
         })
         {
             NumericTextBoxBehavior.SetMode(textBox, NumericTextMode.Integer);

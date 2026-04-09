@@ -61,6 +61,7 @@ public static class InteractionConstants
     public static class ZoneOutputModes
     {
         public const string CcPad = "CC Pad";
+        public const string OneNote = "One Note";
         public const string ScaleBreath = "Scale Breath";
         public const string ScaleGrid = "Scale Grid";
     }

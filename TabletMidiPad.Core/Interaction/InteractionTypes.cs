@@ -65,6 +65,8 @@ public sealed record ZoneSnapshot(
     public int ScaleGridRows { get; init; } = 4;
     public int ScaleGridColumns { get; init; } = 4;
     public bool ScaleGridSendCc { get; init; } = true;
+    public int OneNoteNote { get; init; } = 60;
+    public bool OneNoteSendCc { get; init; }
     public bool MappingAssistEnabled { get; init; }
     public string MappingAssistTarget { get; init; } = InteractionConstants.ZoneMappingAssistTargets.CcX;
 }
