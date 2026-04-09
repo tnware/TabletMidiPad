@@ -9,33 +9,56 @@ namespace TabletMidiPad.Services.Midi;
 /// </summary>
 internal sealed class WinMmMidiEngine : IMidiEngine
 {
-    private const string MidiConsolePath = @"C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe";
+    private const string MidiConsoleEnvOverride = "TABLETMIDIPAD_MIDI_EXE_PATH";
     private readonly Dictionary<string, int> _lastSentValues = new();
+    private readonly object _sync = new();
     private IntPtr _midiOutHandle;
 
-    public bool IsReady => _midiOutHandle != IntPtr.Zero;
+    public bool IsReady
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _midiOutHandle != IntPtr.Zero;
+            }
+        }
+    }
 
     public void Initialize(AppConfig config)
     {
-        CloseMidiOut();
-        RemoveLoopbackPair(config);
-        CreateLoopbackPair(config);
-        OpenMidiOutWithRetry(config.AppPortName);
-        _lastSentValues.Clear();
+        ArgumentNullException.ThrowIfNull(config);
+        lock (_sync)
+        {
+            CloseMidiOut();
+            RemoveLoopbackPair(config);
+            CreateLoopbackPair(config);
+            _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+            _lastSentValues.Clear();
+        }
     }
 
     public async Task InitializeAsync(AppConfig config, Action<string>? onProgress = null)
     {
-        onProgress?.Invoke("Removing stale MIDI pair...");
-        await Task.Run(() => RemoveLoopbackPair(config));
+        ArgumentNullException.ThrowIfNull(config);
+        await Task.Run(() =>
+        {
+            lock (_sync)
+            {
+                onProgress?.Invoke("Closing existing MIDI connection...");
+                CloseMidiOut();
 
-        onProgress?.Invoke("Creating MIDI loopback...");
-        await Task.Run(() => CreateLoopbackPair(config));
+                onProgress?.Invoke("Removing stale MIDI pair...");
+                RemoveLoopbackPair(config);
 
-        onProgress?.Invoke($"Opening '{config.AppPortName}'...");
-        await Task.Run(() => OpenMidiOutWithRetry(config.AppPortName));
+                onProgress?.Invoke("Creating MIDI loopback...");
+                CreateLoopbackPair(config);
 
-        _lastSentValues.Clear();
+                onProgress?.Invoke($"Opening '{config.AppPortName}'...");
+                _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+                _lastSentValues.Clear();
+            }
+        });
     }
 
     public void Restart(AppConfig config)
@@ -43,17 +66,21 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         Initialize(config);
     }
 
-    public Task RestartAsync(AppConfig config)
+    public Task RestartAsync(AppConfig config, Action<string>? onProgress = null)
     {
-        return InitializeAsync(config);
+        return InitializeAsync(config, onProgress);
     }
 
     public void Shutdown(AppConfig config)
     {
+        ArgumentNullException.ThrowIfNull(config);
         try
         {
-            CloseMidiOut();
-            RemoveLoopbackPair(config);
+            lock (_sync)
+            {
+                CloseMidiOut();
+                RemoveLoopbackPair(config);
+            }
         }
         catch
         {
@@ -62,66 +89,75 @@ internal sealed class WinMmMidiEngine : IMidiEngine
 
     public void SendCcIfChanged(int channel, int cc, int value, bool force = false)
     {
-        if (_midiOutHandle == IntPtr.Zero)
+        lock (_sync)
         {
-            return;
+            if (_midiOutHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            string key = $"{channel}:{cc}";
+            value = Math.Clamp(value, 0, 127);
+
+            if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
+            {
+                return;
+            }
+
+            byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
+            byte controller = (byte)(cc & 0x7F);
+            byte data = (byte)(value & 0x7F);
+
+            int packedMessage = status | (controller << 8) | (data << 16);
+            int result = midiOutShortMsg(_midiOutHandle, packedMessage);
+            if (result != 0)
+            {
+                throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
+            }
+
+            _lastSentValues[key] = value;
         }
-
-        string key = $"{channel}:{cc}";
-        value = Math.Clamp(value, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastValue) && lastValue == value)
-        {
-            return;
-        }
-
-        byte status = (byte)(0xB0 | ((channel - 1) & 0x0F));
-        byte controller = (byte)(cc & 0x7F);
-        byte data = (byte)(value & 0x7F);
-
-        int packedMessage = status | (controller << 8) | (data << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = value;
     }
 
     public void SendNoteIfChanged(int channel, int note, bool on, int velocity, bool force = false)
     {
-        if (_midiOutHandle == IntPtr.Zero)
+        lock (_sync)
         {
-            return;
+            if (_midiOutHandle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            string key = $"note:{channel}:{note}";
+            int state = on ? 1 : 0;
+            velocity = Math.Clamp(velocity, 0, 127);
+
+            if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
+            {
+                return;
+            }
+
+            byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
+            byte noteByte = (byte)(note & 0x7F);
+            byte velocityByte = (byte)(velocity & 0x7F);
+
+            int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
+            int result = midiOutShortMsg(_midiOutHandle, packedMessage);
+            if (result != 0)
+            {
+                throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
+            }
+
+            _lastSentValues[key] = state;
         }
-
-        string key = $"note:{channel}:{note}";
-        int state = on ? 1 : 0;
-        velocity = Math.Clamp(velocity, 0, 127);
-
-        if (!force && _lastSentValues.TryGetValue(key, out int lastState) && lastState == state)
-        {
-            return;
-        }
-
-        byte status = (byte)((on ? 0x90 : 0x80) | ((channel - 1) & 0x0F));
-        byte noteByte = (byte)(note & 0x7F);
-        byte velocityByte = (byte)(velocity & 0x7F);
-
-        int packedMessage = status | (noteByte << 8) | (velocityByte << 16);
-        int result = midiOutShortMsg(_midiOutHandle, packedMessage);
-        if (result != 0)
-        {
-            throw new Win32Exception(result, $"midiOutShortMsg failed with code {result}.");
-        }
-
-        _lastSentValues[key] = state;
     }
 
     public void ClearCachedValues()
     {
-        _lastSentValues.Clear();
+        lock (_sync)
+        {
+            _lastSentValues.Clear();
+        }
     }
 
     private static void CreateLoopbackPair(AppConfig config)
@@ -138,13 +174,13 @@ internal sealed class WinMmMidiEngine : IMidiEngine
             allowFailure: true);
     }
 
-    private void OpenMidiOutWithRetry(string portName)
+    private static IntPtr OpenMidiOutWithRetry(string portName)
     {
         for (int attempt = 0; attempt < 60; attempt++)
         {
-            if (TryOpenMidiOut(portName, out _midiOutHandle))
+            if (TryOpenMidiOut(portName, out IntPtr handle))
             {
-                return;
+                return handle;
             }
 
             Thread.Sleep(100);
@@ -208,9 +244,10 @@ internal sealed class WinMmMidiEngine : IMidiEngine
 
     private static void RunMidiConsole(string arguments, bool allowFailure = false)
     {
+        string midiConsolePath = ResolveMidiConsolePath();
         var startInfo = new ProcessStartInfo
         {
-            FileName = MidiConsolePath,
+            FileName = midiConsolePath,
             Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -218,20 +255,43 @@ internal sealed class WinMmMidiEngine : IMidiEngine
             CreateNoWindow = true
         };
 
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        if (allowFailure || process.ExitCode == 0)
+        Process? process;
+        try
         {
-            return;
+            process = Process.Start(startInfo);
+        }
+        catch (Win32Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Could not find 'midi.exe'. Ensure Windows MIDI Services is installed and 'midi.exe' is in PATH, or set TABLETMIDIPAD_MIDI_EXE_PATH.",
+                ex);
         }
 
-        throw new InvalidOperationException(
-            $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim());
+        if (process is null)
+        {
+            throw new InvalidOperationException("Could not start the Windows MIDI Services console.");
+        }
+
+        using (process)
+        {
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (allowFailure || process.ExitCode == 0)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim());
+        }
+    }
+
+    private static string ResolveMidiConsolePath()
+    {
+        string? overridePath = Environment.GetEnvironmentVariable(MidiConsoleEnvOverride);
+        return string.IsNullOrWhiteSpace(overridePath) ? "midi.exe" : overridePath;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]

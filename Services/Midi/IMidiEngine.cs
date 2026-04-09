@@ -30,7 +30,8 @@ internal interface IMidiEngine
     /// Closes and re-opens routing/output from the current config without blocking the caller.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
-    Task RestartAsync(AppConfig config);
+    /// <param name="onProgress">Optional progress callback for UI status updates.</param>
+    Task RestartAsync(AppConfig config, Action<string>? onProgress = null);
 
     /// <summary>
     /// Shuts down MIDI output and removes loopback endpoints.

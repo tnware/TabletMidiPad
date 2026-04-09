@@ -45,11 +45,8 @@ For direct Wacom pen input:
 - `Wintab32.dll` available through the installed driver
 - if you want to start `WTabletServicePro` from inside `TabletMidiPad`, Windows may require running the app as administrator
 
-The app expects the Windows MIDI Services console here:
-
-`C:\Program Files\Windows MIDI Services\Tools\Console\midi.exe`
-
-If your install is elsewhere, update `MidiConsolePath` in `WinMmMidiEngine` inside [Services/IMidiEngine.cs](Services/IMidiEngine.cs).
+The app resolves `midi.exe` from your `PATH` (default after Windows MIDI Services Tools install).
+If needed, override the executable path with environment variable `TABLETMIDIPAD_MIDI_EXE_PATH`.
 
 ## Runtime configuration
 
@@ -217,7 +214,7 @@ This keeps the package much smaller than a self-contained publish, but the targe
 ### The DAW does not see the MIDI device
 
 - confirm Windows MIDI Services Runtime and Tools are installed
-- confirm `midi.exe` exists at the configured path
+- confirm `midi.exe` is available in `PATH` (or set `TABLETMIDIPAD_MIDI_EXE_PATH`)
 - start the app before starting the DAW
 - fully restart the DAW after launching the app
 

@@ -109,6 +109,14 @@ public partial class MainWindow
         public void SyncToolbar() => _w.SyncToolbar();
 
         public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
+
+        public void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText)
+        {
+            _w._viewModel.IsMidiStatusPanelVisible = panelVisible;
+            _w._viewModel.IsMidiProgressVisible = progressVisible;
+            _w._viewModel.MidiStatusSeverity = severity;
+            _w._viewModel.MidiStatusText = statusText;
+        }
     }
 
     private sealed class MainShellCommandHost : IMainShellCommandHost

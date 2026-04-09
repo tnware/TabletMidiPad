@@ -23,4 +23,6 @@ internal interface ISettingsWorkflowHost
     void SyncToolbar();
 
     void LoadConfigIntoUi();
+
+    void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText);
 }

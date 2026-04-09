@@ -96,13 +96,34 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         if (applyResult.ShouldRestartMidi)
         {
             _host.SetSettingsResult("Preferences saved. Reconnecting MIDI\u2026", SettingsResultKind.Success);
+            _host.SetMidiReconnectStatus(
+                panelVisible: true,
+                progressVisible: true,
+                severity: MidiStatusSeverity.Normal,
+                statusText: "Reconnecting MIDI...");
             try
             {
-                await _midiEngine.RestartAsync(_runtimeConfig.Current);
+                await _midiEngine.RestartAsync(
+                    _runtimeConfig.Current,
+                    onProgress: text => _host.SetMidiReconnectStatus(
+                        panelVisible: true,
+                        progressVisible: true,
+                        severity: MidiStatusSeverity.Normal,
+                        statusText: text));
                 _midiEngine.ClearCachedValues();
+                _host.SetMidiReconnectStatus(
+                    panelVisible: false,
+                    progressVisible: true,
+                    severity: MidiStatusSeverity.Normal,
+                    statusText: string.Empty);
             }
             catch (Exception ex)
             {
+                _host.SetMidiReconnectStatus(
+                    panelVisible: true,
+                    progressVisible: false,
+                    severity: MidiStatusSeverity.Error,
+                    statusText: "MIDI reconnect failed");
                 _host.SetSettingsResult(ex.Message, SettingsResultKind.Error);
                 return;
             }

@@ -125,6 +125,10 @@ public sealed class SettingsWorkflowTests
             LoadConfigIntoUiCount++;
             ReplaceConfigCount++;
         }
+
+        public void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText)
+        {
+        }
     }
 
     private sealed class StubSettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
@@ -194,7 +198,7 @@ public sealed class SettingsWorkflowTests
         {
         }
 
-        public Task RestartAsync(AppConfig config) => Task.CompletedTask;
+        public Task RestartAsync(AppConfig config, Action<string>? onProgress = null) => Task.CompletedTask;
 
         public void Shutdown(AppConfig config)
         {
