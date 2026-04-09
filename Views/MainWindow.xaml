@@ -804,7 +804,7 @@
         </Border>
 
         <!-- Main content -->
-        <Grid Margin="8,8,8,0">
+        <Grid Margin="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="312"/>
                 <ColumnDefinition Width="8"/>
@@ -813,12 +813,12 @@
 
             <!-- Zone editor panel -->
             <Border Grid.Column="0"
-                    Background="{StaticResource PanelBrush}"
+                    Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Padding="16">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="16">
                     <StackPanel>
                         <TextBlock Text="Zones"
                                    Foreground="{StaticResource TextPrimaryBrush}"
