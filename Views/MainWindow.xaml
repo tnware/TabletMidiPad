@@ -119,6 +119,37 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <DataTemplate x:Key="PageListItemTemplate" DataType="{x:Type vm:PageListItemViewModel}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                               FontSize="13"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="0,0,8,0"
+                               Text="&#xE8A5;"/>
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Text="{Binding Name}"/>
+                </StackPanel>
+                <Border Grid.Column="1"
+                        CornerRadius="4"
+                        Padding="6,1"
+                        Background="{StaticResource SurfaceMutedBrush}"
+                        BorderBrush="{StaticResource PanelBorderBrush}"
+                        BorderThickness="1">
+                    <TextBlock FontSize="10"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSoftBrush}"
+                               Text="{Binding DisplayIndex, StringFormat=Page {0}}"/>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
         <Style x:Key="TopLevelMenuItemWithSub" TargetType="MenuItem">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="FontSize" Value="13"/>
@@ -860,18 +891,11 @@
                         <ListBox Name="PageListBox"
                                  Height="94"
                                  ItemContainerStyle="{StaticResource ZoneListBoxItemStyle}"
+                                 ItemTemplate="{StaticResource PageListItemTemplate}"
                                  ItemsSource="{Binding ZoneEditor.Pages}"
                                  SelectedIndex="{Binding ZoneEditor.SelectedPageIndex, Mode=TwoWay}"
                                  SelectionChanged="PageListBox_SelectionChanged"
-                                 Style="{StaticResource ZoneListStyle}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:PageListItemViewModel}">
-                                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
-                                               FontSize="12"
-                                               Text="{Binding DisplayText}"/>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                                 Style="{StaticResource ZoneListStyle}"/>
                         <Grid Margin="0,8,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
