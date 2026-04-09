@@ -135,7 +135,6 @@ public sealed class PadInputControllerTests
             host,
             tabletPicker,
             new InputBackendCoordinator(),
-            new LifecycleCoordinator(),
             backend,
             new StubWintabInputBridge(),
             new StubInputFallbackService(),

@@ -22,7 +22,6 @@ public partial class MainWindow : Window
     private readonly IWintabInputBackend _wintabInputBackend;
     private readonly IInputBackendStatusFormatter _inputBackendStatusFormatter;
     private readonly IWorkflowCoordinator _workflowCoordinator;
-    private readonly IInputBackendCoordinator _inputBackendCoordinator;
     private readonly IStartupLifecycleService _startupLifecycle;
     private readonly IPadInteractionOutcomeApplier _interactionOutcomeApplier;
     private readonly MainViewModel _viewModel;
@@ -52,12 +51,12 @@ public partial class MainWindow : Window
         IZoneOverlayRenderer zoneOverlayRenderer,
         IInputBackendStatusFormatter inputBackendStatusFormatter,
         IWorkflowCoordinator workflowCoordinator,
-        IInputBackendCoordinator inputBackendCoordinator,
         IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
         IStartupLifecycleService startupLifecycle,
         IPadInputControllerFactory padInputControllerFactory,
-        IZonePadControllerFactory zonePadControllerFactory,
-        ISettingsWorkflowFactory settingsWorkflowFactory,
+        IZoneResizeService zoneResizeService,
+        IPreferencesDialogService preferencesDialogService,
+        IZoneConfigurationService zoneConfigurationService,
         IPadPresentationCoordinator padPresentationCoordinator,
         IMainViewModelFactory mainViewModelFactory,
         IPadInteractionOutcomeApplier interactionOutcomeApplier)
@@ -69,21 +68,26 @@ public partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(zoneOverlayRenderer);
         _inputBackendStatusFormatter = inputBackendStatusFormatter ?? throw new ArgumentNullException(nameof(inputBackendStatusFormatter));
         _workflowCoordinator = workflowCoordinator ?? throw new ArgumentNullException(nameof(workflowCoordinator));
-        _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
         ArgumentNullException.ThrowIfNull(wacomServiceWorkflowCoordinator);
         _startupLifecycle = startupLifecycle ?? throw new ArgumentNullException(nameof(startupLifecycle));
         ArgumentNullException.ThrowIfNull(padInputControllerFactory);
-        ArgumentNullException.ThrowIfNull(zonePadControllerFactory);
-        ArgumentNullException.ThrowIfNull(settingsWorkflowFactory);
+        ArgumentNullException.ThrowIfNull(zoneResizeService);
+        ArgumentNullException.ThrowIfNull(preferencesDialogService);
+        ArgumentNullException.ThrowIfNull(zoneConfigurationService);
         ArgumentNullException.ThrowIfNull(padPresentationCoordinator);
         ArgumentNullException.ThrowIfNull(mainViewModelFactory);
         _interactionOutcomeApplier = interactionOutcomeApplier ?? throw new ArgumentNullException(nameof(interactionOutcomeApplier));
         InitializeComponent();
         var padInputHost = new PadInputViewHost(this);
         _padInputSession = padInputControllerFactory.Create(padInputHost);
-        _zonePadSession = zonePadControllerFactory.Create(new ZonePadViewHost(this));
-        ISettingsWorkflow settingsWorkflow = settingsWorkflowFactory.Create(
+        _zonePadSession = new ZonePadController(new ZonePadViewHost(this), zoneResizeService);
+        ISettingsWorkflow settingsWorkflow = new SettingsWorkflow(
             new SettingsWorkflowViewHost(this),
+            workflowCoordinator,
+            preferencesDialogService,
+            zoneConfigurationService,
+            runtimeConfig,
+            midiEngine,
             _padInputSession);
         _startupHost = new StartupViewHost(this);
         var shellCommandController = new MainShellCommandController(
@@ -121,7 +125,6 @@ public partial class MainWindow : Window
             _startupLifecycle.ShutdownForExit(
                 _midiEngine,
                 Config,
-                _inputBackendCoordinator,
                 _wintabInputBackend,
                 r => _padInputSession.ApplyTabletLifecycle(r, refreshInputBackendStatusText: false));
         };

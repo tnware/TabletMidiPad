@@ -7,6 +7,13 @@ namespace TabletMidiPad.Services;
 /// </summary>
 internal sealed class WorkflowCoordinator : IWorkflowCoordinator
 {
+    private readonly IZoneConfigurationService _zoneConfigurationService;
+
+    public WorkflowCoordinator(IZoneConfigurationService zoneConfigurationService)
+    {
+        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
+    }
+
     /// <inheritdoc />
     public int GetEffectiveExpressKeyCount(int detectedExpressKeyCount, int configuredExpressKeyCount)
     {
@@ -16,35 +23,17 @@ internal sealed class WorkflowCoordinator : IWorkflowCoordinator
     /// <inheritdoc />
     public WorkflowSaveResult ValidateAndSave(AppConfig config)
     {
-        if (config.Zones.Count == 0)
+        ArgumentNullException.ThrowIfNull(config);
+
+        try
         {
-            return new WorkflowSaveResult(false, "At least one zone is required.");
+            _zoneConfigurationService.ValidateConfig(config);
+            return new WorkflowSaveResult(true, null);
         }
-
-        if (config.MaxZoneRows < 1)
+        catch (Exception ex)
         {
-            return new WorkflowSaveResult(false, "Max rows must be at least 1.");
+            return new WorkflowSaveResult(false, ex.Message);
         }
-
-        if (config.MaxZonesPerRow < 1)
-        {
-            return new WorkflowSaveResult(false, "Max zones per row must be at least 1.");
-        }
-
-        foreach (ZoneConfig zone in config.Zones)
-        {
-            if (zone.Width <= 0 || zone.Height <= 0)
-            {
-                return new WorkflowSaveResult(false, $"Zone '{zone.Name}' must have width and height greater than 0.");
-            }
-
-            if (zone.Left + zone.Width > 1.0 || zone.Top + zone.Height > 1.0)
-            {
-                return new WorkflowSaveResult(false, $"Zone '{zone.Name}' must fit within the pad bounds.");
-            }
-        }
-
-        return new WorkflowSaveResult(true, null);
     }
 
     /// <inheritdoc />

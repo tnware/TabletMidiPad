@@ -12,7 +12,7 @@ internal interface IPadInputController
     void ResetActiveInputState();
 
     /// <summary>
-    /// Shuts down the tablet backend using <see cref="ILifecycleCoordinator.ShutdownTabletInput"/> and syncs view state.
+    /// Shuts down the tablet backend and syncs view state.
     /// </summary>
     void ShutdownTabletInput();
 

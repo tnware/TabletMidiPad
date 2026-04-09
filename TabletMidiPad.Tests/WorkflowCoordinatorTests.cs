@@ -10,7 +10,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void GetEffectiveExpressKeyCount_ReturnsMaxConfiguredOrDetected()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
 
         int result = coordinator.GetEffectiveExpressKeyCount(4, 8);
 
@@ -20,7 +20,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ValidateAndSave_ReturnsFailureForOutOfBoundsZone()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.Zones = new List<ZoneConfig>
         {
@@ -43,7 +43,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ApplyPreferences_DetectsRoutingAndInputBackendChanges()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.AppPortName = "Old App";
         config.DawPortName = "Old Daw";
@@ -83,7 +83,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void BuildWacomServiceMenuState_MapsFieldsDirectly()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
 
         WacomServiceMenuState menu = coordinator.BuildWacomServiceMenuState(
             new WacomServiceStatus("Service: running", CanStart: false, IsServiceRunning: true));
@@ -95,7 +95,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ApplyPreferencesWhenZonesInvalidReturnsSaveFailed()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
         config.Zones = new List<ZoneConfig>();
 
@@ -110,7 +110,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void ApplyPreferencesWhenUnchangedWithOpenMidiDoesNotFlagRestartOrRebind()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = AppConfig.Default;
 
         PreferencesWorkflowResult apply = coordinator.ApplyPreferences(
@@ -152,7 +152,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void BuildToolbarState_MapsAutoInputAndCurveLabels()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = new AppConfig
         {
             InputBackendMode = "Auto",
@@ -176,7 +176,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void BuildToolbarState_NormalizesInputBackendAliases_AndMapsCheckmarks()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = new AppConfig
         {
             InputBackendMode = "Wintab",
@@ -195,7 +195,7 @@ public sealed class WorkflowCoordinatorTests
     [Fact]
     public void BuildConnectedState_PreservesSummaryAndBaselineTexts()
     {
-        var coordinator = new WorkflowCoordinator();
+        WorkflowCoordinator coordinator = CreateCoordinator();
         var config = new AppConfig
         {
             DawPortName = "DAW X",
@@ -216,4 +216,6 @@ public sealed class WorkflowCoordinatorTests
         Assert.Equal("Pen buttons: -", state.PenButtonsText);
         Assert.Equal("Modifiers: none", state.ModifiersText);
     }
+
+    private static WorkflowCoordinator CreateCoordinator() => new(new ZoneConfigurationService());
 }

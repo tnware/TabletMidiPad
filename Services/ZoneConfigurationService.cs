@@ -102,21 +102,6 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
             {
                 throw new InvalidOperationException($"Zone '{zone.Name}' must fit within the pad bounds.");
             }
-
-            _ = NormalizeReleaseBehavior(zone.ReleaseBehavior);
         }
-    }
-
-    private static string NormalizeReleaseBehavior(string? text)
-    {
-        string value = (text ?? string.Empty).Trim();
-        return value switch
-        {
-            "Hold Last Values" => ZoneReleaseBehaviors.Hold,
-            ZoneReleaseBehaviors.Hold => value,
-            ZoneReleaseBehaviors.ResetAll => value,
-            ZoneReleaseBehaviors.NoSendOnRelease => value,
-            _ => ZoneReleaseBehaviors.ResetPressureOnly
-        };
     }
 }

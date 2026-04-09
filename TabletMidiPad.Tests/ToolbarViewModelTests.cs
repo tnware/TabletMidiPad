@@ -11,7 +11,7 @@ public sealed class ToolbarViewModelTests
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);
-        var sut = new ToolbarViewModel(runtime, new ToolbarConfigService(), new WorkflowCoordinator());
+        var sut = new ToolbarViewModel(runtime, new ToolbarConfigService(), new WorkflowCoordinator(new ZoneConfigurationService()));
         int chromeRefresh = 0;
         sut.PressureChromeRefreshRequested += () => chromeRefresh++;
 
@@ -26,7 +26,7 @@ public sealed class ToolbarViewModelTests
     {
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);
-        var sut = new ToolbarViewModel(runtime, new ToolbarConfigService(), new WorkflowCoordinator());
+        var sut = new ToolbarViewModel(runtime, new ToolbarConfigService(), new WorkflowCoordinator(new ZoneConfigurationService()));
         int rebinds = 0;
         sut.InputBackendRebindRequested += () => rebinds++;
 

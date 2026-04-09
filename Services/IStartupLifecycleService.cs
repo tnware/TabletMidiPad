@@ -58,7 +58,6 @@ internal interface IStartupLifecycleService
     void ShutdownForExit(
         IMidiEngine midiEngine,
         AppConfig config,
-        IInputBackendCoordinator inputBackendCoordinator,
         IWintabInputBackend wintabBackend,
         Action<InputBackendLifecycleResult> applyTabletShutdownState);
 }

@@ -15,7 +15,6 @@ internal sealed class PadInputController : IPadInputController
     private readonly IPadInputControllerHost _host;
     private readonly ITabletDevicePickerSyncService _tabletDevicePickerSyncService;
     private readonly IInputBackendCoordinator _inputBackendCoordinator;
-    private readonly ILifecycleCoordinator _lifecycleCoordinator;
     private readonly IWintabInputBackend _wintabInputBackend;
     private readonly IWintabInputBridge _wintabInputBridge;
     private readonly IInputFallbackService _inputFallbackService;
@@ -29,7 +28,6 @@ internal sealed class PadInputController : IPadInputController
         IPadInputControllerHost host,
         ITabletDevicePickerSyncService tabletDevicePickerSyncService,
         IInputBackendCoordinator inputBackendCoordinator,
-        ILifecycleCoordinator lifecycleCoordinator,
         IWintabInputBackend wintabInputBackend,
         IWintabInputBridge wintabInputBridge,
         IInputFallbackService inputFallbackService,
@@ -39,7 +37,6 @@ internal sealed class PadInputController : IPadInputController
         _host = host ?? throw new ArgumentNullException(nameof(host));
         _tabletDevicePickerSyncService = tabletDevicePickerSyncService ?? throw new ArgumentNullException(nameof(tabletDevicePickerSyncService));
         _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
-        _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _wintabInputBackend = wintabInputBackend ?? throw new ArgumentNullException(nameof(wintabInputBackend));
         _wintabInputBridge = wintabInputBridge ?? throw new ArgumentNullException(nameof(wintabInputBridge));
         _inputFallbackService = inputFallbackService ?? throw new ArgumentNullException(nameof(inputFallbackService));
@@ -102,9 +99,7 @@ internal sealed class PadInputController : IPadInputController
     /// <inheritdoc />
     public void ShutdownTabletInput()
     {
-        InputBackendLifecycleResult result = _lifecycleCoordinator.ShutdownTabletInput(
-            _inputBackendCoordinator,
-            _wintabInputBackend);
+        InputBackendLifecycleResult result = _inputBackendCoordinator.Shutdown(_wintabInputBackend);
         ApplyTabletLifecycle(result, refreshInputBackendStatusText: false);
     }
 

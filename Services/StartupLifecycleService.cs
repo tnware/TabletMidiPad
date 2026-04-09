@@ -9,22 +9,24 @@ namespace TabletMidiPad.Services;
 /// </summary>
 internal sealed class StartupLifecycleService : IStartupLifecycleService
 {
-    private readonly ILifecycleCoordinator _lifecycleCoordinator;
     private readonly IRuntimeConfigService _runtimeConfig;
+    private readonly IInputBackendCoordinator _inputBackendCoordinator;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StartupLifecycleService"/> class.
     /// </summary>
-    public StartupLifecycleService(ILifecycleCoordinator lifecycleCoordinator, IRuntimeConfigService runtimeConfig)
+    public StartupLifecycleService(
+        IRuntimeConfigService runtimeConfig,
+        IInputBackendCoordinator inputBackendCoordinator)
     {
-        _lifecycleCoordinator = lifecycleCoordinator ?? throw new ArgumentNullException(nameof(lifecycleCoordinator));
         _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
+        _inputBackendCoordinator = inputBackendCoordinator ?? throw new ArgumentNullException(nameof(inputBackendCoordinator));
     }
 
     /// <inheritdoc />
     public AppConfig LoadPersistedConfig()
     {
-        return _lifecycleCoordinator.LoadStartupConfig(new RuntimeConfigStore(_runtimeConfig));
+        return _runtimeConfig.Load();
     }
 
     /// <inheritdoc />
@@ -151,10 +153,19 @@ internal sealed class StartupLifecycleService : IStartupLifecycleService
         viewModel.MidiStatusText = "Connecting MIDI...";
         await Task.Yield();
 
-        MidiInitializationResult midiResult = await _lifecycleCoordinator.TryInitializeMidiAsync(
-            midiEngine,
-            config,
-            text => marshalToUiThread(() => viewModel.MidiStatusText = text));
+        MidiInitializationResult midiResult;
+        try
+        {
+            await midiEngine.InitializeAsync(
+                config,
+                text => marshalToUiThread(() => viewModel.MidiStatusText = text));
+            midiEngine.ClearCachedValues();
+            midiResult = new MidiInitializationResult(Succeeded: true, ErrorMessage: null);
+        }
+        catch (Exception ex)
+        {
+            midiResult = new MidiInitializationResult(Succeeded: false, ErrorMessage: ex.Message);
+        }
 
         if (midiResult.Succeeded)
         {
@@ -181,39 +192,17 @@ internal sealed class StartupLifecycleService : IStartupLifecycleService
     public void ShutdownForExit(
         IMidiEngine midiEngine,
         AppConfig config,
-        IInputBackendCoordinator inputBackendCoordinator,
         IWintabInputBackend wintabBackend,
         Action<InputBackendLifecycleResult> applyTabletShutdownState)
     {
         ArgumentNullException.ThrowIfNull(midiEngine);
         ArgumentNullException.ThrowIfNull(config);
-        ArgumentNullException.ThrowIfNull(inputBackendCoordinator);
         ArgumentNullException.ThrowIfNull(wintabBackend);
         ArgumentNullException.ThrowIfNull(applyTabletShutdownState);
 
-        _lifecycleCoordinator.ShutdownMidiOutput(midiEngine, config);
-        InputBackendLifecycleResult tabletShutdown = _lifecycleCoordinator.ShutdownTabletInput(
-            inputBackendCoordinator,
-            wintabBackend);
+        midiEngine.Shutdown(config);
+        InputBackendLifecycleResult tabletShutdown = _inputBackendCoordinator.Shutdown(wintabBackend);
         applyTabletShutdownState(tabletShutdown);
         wintabBackend.Dispose();
-    }
-
-    private sealed class RuntimeConfigStore : IConfigStore
-    {
-        private readonly IRuntimeConfigService _runtimeConfig;
-
-        public RuntimeConfigStore(IRuntimeConfigService runtimeConfig)
-        {
-            _runtimeConfig = runtimeConfig;
-        }
-
-        public AppConfig Load() => _runtimeConfig.Load();
-
-        public void Save(AppConfig config)
-        {
-            _runtimeConfig.Replace(config);
-            _runtimeConfig.SaveCurrent();
-        }
     }
 }
