@@ -276,6 +276,34 @@
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>
+
+                                <TextBlock Text="Tablet Input" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Choose which tablet device to bind, then reconnect the pen input backend."
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextWrapping="Wrap"/>
+                                        <WrapPanel Margin="0,12,0,0">
+                                            <ComboBox MinWidth="280"
+                                                      Margin="0,0,8,8"
+                                                      VerticalAlignment="Center"
+                                                      DisplayMemberPath="Label"
+                                                      ItemsSource="{Binding TabletDevices}"
+                                                      SelectedItem="{Binding SelectedTabletDevice, Mode=TwoWay}"
+                                                      IsEnabled="{Binding IsTabletDevicePickerEnabled}"/>
+                                            <Button MinWidth="160"
+                                                    Margin="0,0,0,8"
+                                                    Command="{Binding ReconnectPenCommand}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                               FontSize="13" Margin="0,0,6,0" Text="&#xE72C;"/>
+                                                    <TextBlock Text="Reconnect Pen"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>

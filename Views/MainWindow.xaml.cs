@@ -1,7 +1,8 @@
+using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Globalization;
 using TabletMidiPad.Core.Interaction;
 using TabletMidiPad.ViewModels;
 
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
     private readonly IPageNavigationService _pageNavigationService;
     private readonly MainViewModel _viewModel;
     private readonly InteractionState _interactionState = new();
+    private bool _isPopulatingTabletDeviceList;
 
     private Canvas Pad => PadSurface.PadInputElement;
 
@@ -98,6 +100,7 @@ public partial class MainWindow : Window
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
         _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
         _viewModel.ZoneEditor.PropertyChanged += ZoneEditor_PropertyChanged;
+        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
         _viewModel.Toolbar.PressureChromeRefreshRequested += SyncPressureSplitBorder;
         _viewModel.Toolbar.RoutingStatusRefreshRequested += UpdateUiForCurrentConfig;
@@ -120,6 +123,7 @@ public partial class MainWindow : Window
         ContentRendered += OnContentRendered;
         Closed += (_, _) =>
         {
+            _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
             _startupLifecycle.ShutdownForExit(
                 _midiEngine,
                 Config,
@@ -312,21 +316,6 @@ public partial class MainWindow : Window
             SelectedZoneIndex,
             Config.ZoneOverlayStyle);
 
-    private void TabletDeviceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_viewModel.ZoneEditor.IsLoadingUi)
-        {
-            return;
-        }
-
-        if (_viewModel.SelectedTabletDevice is not TabletDeviceListItemViewModel item || item.DeviceIndex < 0)
-        {
-            return;
-        }
-
-        _padInputSession.RebindInputBackend();
-    }
-
     private static bool IsPromotedStylusMouseEvent(MouseEventArgs e) => e.StylusDevice is not null;
 
     private void UpdateInputBackendStatus()
@@ -387,12 +376,32 @@ public partial class MainWindow : Window
         _viewModel.SettingsResultKind = kind;
     }
 
-    private void ZoneEditor_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ZoneEditor_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ZoneEditorViewModel.IsCanvasLocked))
         {
             RefreshPadZoneOverlay();
         }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.SelectedTabletDevice))
+        {
+            return;
+        }
+
+        if (_isPopulatingTabletDeviceList || _viewModel.ZoneEditor.IsLoadingUi)
+        {
+            return;
+        }
+
+        if (_viewModel.SelectedTabletDevice is not TabletDeviceListItemViewModel item || item.DeviceIndex < 0)
+        {
+            return;
+        }
+
+        _padInputSession.RebindInputBackend();
     }
 
     private void ZoneLearnCcXButton_Click(object sender, RoutedEventArgs e)

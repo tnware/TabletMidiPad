@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using TabletMidiPad.ViewModels;
 using TabletMidiPad.Views;
@@ -37,12 +38,31 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
     }
 
     /// <inheritdoc />
-    public PreferencesDialogResult? ShowDialog(Window owner, AppConfig currentConfig, int expressKeyCount)
+    public PreferencesDialogResult? ShowDialog(
+        Window owner,
+        AppConfig currentConfig,
+        int expressKeyCount,
+        ObservableCollection<TabletDeviceListItemViewModel> tabletDevices,
+        TabletDeviceListItemViewModel? selectedTabletDevice,
+        bool isTabletDevicePickerEnabled,
+        Action reconnectPen,
+        Action<TabletDeviceListItemViewModel?> setSelectedTabletDevice)
     {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(currentConfig);
+        ArgumentNullException.ThrowIfNull(tabletDevices);
+        ArgumentNullException.ThrowIfNull(reconnectPen);
+        ArgumentNullException.ThrowIfNull(setSelectedTabletDevice);
+
         ExpressKeyConfig.EnsureCount(currentConfig.ExpressKeys, expressKeyCount);
 
         PreferencesViewModel viewModel = _preferencesViewModelFactory();
-        viewModel.WacomStatus = BuildWacomStatusViewModel();
+        viewModel.WacomStatus = BuildWacomStatusViewModel(
+            tabletDevices,
+            selectedTabletDevice,
+            isTabletDevicePickerEnabled,
+            reconnectPen,
+            setSelectedTabletDevice);
 
         var preferencesWindow = new PreferencesWindow(
             expressKeyCount,
@@ -102,17 +122,32 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
         };
     }
 
-    private WacomStatusViewModel BuildWacomStatusViewModel()
+    private WacomStatusViewModel BuildWacomStatusViewModel(
+        ObservableCollection<TabletDeviceListItemViewModel> tabletDevices,
+        TabletDeviceListItemViewModel? selectedTabletDevice,
+        bool isTabletDevicePickerEnabled,
+        Action reconnectPen,
+        Action<TabletDeviceListItemViewModel?> setSelectedTabletDevice)
     {
         WacomStatusViewModel vm = null!;
         vm = new WacomStatusViewModel
         {
+            TabletDevices = tabletDevices,
+            SelectedTabletDevice = selectedTabletDevice,
+            IsTabletDevicePickerEnabled = isTabletDevicePickerEnabled,
+            OnSelectedTabletDeviceChanged = setSelectedTabletDevice,
             RefreshCommand = new DelegateCommand(() =>
             {
                 WacomServiceStatus status = _wacomServiceController.GetStatus();
                 WacomServiceMenuState state = _uiStateProjectionService.BuildWacomServiceMenuState(status);
                 vm.StatusText = state.Header;
                 vm.IsStartEnabled = state.StartEnabled;
+                vm.IsTabletDevicePickerEnabled = isTabletDevicePickerEnabled || HasSelectableTabletDevice(vm.TabletDevices);
+            }),
+            ReconnectPenCommand = new DelegateCommand(() =>
+            {
+                reconnectPen();
+                vm.IsTabletDevicePickerEnabled = isTabletDevicePickerEnabled || HasSelectableTabletDevice(vm.TabletDevices);
             }),
             StartServiceCommand = new DelegateCommand(() =>
             {
@@ -138,7 +173,11 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
         WacomServiceMenuState initialState = _uiStateProjectionService.BuildWacomServiceMenuState(initial);
         vm.StatusText = initialState.Header;
         vm.IsStartEnabled = initialState.StartEnabled;
+        vm.IsTabletDevicePickerEnabled = isTabletDevicePickerEnabled || HasSelectableTabletDevice(vm.TabletDevices);
 
         return vm;
     }
+
+    private static bool HasSelectableTabletDevice(IReadOnlyList<TabletDeviceListItemViewModel> devices)
+        => devices.Count > 0 && devices[0].DeviceIndex >= 0;
 }

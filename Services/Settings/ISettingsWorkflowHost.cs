@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using TabletMidiPad.Services.Shell;
 using TabletMidiPad.ViewModels;
@@ -14,6 +15,12 @@ internal interface ISettingsWorkflowHost
 
     PadInputControllerState PadState { get; }
 
+    ObservableCollection<TabletDeviceListItemViewModel> TabletDevices { get; }
+
+    TabletDeviceListItemViewModel? SelectedTabletDevice { get; set; }
+
+    bool IsTabletDevicePickerEnabled { get; }
+
     void CommitCurrentZoneEdits();
 
     void UpdateUiForCurrentConfig();
@@ -23,6 +30,8 @@ internal interface ISettingsWorkflowHost
     void SyncToolbar();
 
     void LoadConfigIntoUi();
+
+    void ReconnectPen();
 
     void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText);
 }

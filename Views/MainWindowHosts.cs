@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using TabletMidiPad.Core.Interaction;
@@ -47,10 +48,10 @@ public partial class MainWindow
         public void OnRebindCompletedRefreshRouting() => _w.UpdateUiForCurrentConfig();
 
         public void BeginPopulateTabletDeviceList()
-            => _w.TabletDeviceComboBox.SelectionChanged -= _w.TabletDeviceComboBox_SelectionChanged;
+            => _w._isPopulatingTabletDeviceList = true;
 
         public void EndPopulateTabletDeviceList()
-            => _w.TabletDeviceComboBox.SelectionChanged += _w.TabletDeviceComboBox_SelectionChanged;
+            => _w._isPopulatingTabletDeviceList = false;
     }
 
     private sealed class ZonePadViewHost : IZonePadControllerHost
@@ -100,6 +101,16 @@ public partial class MainWindow
 
         public PadInputControllerState PadState => _w._padState;
 
+        public ObservableCollection<TabletDeviceListItemViewModel> TabletDevices => _w._viewModel.TabletDevices;
+
+        public TabletDeviceListItemViewModel? SelectedTabletDevice
+        {
+            get => _w._viewModel.SelectedTabletDevice;
+            set => _w._viewModel.SelectedTabletDevice = value;
+        }
+
+        public bool IsTabletDevicePickerEnabled => _w._viewModel.IsTabletDevicePickerEnabled;
+
         public void CommitCurrentZoneEdits() => _w._viewModel.ZoneEditor.CommitCurrentZoneEdits();
 
         public void SetSettingsResult(string message, SettingsResultKind kind) => _w.SetSettingsResult(message, kind);
@@ -111,6 +122,8 @@ public partial class MainWindow
         public void SyncToolbar() => _w.SyncToolbar();
 
         public void LoadConfigIntoUi() => _w.LoadConfigIntoUi();
+
+        public void ReconnectPen() => _w._viewModel.ShellCommands.ReconnectPenCommand.Execute(null);
 
         public void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText)
         {

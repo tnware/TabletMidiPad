@@ -317,25 +317,6 @@
                         <TextBlock Text="Latch On Enter"/>
                     </StackPanel>
                 </ToggleButton>
-                <Border Style="{StaticResource ToolbarSep}"/>
-                <ComboBox Name="TabletDeviceComboBox"
-                          MinWidth="120"
-                          VerticalAlignment="Center"
-                          DisplayMemberPath="Label"
-                          ItemsSource="{Binding TabletDevices}"
-                          SelectedItem="{Binding SelectedTabletDevice, Mode=TwoWay}"
-                          IsEnabled="{Binding IsTabletDevicePickerEnabled}"
-                          SelectionChanged="TabletDeviceComboBox_SelectionChanged"/>
-                <Button Style="{StaticResource ToolbarButton}"
-                        Command="{Binding ShellCommands.ReconnectPenCommand}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                   FontSize="13"
-                                   Margin="0,0,6,0"
-                                   Text="&#xE72C;"/>
-                        <TextBlock Text="Reconnect"/>
-                    </StackPanel>
-                </Button>
 
             </StackPanel>
 
@@ -450,7 +431,7 @@
         <Grid Margin="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="312"/>
-                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="0"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 

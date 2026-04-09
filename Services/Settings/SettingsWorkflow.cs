@@ -69,7 +69,12 @@ internal sealed class SettingsWorkflow : ISettingsWorkflow
         PreferencesDialogResult? result = _preferencesDialogService.ShowDialog(
             _host.OwnerWindow,
             _runtimeConfig.Current,
-            effectiveExpressKeyCount);
+            effectiveExpressKeyCount,
+            _host.TabletDevices,
+            _host.SelectedTabletDevice,
+            _host.IsTabletDevicePickerEnabled,
+            _host.ReconnectPen,
+            selected => _host.SelectedTabletDevice = selected);
         if (result is null)
         {
             return;

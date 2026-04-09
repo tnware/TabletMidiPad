@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using TabletMidiPad.ViewModels;
 using Xunit;
@@ -96,6 +97,12 @@ public sealed class SettingsWorkflowTests
 
         public PadInputControllerState PadState { get; } = new();
 
+        public ObservableCollection<TabletDeviceListItemViewModel> TabletDevices { get; } = [];
+
+        public TabletDeviceListItemViewModel? SelectedTabletDevice { get; set; }
+
+        public bool IsTabletDevicePickerEnabled => true;
+
         public int CommitCurrentZoneEditsCount { get; private set; }
 
         public int ReplaceConfigCount { get; private set; }
@@ -124,6 +131,10 @@ public sealed class SettingsWorkflowTests
         {
             LoadConfigIntoUiCount++;
             ReplaceConfigCount++;
+        }
+
+        public void ReconnectPen()
+        {
         }
 
         public void SetMidiReconnectStatus(bool panelVisible, bool progressVisible, MidiStatusSeverity severity, string statusText)
@@ -158,7 +169,15 @@ public sealed class SettingsWorkflowTests
 
     private sealed class StubPreferencesDialogService : IPreferencesDialogService
     {
-        public PreferencesDialogResult? ShowDialog(Window owner, AppConfig config, int expressKeyCount) => null;
+        public PreferencesDialogResult? ShowDialog(
+            Window owner,
+            AppConfig config,
+            int expressKeyCount,
+            ObservableCollection<TabletDeviceListItemViewModel> tabletDevices,
+            TabletDeviceListItemViewModel? selectedTabletDevice,
+            bool isTabletDevicePickerEnabled,
+            Action reconnectPen,
+            Action<TabletDeviceListItemViewModel?> setSelectedTabletDevice) => null;
     }
 
     private sealed class RecordingZoneConfigurationService : IZoneConfigurationService
