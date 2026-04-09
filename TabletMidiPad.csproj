@@ -20,9 +20,13 @@
     <Compile Remove="wacom-device-kit-windows\**\*.cs" />
     <Compile Remove="TabletMidiPad.Core\**\*.cs" />
     <Compile Remove="TabletMidiPad.Tests\**\*.cs" />
+    <Compile Remove="WPFGallery\**\*.cs" />
     <EmbeddedResource Remove="wacom-device-kit-windows\**\*" />
+    <EmbeddedResource Remove="WPFGallery\**\*" />
     <None Remove="wacom-device-kit-windows\**\*" />
+    <None Remove="WPFGallery\**\*" />
     <Page Remove="wacom-device-kit-windows\**\*" />
+    <Page Remove="WPFGallery\**\*" />
   </ItemGroup>
 
   <ItemGroup>

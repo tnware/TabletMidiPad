@@ -13,6 +13,9 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
     private readonly IConfigValueParser _configValueParser;
     private readonly Func<PreferencesViewModel> _preferencesViewModelFactory;
     private readonly IMidiEngine _midiEngine;
+    private readonly IWacomServiceController _wacomServiceController;
+    private readonly IWacomServiceWorkflowCoordinator _wacomServiceWorkflowCoordinator;
+    private readonly IUiStateProjectionService _uiStateProjectionService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PreferencesDialogService"/> class.
@@ -20,11 +23,17 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
     public PreferencesDialogService(
         IConfigValueParser configValueParser,
         Func<PreferencesViewModel> preferencesViewModelFactory,
-        IMidiEngine midiEngine)
+        IMidiEngine midiEngine,
+        IWacomServiceController wacomServiceController,
+        IWacomServiceWorkflowCoordinator wacomServiceWorkflowCoordinator,
+        IUiStateProjectionService uiStateProjectionService)
     {
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _preferencesViewModelFactory = preferencesViewModelFactory ?? throw new ArgumentNullException(nameof(preferencesViewModelFactory));
         _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
+        _wacomServiceController = wacomServiceController ?? throw new ArgumentNullException(nameof(wacomServiceController));
+        _wacomServiceWorkflowCoordinator = wacomServiceWorkflowCoordinator ?? throw new ArgumentNullException(nameof(wacomServiceWorkflowCoordinator));
+        _uiStateProjectionService = uiStateProjectionService ?? throw new ArgumentNullException(nameof(uiStateProjectionService));
     }
 
     /// <inheritdoc />
@@ -33,6 +42,8 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
         ExpressKeyConfig.EnsureCount(currentConfig.ExpressKeys, expressKeyCount);
 
         PreferencesViewModel viewModel = _preferencesViewModelFactory();
+        viewModel.WacomStatus = BuildWacomStatusViewModel();
+
         var preferencesWindow = new PreferencesWindow(
             expressKeyCount,
             _configValueParser,
@@ -89,5 +100,45 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
             ExpressKeys = preferencesWindow.GetExpressKeyConfigs(),
             ZoneOverlayStyle = preferencesWindow.ZoneOverlayStyle
         };
+    }
+
+    private WacomStatusViewModel BuildWacomStatusViewModel()
+    {
+        WacomStatusViewModel vm = null!;
+        vm = new WacomStatusViewModel
+        {
+            RefreshCommand = new DelegateCommand(() =>
+            {
+                WacomServiceStatus status = _wacomServiceController.GetStatus();
+                WacomServiceMenuState state = _uiStateProjectionService.BuildWacomServiceMenuState(status);
+                vm.StatusText = state.Header;
+                vm.IsStartEnabled = state.StartEnabled;
+            }),
+            StartServiceCommand = new DelegateCommand(() =>
+            {
+                WacomServiceWorkflowState starting = _wacomServiceWorkflowCoordinator.BuildStartingState();
+                vm.StatusText = starting.StatusHeader;
+                vm.IsStartEnabled = starting.StartEnabled;
+
+                _ = Task.Run(() =>
+                {
+                    WacomServiceStartResult result = _wacomServiceWorkflowCoordinator.Start(_wacomServiceController);
+                    WacomServiceMenuState state = _uiStateProjectionService.BuildWacomServiceMenuState(result.RefreshedStatus);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        vm.StatusText = state.Header;
+                        vm.IsStartEnabled = state.StartEnabled;
+                    });
+                });
+            })
+        };
+
+        // Populate initial status.
+        WacomServiceStatus initial = _wacomServiceController.GetStatus();
+        WacomServiceMenuState initialState = _uiStateProjectionService.BuildWacomServiceMenuState(initial);
+        vm.StatusText = initialState.Header;
+        vm.IsStartEnabled = initialState.StartEnabled;
+
+        return vm;
     }
 }

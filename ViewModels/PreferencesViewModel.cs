@@ -173,6 +173,11 @@ internal sealed class PreferencesViewModel : ViewModelBase
     public ObservableCollection<ExpressKeyRowViewModel> ExpressKeys { get; } = new();
 
     /// <summary>
+    /// Wacom service status and controls, populated before the dialog is shown.
+    /// </summary>
+    public WacomStatusViewModel? WacomStatus { get; set; }
+
+    /// <summary>
     /// Ensures the express-key rows collection has at least the requested count.
     /// </summary>
     /// <param name="count">The minimum row count.</param>

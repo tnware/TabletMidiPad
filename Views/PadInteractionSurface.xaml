@@ -1,7 +1,7 @@
 <UserControl x:Class="TabletMidiPad.Views.PadInteractionSurface"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Background="{StaticResource SurfaceBrush}">
+    <Grid Background="{DynamicResource LayerFillColorDefaultBrush}">
         <Canvas x:Name="Pad"
                 Background="Transparent"
                 SizeChanged="Pad_SizeChanged"
@@ -19,7 +19,7 @@
             <Ellipse x:Name="CursorDot"
                      Width="14"
                      Height="14"
-                     Fill="{StaticResource AccentBrushHover}"
+                     Fill="{DynamicResource AccentFillColorSecondaryBrush}"
                      Opacity="0.85"
                      Visibility="Collapsed"/>
         </Canvas>

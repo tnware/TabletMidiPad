@@ -4,759 +4,631 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:TabletMidiPad.ViewModels"
         Title="Preferences"
-        Width="950"
+        Width="960"
         Height="760"
         MinWidth="780"
         MinHeight="640"
         ResizeMode="CanResize"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource WindowBackgroundBrush}"
-        Foreground="{StaticResource TextPrimaryBrush}"
         Icon="{DynamicResource AppIcon}">
     <Window.Resources>
-        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <Style TargetType="TabControl">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TabControl">
-                        <Grid x:Name="TabControlRoot"
-                              ClipToBounds="False"
-                              KeyboardNavigation.TabNavigation="Local">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="250"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource SurfaceBrush}"
-                                    BorderBrush="{StaticResource PanelBorderBrush}"
-                                    BorderThickness="0,0,1,0">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                    <StackPanel x:Name="HeaderPanel"
-                                              IsItemsHost="True"
-                                              Background="Transparent"
-                                              Margin="12,48,12,12"/>
-                                </ScrollViewer>
-                            </Border>
-
-                            <Grid Grid.Column="1">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Margin="32,38,32,18">
-                                    <TextBlock Text="Preferences" Foreground="{StaticResource TextPrimaryBrush}" FontSize="28" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Separate application routing from device behavior and hardware controls." Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                                </StackPanel>
-                                <ContentPresenter x:Name="PART_SelectedContentHost"
-                                                  Grid.Row="1"
-                                                  Margin="32,0,32,0"
-                                                  ContentSource="SelectedContent"/>
-                            </Grid>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TabItem">
-                        <Grid x:Name="RootGrid" Margin="{TemplateBinding Margin}">
-                            <Border x:Name="TabBorder"
-                                    Background="{TemplateBinding Background}"
-                                    CornerRadius="6"
-                                    SnapsToDevicePixels="True">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Rectangle x:Name="SelectionIndicator"
-                                               Fill="{StaticResource AccentBrush}"
-                                               Width="3" Height="16"
-                                               VerticalAlignment="Center"
-                                               RadiusX="1.5" RadiusY="1.5"
-                                               Visibility="Hidden"/>
-                                    <ContentPresenter Grid.Column="1"
-                                                      Margin="{TemplateBinding Padding}"
-                                                      HorizontalAlignment="Left"
-                                                      VerticalAlignment="Center"
-                                                      RecognizesAccessKey="True"
-                                                      ContentSource="Header"/>
-                                </Grid>
-                            </Border>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
-                                <Setter TargetName="SelectionIndicator" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <EventSetter Event="PreviewMouseWheel" Handler="ComboBox_PreviewMouseWheel"/>
-        </Style>
-
-        <Style x:Key="NumericStepperRepeatStyle" TargetType="RepeatButton">
+        <Style x:Key="NumericStepperRepeatStyle" TargetType="RepeatButton" BasedOn="{StaticResource {x:Type RepeatButton}}">
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Delay" Value="400"/>
             <Setter Property="Interval" Value="55"/>
-            <Setter Property="Background" Value="{StaticResource SurfaceMutedBrush}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="MinWidth" Value="32"/>
             <Setter Property="MinHeight" Value="32"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border x:Name="Bd"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldHoverBrush}"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource PanelBorderStrongBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource FieldPressedBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
         </Style>
+        <Style x:Key="PrefsSliderStyle" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}"/>
 
-        <Style x:Key="PrefsSliderTrackButtonStyle" TargetType="RepeatButton">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="SettingsGroupStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource ExpanderHeaderBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ExpanderHeaderBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
         </Style>
-
-        <Style x:Key="PrefsSliderThumbStyle" TargetType="Thumb">
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Height" Value="14"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border x:Name="ThumbRoot"
-                                Background="{StaticResource AccentBrush}"
-                                BorderBrush="{StaticResource AccentBrushHover}"
-                                BorderThickness="1"
-                                CornerRadius="7"/>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ThumbRoot" Property="Background" Value="{StaticResource AccentBrushHover}"/>
-                            </Trigger>
-                            <Trigger Property="IsDragging" Value="True">
-                                <Setter TargetName="ThumbRoot" Property="Background" Value="{StaticResource AccentBrushPressed}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="PrefsSliderStyle" TargetType="Slider">
-            <Setter Property="Height" Value="22"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Slider">
-                        <Grid VerticalAlignment="Center">
-                            <Track x:Name="PART_Track">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Style="{StaticResource PrefsSliderTrackButtonStyle}"
-                                                  Background="{StaticResource AccentSurfaceStrongBrush}"
-                                                  BorderBrush="{StaticResource AccentBrush}"/>
-                                </Track.DecreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb Style="{StaticResource PrefsSliderThumbStyle}"/>
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Style="{StaticResource PrefsSliderTrackButtonStyle}"
-                                                  Background="{StaticResource SurfaceMutedBrush}"
-                                                  BorderBrush="{StaticResource PanelBorderBrush}"/>
-                                </Track.IncreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Storyboard x:Key="AmbientDriftStoryboard"
-                    RepeatBehavior="Forever"
-                    AutoReverse="True">
-            <DoubleAnimation Storyboard.TargetName="AmbientBlobNorthTransform"
-                             Storyboard.TargetProperty="X"
-                             From="0"
-                             To="28"
-                             Duration="0:0:26"/>
-            <DoubleAnimation Storyboard.TargetName="AmbientBlobNorthTransform"
-                             Storyboard.TargetProperty="Y"
-                             From="0"
-                             To="18"
-                             Duration="0:0:30"/>
-            <DoubleAnimation Storyboard.TargetName="AmbientBlobSouthTransform"
-                             Storyboard.TargetProperty="X"
-                             From="0"
-                             To="-24"
-                             Duration="0:0:30"/>
-            <DoubleAnimation Storyboard.TargetName="AmbientBlobSouthTransform"
-                             Storyboard.TargetProperty="Y"
-                             From="0"
-                             To="-14"
-                             Duration="0:0:24"/>
-        </Storyboard>
     </Window.Resources>
 
     <Grid>
-        <Grid.Triggers>
-            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                <BeginStoryboard Storyboard="{StaticResource AmbientDriftStoryboard}"/>
-            </EventTrigger>
-        </Grid.Triggers>
-
-        <Grid IsHitTestVisible="False">
-            <Rectangle>
-                <Rectangle.Fill>
-                    <LinearGradientBrush StartPoint="0,0"
-                                         EndPoint="1,1">
-                        <GradientStop Color="#FF050906"
-                                      Offset="0"/>
-                        <GradientStop Color="#FF0A120E"
-                                      Offset="0.52"/>
-                        <GradientStop Color="#FF0E1812"
-                                      Offset="1"/>
-                    </LinearGradientBrush>
-                </Rectangle.Fill>
-            </Rectangle>
-
-            <Ellipse Width="620"
-                     Height="620"
-                     Margin="-260,-200,0,0"
-                     HorizontalAlignment="Left"
-                     VerticalAlignment="Top"
-                     Opacity="0.3"
-                     RenderTransformOrigin="0.5,0.5">
-                <Ellipse.RenderTransform>
-                    <TranslateTransform x:Name="AmbientBlobNorthTransform"/>
-                </Ellipse.RenderTransform>
-                <Ellipse.Fill>
-                    <RadialGradientBrush RadiusX="0.85"
-                                         RadiusY="0.85">
-                        <GradientStop Color="#2A67D68A"
-                                      Offset="0"/>
-                        <GradientStop Color="#0067D68A"
-                                      Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-
-            <Ellipse Width="700"
-                     Height="700"
-                     Margin="0,0,-300,-250"
-                     HorizontalAlignment="Right"
-                     VerticalAlignment="Bottom"
-                     Opacity="0.24"
-                     RenderTransformOrigin="0.5,0.5">
-                <Ellipse.RenderTransform>
-                    <TranslateTransform x:Name="AmbientBlobSouthTransform"/>
-                </Ellipse.RenderTransform>
-                <Ellipse.Fill>
-                    <RadialGradientBrush RadiusX="0.9"
-                                         RadiusY="0.9">
-                        <GradientStop Color="#208AE0C2"
-                                      Offset="0"/>
-                        <GradientStop Color="#008AE0C2"
-                                      Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-        </Grid>
-
-        <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TabControl Grid.Row="0">
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE71D;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="MIDI" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <StackPanel>
-                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
+        <!-- Main layout: nav sidebar + content area -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left navigation sidebar -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Preferences"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                           Margin="16,20,16,12"/>
+
+                <ListBox x:Name="NavList"
+                         Grid.Row="1"
+                         SelectedIndex="0"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Margin="8,0,8,8">
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE71D;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="MIDI" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE713;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Application" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE770;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Wacom" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE729;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Input Device" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7ED;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Pen Buttons" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7AC;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Express Keys" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE790;" Width="20" VerticalAlignment="Center" FontSize="15"/>
+                            <TextBlock Text="Appearance" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+            </Grid>
+
+            <!-- Right content area — elevated layer with top-left rounded corner like WPF Gallery -->
+            <Border Grid.Column="1"
+                    Margin="4,8,8,8"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8,0,0,0">
+                <!-- TabControl with header strip hidden; NavList.SelectedIndex drives content -->
+                <TabControl SelectedIndex="{Binding SelectedIndex, ElementName=NavList, Mode=OneWay}"
+                            Background="Transparent"
+                            BorderThickness="0">
+                    <TabControl.Template>
+                        <ControlTemplate TargetType="TabControl">
+                            <ContentPresenter Content="{TemplateBinding SelectedContent}"/>
+                        </ControlTemplate>
+                    </TabControl.Template>
+
+                    <!-- ═══════════════════════════════════════ MIDI ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
                             <StackPanel>
-                                <TextBlock Text="MIDI Routing" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Loopback port names and association settings." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <Grid Margin="0,16,0,0">
+                                <TextBlock Text="MIDI" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Loopback port names, association settings, and lifecycle management."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+                                <TextBlock Text="Port Names" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="18"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="DAW Input Port" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBox Name="DawPortNameTextBox" Margin="0,6,0,0"
+                                                     Text="{Binding DawPortName, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Internal App Port" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBox Name="AppPortNameTextBox" Margin="0,6,0,0"
+                                                     Text="{Binding AppPortName, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource SettingsGroupStyle}" Margin="0,4,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Association Id" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBox Name="AssociationIdTextBox" Margin="0,6,0,0"
+                                                 Text="{Binding AssociationId, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="Lifecycle" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Manage the loopback pair manually. Startup will reconnect and create-if-missing."
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextWrapping="Wrap"/>
+                                        <WrapPanel Margin="0,12,0,0">
+                                            <Button MinWidth="160" Margin="0,0,8,8" Click="ReconnectMidiNowButton_Click">
+                                                <TextBlock Text="Reconnect Now"/>
+                                            </Button>
+                                            <Button MinWidth="160" Margin="0,0,8,8" Click="RecreateLoopbackButton_Click">
+                                                <TextBlock Text="Recreate Pair"/>
+                                            </Button>
+                                            <Button MinWidth="160" Margin="0,0,0,8" Click="RemoveLoopbackButton_Click">
+                                                <TextBlock Text="Remove Pair"/>
+                                            </Button>
+                                        </WrapPanel>
+                                        <ProgressBar Height="4"
+                                                     Margin="0,4,0,0"
+                                                     IsIndeterminate="True"
+                                                     Visibility="{Binding IsMidiLifecycleBusy, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   Margin="0,8,0,0"
+                                                   Text="{Binding MidiLifecycleStatusText}"
+                                                   TextWrapping="Wrap"/>
+                                        <CheckBox Name="DestroyVirtualMidiOnExitCheckBox"
+                                                  Margin="0,12,0,0"
+                                                  Content="Destroy virtual MIDI devices on application close"
+                                                  IsChecked="{Binding DestroyVirtualMidiOnExit}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ═══════════════════════════════════════ APPLICATION ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
+                            <StackPanel>
+                                <TextBlock Text="Application" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Global rules that affect how zones and pages behave."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+
+                                <TextBlock Text="Behavior" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <StackPanel>
+                                        <CheckBox Name="SendPressureGloballyCheckBox"
+                                                  Content="Send pressure globally"
+                                                  IsChecked="{Binding SendPressureGlobally}"/>
+                                        <CheckBox Name="AllowZoneSwitchCheckBox" Margin="0,10,0,0"
+                                                  Content="Latch onto zones when entering while pressed"
+                                                  IsChecked="{Binding AllowZoneSwitchWhilePressed}"/>
+                                        <CheckBox Name="AllowPageSwitchCheckBox" Margin="0,10,0,0"
+                                                  Content="Switch pages immediately while pen is down"
+                                                  IsChecked="{Binding AllowPageSwitchWhilePressed}"/>
+                                        <CheckBox Name="WrapPageNavigationCheckBox" Margin="0,10,0,0"
+                                                  Content="Wrap page navigation at first/last page"
+                                                  IsChecked="{Binding WrapPageNavigation}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ═══════════════════════════════════════ WACOM ═══════════════════════════════════════ -->
+                    <TabItem DataContext="{Binding WacomStatus}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
+                            <StackPanel>
+                                <TextBlock Text="Wacom" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Wacom tablet driver service status and controls."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+
+                                <TextBlock Text="Service" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   TextWrapping="Wrap"/>
+                                        <WrapPanel Margin="0,12,0,0">
+                                            <Button MinWidth="160" Margin="0,0,8,0"
+                                                    Command="{Binding RefreshCommand}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                               FontSize="13" Margin="0,0,6,0" Text="&#xE72C;"/>
+                                                    <TextBlock Text="Refresh Status"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button MinWidth="160"
+                                                    IsEnabled="{Binding IsStartEnabled}"
+                                                    Command="{Binding StartServiceCommand}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                               FontSize="13" Margin="0,0,6,0" Text="&#xE768;"/>
+                                                    <TextBlock Text="Start Service"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ═══════════════════════════════════════ INPUT DEVICE ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
+                            <StackPanel>
+                                <TextBlock Text="Input Device" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Backend selection and raw signal shaping."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+
+                                <TextBlock Text="Backend" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="18"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Input Backend" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <ComboBox Name="InputBackendModeComboBox" Margin="0,6,0,0"
+                                                      SelectedItem="{Binding InputBackendMode}"
+                                                      Text="{Binding InputBackendMode}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Pressure Curve" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <ComboBox Name="PressureCurveComboBox" Margin="0,6,0,0"
+                                                      SelectedItem="{Binding PressureCurve}"
+                                                      Text="{Binding PressureCurve}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Text="Signal Shaping" FontWeight="SemiBold" Margin="0,20,0,0"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Border Style="{StaticResource SettingsGroupStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="18"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="18"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Mouse Pressure Fallback" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBox Name="MousePressureTextBox" Margin="0,6,0,0"
+                                                     TextChanged="MousePressureTextBox_TextChanged"
+                                                     Text="{Binding MousePressureText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Slider Name="MousePressureSlider"
+                                                    Style="{StaticResource PrefsSliderStyle}"
+                                                    Margin="0,8,0,0"
+                                                    Minimum="0"
+                                                    Maximum="127"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickPlacement="None"
+                                                    ValueChanged="MousePressureSlider_ValueChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Position Dead Zone" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBox Name="DeadZoneTextBox" Margin="0,6,0,0"
+                                                     TextChanged="DeadZoneTextBox_TextChanged"
+                                                     Text="{Binding PositionDeadZoneText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Slider Name="DeadZoneSlider"
+                                                    Style="{StaticResource PrefsSliderStyle}"
+                                                    Margin="0,8,0,0"
+                                                    Minimum="0"
+                                                    Maximum="0.1"
+                                                    TickFrequency="0.005"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickPlacement="None"
+                                                    ValueChanged="DeadZoneSlider_ValueChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="XY Smoothing" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBox Name="SmoothingTextBox" Margin="0,6,0,0"
+                                                     TextChanged="SmoothingTextBox_TextChanged"
+                                                     Text="{Binding PositionSmoothingText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Slider Name="SmoothingSlider"
+                                                    Style="{StaticResource PrefsSliderStyle}"
+                                                    Margin="0,8,0,0"
+                                                    Minimum="0"
+                                                    Maximum="0.95"
+                                                    TickFrequency="0.05"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickPlacement="None"
+                                                    ValueChanged="SmoothingSlider_ValueChanged"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ═══════════════════════════════════════ PEN BUTTONS ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
+                            <StackPanel>
+                                <TextBlock Text="Pen Buttons" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="MIDI output for each pen side switch."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+
+                                <Grid Margin="0,20,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="18"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="DAW Input Port" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="DawPortNameTextBox" Margin="0,6,0,0"
-                                                 Text="{Binding DawPortName, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Internal App Port" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBox Name="AppPortNameTextBox" Margin="0,6,0,0"
-                                                 Text="{Binding AppPortName, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </StackPanel>
-                                </Grid>
-                                <TextBlock Text="Association Id" Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,0"/>
-                                <TextBox Name="AssociationIdTextBox" Margin="0,6,0,0"
-                                         Text="{Binding AssociationId, UpdateSourceTrigger=PropertyChanged}"/>
-                                <Separator Margin="0,16,0,10"/>
-                                <TextBlock Text="Loopback Lifecycle" Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock Text="Manage the loopback pair manually. Startup will reconnect and create-if-missing."
-                                           Foreground="{StaticResource TextMutedBrush}"
-                                           Margin="0,4,0,0"
-                                           TextWrapping="Wrap"/>
-                                <WrapPanel Margin="0,10,0,0">
-                                    <Button MinWidth="180" Margin="0,0,8,8" Click="ReconnectMidiNowButton_Click">
-                                        <TextBlock Text="Reconnect Now"/>
-                                    </Button>
-                                    <Button MinWidth="180" Margin="0,0,8,8" Style="{StaticResource SecondaryButtonStyle}" Click="RecreateLoopbackButton_Click">
-                                        <TextBlock Text="Recreate Pair"/>
-                                    </Button>
-                                    <Button MinWidth="180" Margin="0,0,0,8" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveLoopbackButton_Click">
-                                        <TextBlock Text="Remove Pair"/>
-                                    </Button>
-                                </WrapPanel>
-                                <ProgressBar Height="4"
-                                             Margin="0,2,0,0"
-                                             IsIndeterminate="True"
-                                             Visibility="{Binding IsMidiLifecycleBusy, Converter={StaticResource BoolToVis}}"/>
-                                <TextBlock Foreground="{StaticResource TextMutedBrush}"
-                                           Margin="0,8,0,0"
-                                           Text="{Binding MidiLifecycleStatusText}"
-                                           TextWrapping="Wrap"/>
-                                <CheckBox Name="DestroyVirtualMidiOnExitCheckBox"
-                                          Margin="0,12,0,0"
-                                          Content="Destroy virtual MIDI devices on application close"
-                                          IsChecked="{Binding DestroyVirtualMidiOnExit}"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
 
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE713;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Application" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <StackPanel>
-                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
-                            <StackPanel>
-                                <TextBlock Text="Application Behavior" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Global rules that affect how zones behave." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <CheckBox Name="SendPressureGloballyCheckBox" Margin="0,16,0,0" Content="Send pressure globally"
-                                          IsChecked="{Binding SendPressureGlobally}"/>
-                                <CheckBox Name="AllowZoneSwitchCheckBox" Margin="0,10,0,0" Content="Latch onto zones when entering while pressed"
-                                          IsChecked="{Binding AllowZoneSwitchWhilePressed}"/>
-                                <CheckBox Name="AllowPageSwitchCheckBox" Margin="0,10,0,0" Content="Switch pages immediately while pen is down"
-                                          IsChecked="{Binding AllowPageSwitchWhilePressed}"/>
-                                <CheckBox Name="WrapPageNavigationCheckBox" Margin="0,10,0,0" Content="Wrap page navigation at first/last page"
-                                          IsChecked="{Binding WrapPageNavigation}"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
+                                    <!-- Lower button -->
+                                    <Border Grid.Column="0" Style="{StaticResource SettingsGroupStyle}" Margin="0">
+                                        <StackPanel>
+                                            <TextBlock Text="Lower Pen Button" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            <TextBlock Text="Usually the lower side switch."
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Margin="0,2,0,12"/>
+                                            <TextBlock Text="Action" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <ComboBox Name="LowerPenButtonActionComboBox" Margin="0,6,0,14"
+                                                      SelectedItem="{Binding LowerPenButtonAction}"
+                                                      Text="{Binding LowerPenButtonAction}"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="12"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="12"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="MIDI Ch" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"
+                                                              SelectedItem="{Binding LowerPenButtonMidiChannelText}"
+                                                              Text="{Binding LowerPenButtonMidiChannelText}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="CC" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Grid Margin="0,6,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <RepeatButton Grid.Column="0"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="0,0,4,0"
+                                                                      Content="&#xE74D;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Decrease_Click"
+                                                                      Tag="{x:Reference LowerPenButtonCcTextBox}"/>
+                                                        <TextBox Name="LowerPenButtonCcTextBox" Grid.Column="1"
+                                                                 Text="{Binding LowerPenButtonCcText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <RepeatButton Grid.Column="2"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="4,0,0,0"
+                                                                      Content="&#xE710;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Increase_Click"
+                                                                      Tag="{x:Reference LowerPenButtonCcTextBox}"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4">
+                                                    <TextBlock Text="Note" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Grid Margin="0,6,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <RepeatButton Grid.Column="0"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="0,0,4,0"
+                                                                      Content="&#xE74D;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Decrease_Click"
+                                                                      Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
+                                                        <TextBox Name="LowerPenButtonNoteTextBox" Grid.Column="1"
+                                                                 Text="{Binding LowerPenButtonNoteText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <RepeatButton Grid.Column="2"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="4,0,0,0"
+                                                                      Content="&#xE710;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Increase_Click"
+                                                                      Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
 
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE729;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Input Device" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
-                        <StackPanel>
-                            <TextBlock Text="Device Input" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Backend selection and raw signal shaping." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                            <Grid Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="18"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Input Backend" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <ComboBox Name="InputBackendModeComboBox" Margin="0,6,0,0"
-                                              SelectedItem="{Binding InputBackendMode}"
-                                              Text="{Binding InputBackendMode}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Pressure Curve" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <ComboBox Name="PressureCurveComboBox" Margin="0,6,0,0"
-                                              SelectedItem="{Binding PressureCurve}"
-                                              Text="{Binding PressureCurve}"/>
-                                </StackPanel>
-                            </Grid>
-                            <Grid Margin="0,14,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="18"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="18"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Mouse Pressure Fallback" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Name="MousePressureTextBox" Margin="0,6,0,0"
-                                             TextChanged="MousePressureTextBox_TextChanged"
-                                             Text="{Binding MousePressureText, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Slider Name="MousePressureSlider"
-                                            Style="{StaticResource PrefsSliderStyle}"
-                                            Margin="0,8,0,0"
-                                            Minimum="0"
-                                            Maximum="127"
-                                            TickFrequency="1"
-                                            IsSnapToTickEnabled="True"
-                                            TickPlacement="None"
-                                            ValueChanged="MousePressureSlider_ValueChanged"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Position Dead Zone" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Name="DeadZoneTextBox" Margin="0,6,0,0"
-                                             TextChanged="DeadZoneTextBox_TextChanged"
-                                             Text="{Binding PositionDeadZoneText, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Slider Name="DeadZoneSlider"
-                                            Style="{StaticResource PrefsSliderStyle}"
-                                            Margin="0,8,0,0"
-                                            Minimum="0"
-                                            Maximum="0.1"
-                                            TickFrequency="0.005"
-                                            IsSnapToTickEnabled="True"
-                                            TickPlacement="None"
-                                            ValueChanged="DeadZoneSlider_ValueChanged"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
-                                    <TextBlock Text="XY Smoothing" Foreground="{StaticResource TextMutedBrush}"/>
-                                    <TextBox Name="SmoothingTextBox" Margin="0,6,0,0"
-                                             TextChanged="SmoothingTextBox_TextChanged"
-                                             Text="{Binding PositionSmoothingText, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Slider Name="SmoothingSlider"
-                                            Style="{StaticResource PrefsSliderStyle}"
-                                            Margin="0,8,0,0"
-                                            Minimum="0"
-                                            Maximum="0.95"
-                                            TickFrequency="0.05"
-                                            IsSnapToTickEnabled="True"
-                                            TickPlacement="None"
-                                            ValueChanged="SmoothingSlider_ValueChanged"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-                </ScrollViewer>
-            </TabItem>
-
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7ED;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Pen Buttons" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="18"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
-                            <StackPanel>
-                                <TextBlock Text="Lower Pen Button" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Usually the lower side switch." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Text="Action" Foreground="{StaticResource TextMutedBrush}" Margin="0,16,0,0"/>
-                                <ComboBox Name="LowerPenButtonActionComboBox" Margin="0,6,0,0"
-                                          SelectedItem="{Binding LowerPenButtonAction}"
-                                          Text="{Binding LowerPenButtonAction}"/>
-                                <Grid Margin="0,14,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"
-                                                  SelectedItem="{Binding LowerPenButtonMidiChannelText}"
-                                                  Text="{Binding LowerPenButtonMidiChannelText}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <RepeatButton Grid.Column="0"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Margin="0,0,6,0"
-                                                          Content="&#xE74D;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Decrease_Click"
-                                                          Tag="{x:Reference LowerPenButtonCcTextBox}"/>
-                                            <TextBox Name="LowerPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     Text="{Binding LowerPenButtonCcText, UpdateSourceTrigger=PropertyChanged}"/>
-                                            <RepeatButton Grid.Column="2"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Content="&#xE710;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Increase_Click"
-                                                          Tag="{x:Reference LowerPenButtonCcTextBox}"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="4">
-                                        <TextBlock Text="Note" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <RepeatButton Grid.Column="0"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Margin="0,0,6,0"
-                                                          Content="&#xE74D;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Decrease_Click"
-                                                          Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
-                                            <TextBox Name="LowerPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     Text="{Binding LowerPenButtonNoteText, UpdateSourceTrigger=PropertyChanged}"/>
-                                            <RepeatButton Grid.Column="2"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Content="&#xE710;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Increase_Click"
-                                                          Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
-                                        </Grid>
-                                    </StackPanel>
+                                    <!-- Upper button -->
+                                    <Border Grid.Column="2" Style="{StaticResource SettingsGroupStyle}" Margin="0">
+                                        <StackPanel>
+                                            <TextBlock Text="Upper Pen Button" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            <TextBlock Text="Usually the upper side switch."
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Margin="0,2,0,12"/>
+                                            <TextBlock Text="Action" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <ComboBox Name="UpperPenButtonActionComboBox" Margin="0,6,0,14"
+                                                      SelectedItem="{Binding UpperPenButtonAction}"
+                                                      Text="{Binding UpperPenButtonAction}"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="12"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="12"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="MIDI Ch" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"
+                                                              SelectedItem="{Binding UpperPenButtonMidiChannelText}"
+                                                              Text="{Binding UpperPenButtonMidiChannelText}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="CC" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Grid Margin="0,6,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <RepeatButton Grid.Column="0"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="0,0,4,0"
+                                                                      Content="&#xE74D;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Decrease_Click"
+                                                                      Tag="{x:Reference UpperPenButtonCcTextBox}"/>
+                                                        <TextBox Name="UpperPenButtonCcTextBox" Grid.Column="1"
+                                                                 Text="{Binding UpperPenButtonCcText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <RepeatButton Grid.Column="2"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="4,0,0,0"
+                                                                      Content="&#xE710;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Increase_Click"
+                                                                      Tag="{x:Reference UpperPenButtonCcTextBox}"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4">
+                                                    <TextBlock Text="Note" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Grid Margin="0,6,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <RepeatButton Grid.Column="0"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="0,0,4,0"
+                                                                      Content="&#xE74D;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Decrease_Click"
+                                                                      Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
+                                                        <TextBox Name="UpperPenButtonNoteTextBox" Grid.Column="1"
+                                                                 Text="{Binding UpperPenButtonNoteText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        <RepeatButton Grid.Column="2"
+                                                                      Style="{StaticResource NumericStepperRepeatStyle}"
+                                                                      Margin="4,0,0,0"
+                                                                      Content="&#xE710;"
+                                                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                                                      Click="MidiCcNoteStepper_Increase_Click"
+                                                                      Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
                             </StackPanel>
-                        </Border>
-                        <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ═══════════════════════════════════════ EXPRESS KEYS ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
                             <StackPanel>
-                                <TextBlock Text="Upper Pen Button" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Usually the upper side switch." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                                <TextBlock Text="Action" Foreground="{StaticResource TextMutedBrush}" Margin="0,16,0,0"/>
-                                <ComboBox Name="UpperPenButtonActionComboBox" Margin="0,6,0,0"
-                                          SelectedItem="{Binding UpperPenButtonAction}"
-                                          Text="{Binding UpperPenButtonAction}"/>
-                                <Grid Margin="0,14,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="MIDI Ch" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"
-                                                  SelectedItem="{Binding UpperPenButtonMidiChannelText}"
-                                                  Text="{Binding UpperPenButtonMidiChannelText}"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="CC" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <RepeatButton Grid.Column="0"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Margin="0,0,6,0"
-                                                          Content="&#xE74D;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Decrease_Click"
-                                                          Tag="{x:Reference UpperPenButtonCcTextBox}"/>
-                                            <TextBox Name="UpperPenButtonCcTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     Text="{Binding UpperPenButtonCcText, UpdateSourceTrigger=PropertyChanged}"/>
-                                            <RepeatButton Grid.Column="2"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Content="&#xE710;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Increase_Click"
-                                                          Tag="{x:Reference UpperPenButtonCcTextBox}"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="4">
-                                        <TextBlock Text="Note" Foreground="{StaticResource TextMutedBrush}"/>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <RepeatButton Grid.Column="0"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Margin="0,0,6,0"
-                                                          Content="&#xE74D;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Decrease_Click"
-                                                          Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
-                                            <TextBox Name="UpperPenButtonNoteTextBox" Grid.Column="1" Margin="0,0,6,0"
-                                                     Text="{Binding UpperPenButtonNoteText, UpdateSourceTrigger=PropertyChanged}"/>
-                                            <RepeatButton Grid.Column="2"
-                                                          Style="{StaticResource NumericStepperRepeatStyle}"
-                                                          Content="&#xE710;"
-                                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                                          Click="MidiCcNoteStepper_Increase_Click"
-                                                          Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Grid>
+                                <TextBlock Text="Express Keys" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Configure each detected ExpressKey separately."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+                                <StackPanel Name="ExpressKeysPanel" Margin="0,16,0,0"/>
                             </StackPanel>
-                        </Border>
-                    </Grid>
-                </ScrollViewer>
-            </TabItem>
+                        </ScrollViewer>
+                    </TabItem>
 
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE7AC;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Express Keys" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
-                        <StackPanel>
-                            <TextBlock Text="ExpressKey Mapping" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Configure each detected ExpressKey separately." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,0"/>
-                            <StackPanel Name="ExpressKeysPanel" Margin="0,18,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </ScrollViewer>
-            </TabItem>
+                    <!-- ═══════════════════════════════════════ APPEARANCE ═══════════════════════════════════════ -->
+                    <TabItem>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                      Padding="24,20,24,24">
+                            <StackPanel>
+                                <TextBlock Text="Appearance" FontSize="28" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <TextBlock Text="Choose how the interior of each zone is decorated on the pad."
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Margin="0,4,0,0"/>
+                                <WrapPanel Name="StyleCardPanel" Margin="0,16,0,0"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
 
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}" Text="&#xE790;" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="16"/>
-                        <TextBlock Text="Appearance" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </TabItem.Header>
-                <ScrollViewer Margin="0,14,0,0"
-                              HorizontalContentAlignment="Stretch">
-                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="18">
-                        <StackPanel>
-                            <TextBlock Text="Zone Overlay Style" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Choose how the interior of each zone is decorated on the pad." Foreground="{StaticResource TextMutedBrush}" Margin="0,4,0,16"/>
-                            <WrapPanel Name="StyleCardPanel"/>
-                        </StackPanel>
-                    </Border>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+                </TabControl>
+            </Border>
+        </Grid>
 
+        <!-- Footer: error text + action buttons -->
         <Border Grid.Row="1"
-                Margin="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"
-                Padding="22,16">
+                Padding="16,12">
             <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Name="ErrorText" Grid.Column="0" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextWrapping="Wrap"
-                       Text="{Binding ErrorText}"/>
-            <Button Grid.Column="1" MinWidth="150" Margin="0" Click="OkButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                               FontSize="13"
-                               Margin="0,0,6,0"
-                               Text="&#xE8FB;"/>
-                    <TextBlock Text="OK"/>
-                </StackPanel>
-            </Button>
-            <Button Grid.Column="3" MinWidth="150" Margin="0" Style="{StaticResource SecondaryButtonStyle}" Click="CancelButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                               FontSize="13"
-                               Margin="0,0,6,0"
-                               Text="&#xE711;"/>
-                    <TextBlock Text="Cancel"/>
-                </StackPanel>
-            </Button>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Name="ErrorText" Grid.Column="0"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Text="{Binding ErrorText}"/>
+                <Button Grid.Column="1" MinWidth="120" Click="OkButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13" Margin="0,0,6,0" Text="&#xE8FB;"/>
+                        <TextBlock Text="OK"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" MinWidth="120" Click="CancelButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="13" Margin="0,0,6,0" Text="&#xE711;"/>
+                        <TextBlock Text="Cancel"/>
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
-        </Grid>
     </Grid>
 </Window>

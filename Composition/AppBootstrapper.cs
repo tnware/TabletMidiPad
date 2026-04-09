@@ -35,7 +35,10 @@ internal static class AppBootstrapper
         container.AddSingleton<IPreferencesDialogService>(c => new PreferencesDialogService(
             c.GetRequiredService<IConfigValueParser>(),
             () => c.GetRequiredService<PreferencesViewModel>(),
-            c.GetRequiredService<IMidiEngine>()));
+            c.GetRequiredService<IMidiEngine>(),
+            c.GetRequiredService<IWacomServiceController>(),
+            c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),
+            c.GetRequiredService<IUiStateProjectionService>()));
         container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(
             c.GetRequiredService<IConfigValueParser>(),
             c.GetRequiredService<IPageNavigationService>()));
