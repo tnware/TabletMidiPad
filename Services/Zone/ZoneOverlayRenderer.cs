@@ -165,6 +165,9 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
             case ZoneOverlayStyle.XYGraph:
                 AddXYGraph(canvas, left, top, width, height, baseColor);
                 break;
+            case ZoneOverlayStyle.XYGraphBottomLeft:
+                AddXYGraphBottomLeft(canvas, left, top, width, height, baseColor);
+                break;
         }
     }
 
@@ -274,6 +277,143 @@ internal sealed class ZoneOverlayRenderer : IZoneOverlayRenderer
         canvas.Children.Add(xAxis);
         canvas.Children.Add(yAxis);
         canvas.Children.Add(origin);
+    }
+
+    private static void AddXYGraphBottomLeft(Canvas canvas, double left, double top, double width, double height, Color baseColor)
+    {
+        const double margin = 10;
+        const byte axisAlpha = 190;
+        var axisBrush = new SolidColorBrush(WithAlpha(baseColor, axisAlpha));
+        var labelBrush = new SolidColorBrush(WithAlpha(baseColor, 210));
+
+        double originX = left + margin;
+        double originY = top + height - margin;
+        double axisWidth = Math.Max(0, width - (2 * margin));
+        double axisHeight = Math.Max(0, height - (2 * margin));
+
+        var xAxis = new Line
+        {
+            X1 = originX,
+            Y1 = originY,
+            X2 = left + width - margin,
+            Y2 = originY,
+            Stroke = axisBrush,
+            StrokeThickness = 1.5
+        };
+
+        var yAxis = new Line
+        {
+            X1 = originX,
+            Y1 = originY,
+            X2 = originX,
+            Y2 = top + margin,
+            Stroke = axisBrush,
+            StrokeThickness = 1.5
+        };
+
+        var origin = new Ellipse
+        {
+            Width = 5,
+            Height = 5,
+            Fill = axisBrush
+        };
+        Canvas.SetLeft(origin, originX - 2.5);
+        Canvas.SetTop(origin, originY - 2.5);
+
+        canvas.Children.Add(xAxis);
+        canvas.Children.Add(yAxis);
+        canvas.Children.Add(origin);
+
+        // MIDI scale markers from 0..127 at strategic intervals.
+        foreach ((double t, string label, bool major) in new[]
+        {
+            (0.00, "0", true),
+            (0.25, "32", false),
+            (0.50, "64", true),
+            (0.75, "96", false),
+            (1.00, "127", true),
+        })
+        {
+            double x = originX + (t * axisWidth);
+            double y = originY - (t * axisHeight);
+            double markerRadius = major ? 2.2 : 1.5;
+            double tickHalf = major ? 4.0 : 0.0;
+
+            // X-axis marker.
+            var xMarker = new Ellipse
+            {
+                Width = markerRadius * 2,
+                Height = markerRadius * 2,
+                Fill = axisBrush
+            };
+            Canvas.SetLeft(xMarker, x - markerRadius);
+            Canvas.SetTop(xMarker, originY - markerRadius);
+            canvas.Children.Add(xMarker);
+
+            // Y-axis marker.
+            var yMarker = new Ellipse
+            {
+                Width = markerRadius * 2,
+                Height = markerRadius * 2,
+                Fill = axisBrush
+            };
+            Canvas.SetLeft(yMarker, originX - markerRadius);
+            Canvas.SetTop(yMarker, y - markerRadius);
+            canvas.Children.Add(yMarker);
+
+            if (major)
+            {
+                var xTick = new Line
+                {
+                    X1 = x,
+                    Y1 = originY - tickHalf,
+                    X2 = x,
+                    Y2 = originY + tickHalf,
+                    Stroke = axisBrush,
+                    StrokeThickness = 1
+                };
+                canvas.Children.Add(xTick);
+
+                var yTick = new Line
+                {
+                    X1 = originX - tickHalf,
+                    Y1 = y,
+                    X2 = originX + tickHalf,
+                    Y2 = y,
+                    Stroke = axisBrush,
+                    StrokeThickness = 1
+                };
+                canvas.Children.Add(yTick);
+            }
+
+            var xLabel = new TextBlock
+            {
+                Text = label,
+                FontSize = 9,
+                Foreground = labelBrush
+            };
+            xLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double xLabelLeft = t == 0
+                ? x + 4
+                : x - (xLabel.DesiredSize.Width / 2);
+            Canvas.SetLeft(xLabel, xLabelLeft);
+            Canvas.SetTop(xLabel, originY - xLabel.DesiredSize.Height - 4);
+            canvas.Children.Add(xLabel);
+
+            if (t > 0)
+            {
+                var yLabel = new TextBlock
+                {
+                    Text = label,
+                    FontSize = 9,
+                    Foreground = labelBrush
+                };
+                yLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Canvas.SetLeft(yLabel, originX + 6);
+                Canvas.SetTop(yLabel, y - (yLabel.DesiredSize.Height / 2));
+                canvas.Children.Add(yLabel);
+            }
+        }
     }
 
     private static void AddResizeHandles(

@@ -15,5 +15,8 @@ public enum ZoneOverlayStyle
     DotArray,
 
     /// <summary>X and Y axis lines crossing at the zone center, representing a 0,0 origin.</summary>
-    XYGraph
+    XYGraph,
+
+    /// <summary>X and Y axis lines anchored to the bottom-left corner, where origin is 0,0.</summary>
+    XYGraphBottomLeft
 }

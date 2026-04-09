@@ -55,6 +55,9 @@ internal sealed class ZoneStylePreviewElement : FrameworkElement
             case ZoneOverlayStyle.XYGraph:
                 DrawXYGraph(dc, bounds, color);
                 break;
+            case ZoneOverlayStyle.XYGraphBottomLeft:
+                DrawXYGraphBottomLeft(dc, bounds, color);
+                break;
         }
 
         dc.Pop(); // pop clip
@@ -112,5 +115,90 @@ internal sealed class ZoneStylePreviewElement : FrameworkElement
         dc.DrawLine(pen, new Point(bounds.Left + margin, cy), new Point(bounds.Right - margin, cy));
         dc.DrawLine(pen, new Point(cx, bounds.Top + margin), new Point(cx, bounds.Bottom - margin));
         dc.DrawEllipse(pen.Brush, null, new Point(cx, cy), 2.5, 2.5);
+    }
+
+    private void DrawXYGraphBottomLeft(DrawingContext dc, Rect bounds, Color color)
+    {
+        const byte axisAlpha = 200;
+        const double margin = 8;
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(axisAlpha, color.R, color.G, color.B)), 1.5);
+        var textBrush = new SolidColorBrush(Color.FromArgb(215, color.R, color.G, color.B));
+
+        double originX = bounds.Left + margin;
+        double originY = bounds.Bottom - margin;
+        double axisWidth = Math.Max(0, bounds.Width - (2 * margin));
+        double axisHeight = Math.Max(0, bounds.Height - (2 * margin));
+
+        dc.DrawLine(pen, new Point(originX, originY), new Point(bounds.Right - margin, originY));
+        dc.DrawLine(pen, new Point(originX, originY), new Point(originX, bounds.Top + margin));
+        dc.DrawEllipse(pen.Brush, null, new Point(originX, originY), 2.5, 2.5);
+
+        foreach ((double t, string label, bool major) in new[]
+        {
+            (0.00, "0", true),
+            (0.50, "64", true),
+            (1.00, "127", true),
+        })
+        {
+            double x = originX + (t * axisWidth);
+            double y = originY - (t * axisHeight);
+            double tickHalf = major ? 3.0 : 0.0;
+
+            dc.DrawEllipse(pen.Brush, null, new Point(x, originY), 1.8, 1.8);
+            dc.DrawEllipse(pen.Brush, null, new Point(originX, y), 1.8, 1.8);
+
+            if (major)
+            {
+                dc.DrawLine(pen, new Point(x, originY - tickHalf), new Point(x, originY + tickHalf));
+                dc.DrawLine(pen, new Point(originX - tickHalf, y), new Point(originX + tickHalf, y));
+            }
+
+            DrawLabel(dc, label, textBrush, new Point(t == 0 ? x + 4 : x, originY - 4), t == 0 ? HorizontalAlignment.Left : HorizontalAlignment.Center, VerticalAlignment.Bottom);
+            if (t > 0)
+            {
+                DrawLabel(dc, label, textBrush, new Point(originX + 4, y), HorizontalAlignment.Left, VerticalAlignment.Center);
+            }
+        }
+    }
+
+    private void DrawLabel(
+        DrawingContext dc,
+        string text,
+        Brush brush,
+        Point anchor,
+        HorizontalAlignment horizontalAlignment,
+        VerticalAlignment verticalAlignment)
+    {
+        var formattedText = new FormattedText(
+            text,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            8,
+            brush,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+
+        double x = anchor.X;
+        double y = anchor.Y;
+
+        if (horizontalAlignment == HorizontalAlignment.Center)
+        {
+            x -= formattedText.Width / 2;
+        }
+        else if (horizontalAlignment == HorizontalAlignment.Right)
+        {
+            x -= formattedText.Width;
+        }
+
+        if (verticalAlignment == VerticalAlignment.Center)
+        {
+            y -= formattedText.Height / 2;
+        }
+        else if (verticalAlignment == VerticalAlignment.Bottom)
+        {
+            y -= formattedText.Height;
+        }
+
+        dc.DrawText(formattedText, new Point(x, y));
     }
 }

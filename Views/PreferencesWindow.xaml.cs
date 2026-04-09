@@ -476,6 +476,7 @@ internal partial class PreferencesWindow : Window
         (ZoneOverlayStyle.VignetteGrid, "Vignette Grid", "Grid lines that fade toward the edges."),
         (ZoneOverlayStyle.DotArray,     "Dot Array",    "Regular dot pattern across the zone."),
         (ZoneOverlayStyle.XYGraph,      "XY Graph",     "Axis lines crossing at the zone center."),
+        (ZoneOverlayStyle.XYGraphBottomLeft, "XY Graph (Bottom-Left)", "Axes anchored to bottom-left with 0,0 at the corner."),
     ];
 
     private readonly Dictionary<ZoneOverlayStyle, Border> _styleCards = new();
