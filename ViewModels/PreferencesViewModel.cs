@@ -26,6 +26,8 @@ internal sealed class PreferencesViewModel : ViewModelBase
     private string _upperPenButtonNoteText = "61";
     private bool _sendPressureGlobally = true;
     private bool _allowZoneSwitchWhilePressed = true;
+    private string _midiLifecycleStatusText = string.Empty;
+    private bool _isMidiLifecycleBusy;
 
     public string DawPortName
     {
@@ -133,6 +135,18 @@ internal sealed class PreferencesViewModel : ViewModelBase
     {
         get => _allowZoneSwitchWhilePressed;
         set => SetProperty(ref _allowZoneSwitchWhilePressed, value);
+    }
+
+    public string MidiLifecycleStatusText
+    {
+        get => _midiLifecycleStatusText;
+        set => SetProperty(ref _midiLifecycleStatusText, value);
+    }
+
+    public bool IsMidiLifecycleBusy
+    {
+        get => _isMidiLifecycleBusy;
+        set => SetProperty(ref _isMidiLifecycleBusy, value);
     }
 
     public ObservableCollection<ExpressKeyRowViewModel> ExpressKeys { get; } = new();

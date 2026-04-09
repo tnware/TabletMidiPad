@@ -12,16 +12,19 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
 {
     private readonly IConfigValueParser _configValueParser;
     private readonly Func<PreferencesViewModel> _preferencesViewModelFactory;
+    private readonly IMidiEngine _midiEngine;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PreferencesDialogService"/> class.
     /// </summary>
     public PreferencesDialogService(
         IConfigValueParser configValueParser,
-        Func<PreferencesViewModel> preferencesViewModelFactory)
+        Func<PreferencesViewModel> preferencesViewModelFactory,
+        IMidiEngine midiEngine)
     {
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _preferencesViewModelFactory = preferencesViewModelFactory ?? throw new ArgumentNullException(nameof(preferencesViewModelFactory));
+        _midiEngine = midiEngine ?? throw new ArgumentNullException(nameof(midiEngine));
     }
 
     /// <inheritdoc />
@@ -30,7 +33,25 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
         ExpressKeyConfig.EnsureCount(currentConfig.ExpressKeys, expressKeyCount);
 
         PreferencesViewModel viewModel = _preferencesViewModelFactory();
-        var preferencesWindow = new PreferencesWindow(expressKeyCount, _configValueParser, viewModel)
+        var preferencesWindow = new PreferencesWindow(
+            expressKeyCount,
+            _configValueParser,
+            viewModel,
+            reconnectMidiAsync: async (config, onProgress) =>
+            {
+                await _midiEngine.RestartAsync(config, onProgress);
+                _midiEngine.ClearCachedValues();
+            },
+            recreateLoopbackAsync: async (config, onProgress) =>
+            {
+                await _midiEngine.RecreateLoopbackPairAsync(config, onProgress);
+                _midiEngine.ClearCachedValues();
+            },
+            removeLoopbackAsync: async (config, onProgress) =>
+            {
+                await _midiEngine.RemoveLoopbackPairAsync(config, onProgress);
+                _midiEngine.ClearCachedValues();
+            })
         {
             Owner = owner
         };

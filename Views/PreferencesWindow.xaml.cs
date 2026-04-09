@@ -13,6 +13,9 @@ internal partial class PreferencesWindow : Window
     public bool Accepted { get; private set; }
     private readonly PreferencesViewModel _viewModel;
     private readonly IConfigValueParser _configValueParser;
+    private readonly Func<AppConfig, Action<string>?, Task> _reconnectMidiAsync;
+    private readonly Func<AppConfig, Action<string>?, Task> _recreateLoopbackAsync;
+    private readonly Func<AppConfig, Action<string>?, Task> _removeLoopbackAsync;
     private bool _isSyncingInputDeviceControls;
 
     public string DawPortName => _viewModel.DawPortName.Trim();
@@ -37,11 +40,20 @@ internal partial class PreferencesWindow : Window
 
     private readonly int _expressKeyCount;
 
-    public PreferencesWindow(int expressKeyCount, IConfigValueParser configValueParser, PreferencesViewModel viewModel)
+    public PreferencesWindow(
+        int expressKeyCount,
+        IConfigValueParser configValueParser,
+        PreferencesViewModel viewModel,
+        Func<AppConfig, Action<string>?, Task> reconnectMidiAsync,
+        Func<AppConfig, Action<string>?, Task> recreateLoopbackAsync,
+        Func<AppConfig, Action<string>?, Task> removeLoopbackAsync)
     {
         _expressKeyCount = expressKeyCount;
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _reconnectMidiAsync = reconnectMidiAsync ?? throw new ArgumentNullException(nameof(reconnectMidiAsync));
+        _recreateLoopbackAsync = recreateLoopbackAsync ?? throw new ArgumentNullException(nameof(recreateLoopbackAsync));
+        _removeLoopbackAsync = removeLoopbackAsync ?? throw new ArgumentNullException(nameof(removeLoopbackAsync));
         InitializeComponent();
         DataContext = _viewModel;
         WindowChromeTheme.ApplyDarkNonClientChrome(this);
@@ -109,6 +121,8 @@ internal partial class PreferencesWindow : Window
         _viewModel.SendPressureGlobally = config.SendPressureGlobally;
         _viewModel.AllowZoneSwitchWhilePressed = config.AllowZoneSwitchWhilePressed;
         SelectZoneOverlayStyle(config.ZoneOverlayStyle);
+        _viewModel.MidiLifecycleStatusText = string.Empty;
+        _viewModel.IsMidiLifecycleBusy = false;
 
         ExpressKeyConfig.EnsureCount(config.ExpressKeys, _expressKeyCount);
         _viewModel.EnsureExpressKeyCount(_expressKeyCount);
@@ -159,6 +173,30 @@ internal partial class PreferencesWindow : Window
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private async void ReconnectMidiNowButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunMidiLifecycleActionAsync(
+            startText: "Reconnecting MIDI...",
+            successText: "MIDI reconnected.",
+            action: _reconnectMidiAsync);
+    }
+
+    private async void RecreateLoopbackButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunMidiLifecycleActionAsync(
+            startText: "Recreating MIDI loopback pair...",
+            successText: "MIDI loopback pair recreated.",
+            action: _recreateLoopbackAsync);
+    }
+
+    private async void RemoveLoopbackButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunMidiLifecycleActionAsync(
+            startText: "Removing MIDI loopback pair...",
+            successText: "MIDI loopback pair removed.",
+            action: _removeLoopbackAsync);
     }
 
     private void ComboBox_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
@@ -652,5 +690,52 @@ internal partial class PreferencesWindow : Window
         _isSyncingInputDeviceControls = true;
         slider.Value = Math.Clamp(parsed, min, max);
         _isSyncingInputDeviceControls = false;
+    }
+
+    private async Task RunMidiLifecycleActionAsync(
+        string startText,
+        string successText,
+        Func<AppConfig, Action<string>?, Task> action)
+    {
+        if (_viewModel.IsMidiLifecycleBusy)
+        {
+            return;
+        }
+
+        ErrorText.Text = string.Empty;
+        _viewModel.IsMidiLifecycleBusy = true;
+        _viewModel.MidiLifecycleStatusText = startText;
+
+        try
+        {
+            AppConfig routingConfig = BuildRoutingConfigForLifecycleAction();
+            await action(
+                routingConfig,
+                text => Dispatcher.Invoke(() => _viewModel.MidiLifecycleStatusText = text));
+            _viewModel.MidiLifecycleStatusText = successText;
+        }
+        catch (Exception ex)
+        {
+            _viewModel.MidiLifecycleStatusText = "MIDI lifecycle action failed.";
+            ErrorText.Text = ex.Message;
+        }
+        finally
+        {
+            _viewModel.IsMidiLifecycleBusy = false;
+        }
+    }
+
+    private AppConfig BuildRoutingConfigForLifecycleAction()
+    {
+        string dawPortName = _configValueParser.RequireText(_viewModel.DawPortName, "DAW Input Port").Trim();
+        string appPortName = _configValueParser.RequireText(_viewModel.AppPortName, "Internal App Port").Trim();
+        string associationId = _configValueParser.RequireGuidText(_viewModel.AssociationId, "Association Id").Trim();
+
+        return new AppConfig
+        {
+            DawPortName = dawPortName,
+            AppPortName = appPortName,
+            LoopbackAssociationId = associationId
+        };
     }
 }

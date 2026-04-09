@@ -30,10 +30,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         ArgumentNullException.ThrowIfNull(config);
         lock (_sync)
         {
-            CloseMidiOut();
-            RemoveLoopbackPair(config);
-            CreateLoopbackPair(config);
-            _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+            EnsureLoopbackAndOpen(config, onProgress: null);
             _lastSentValues.Clear();
         }
     }
@@ -45,17 +42,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         {
             lock (_sync)
             {
-                onProgress?.Invoke("Closing existing MIDI connection...");
-                CloseMidiOut();
-
-                onProgress?.Invoke("Removing stale MIDI pair...");
-                RemoveLoopbackPair(config);
-
-                onProgress?.Invoke("Creating MIDI loopback...");
-                CreateLoopbackPair(config);
-
-                onProgress?.Invoke($"Opening '{config.AppPortName}'...");
-                _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+                EnsureLoopbackAndOpen(config, onProgress);
                 _lastSentValues.Clear();
             }
         });
@@ -78,13 +65,53 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         {
             lock (_sync)
             {
+                // Persist loopback endpoints across app sessions; only release this process handle.
                 CloseMidiOut();
-                RemoveLoopbackPair(config);
             }
         }
         catch
         {
         }
+    }
+
+    public async Task RecreateLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        await Task.Run(() =>
+        {
+            lock (_sync)
+            {
+                onProgress?.Invoke("Closing existing MIDI connection...");
+                CloseMidiOut();
+
+                onProgress?.Invoke("Removing MIDI loopback pair...");
+                RemoveLoopbackPair(config);
+
+                onProgress?.Invoke("Creating MIDI loopback pair...");
+                CreateLoopbackPair(config);
+
+                onProgress?.Invoke($"Opening '{config.AppPortName}'...");
+                _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+                _lastSentValues.Clear();
+            }
+        });
+    }
+
+    public async Task RemoveLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        await Task.Run(() =>
+        {
+            lock (_sync)
+            {
+                onProgress?.Invoke("Closing existing MIDI connection...");
+                CloseMidiOut();
+
+                onProgress?.Invoke("Removing MIDI loopback pair...");
+                RemoveLoopbackPair(config);
+                _lastSentValues.Clear();
+            }
+        });
     }
 
     public void SendCcIfChanged(int channel, int cc, int value, bool force = false)
@@ -174,21 +201,63 @@ internal sealed class WinMmMidiEngine : IMidiEngine
             allowFailure: true);
     }
 
+    private void EnsureLoopbackAndOpen(AppConfig config, Action<string>? onProgress)
+    {
+        onProgress?.Invoke("Closing existing MIDI connection...");
+        CloseMidiOut();
+
+        onProgress?.Invoke($"Opening '{config.AppPortName}'...");
+        if (TryOpenMidiOutWithRetry(config.AppPortName, retries: 12, delayMs: 100, out IntPtr existingHandle))
+        {
+            _midiOutHandle = existingHandle;
+            return;
+        }
+
+        onProgress?.Invoke("Creating MIDI loopback pair...");
+        CreateLoopbackPair(config);
+
+        onProgress?.Invoke($"Opening '{config.AppPortName}'...");
+        if (TryOpenMidiOutWithRetry(config.AppPortName, retries: 30, delayMs: 100, out IntPtr createdHandle))
+        {
+            _midiOutHandle = createdHandle;
+            return;
+        }
+
+        // Reconcile stale association/name drift: remove and recreate once.
+        onProgress?.Invoke("Reconciling MIDI loopback pair...");
+        RemoveLoopbackPair(config);
+        CreateLoopbackPair(config);
+
+        onProgress?.Invoke($"Opening '{config.AppPortName}'...");
+        _midiOutHandle = OpenMidiOutWithRetry(config.AppPortName);
+    }
+
     private static IntPtr OpenMidiOutWithRetry(string portName)
     {
-        for (int attempt = 0; attempt < 60; attempt++)
+        if (TryOpenMidiOutWithRetry(portName, retries: 60, delayMs: 100, out IntPtr handle))
         {
-            if (TryOpenMidiOut(portName, out IntPtr handle))
-            {
-                return handle;
-            }
-
-            Thread.Sleep(100);
+            return handle;
         }
 
         string available = string.Join(", ", EnumerateMidiOutPortNames());
         throw new InvalidOperationException(
             $"Could not open MIDI destination '{portName}'. Available MIDI outputs: {available}.");
+    }
+
+    private static bool TryOpenMidiOutWithRetry(string portName, int retries, int delayMs, out IntPtr handle)
+    {
+        for (int attempt = 0; attempt < retries; attempt++)
+        {
+            if (TryOpenMidiOut(portName, out handle))
+            {
+                return true;
+            }
+
+            Thread.Sleep(delayMs);
+        }
+
+        handle = IntPtr.Zero;
+        return false;
     }
 
     private static bool TryOpenMidiOut(string targetName, out IntPtr handle)

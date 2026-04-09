@@ -8,13 +8,13 @@ internal interface IMidiEngine
     bool IsReady { get; }
 
     /// <summary>
-    /// Initializes loopback routing and opens the app output endpoint.
+    /// Ensures loopback routing exists and opens the app output endpoint.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
     void Initialize(AppConfig config);
 
     /// <summary>
-    /// Initializes loopback routing and opens the app output endpoint asynchronously.
+    /// Ensures loopback routing exists and opens the app output endpoint asynchronously.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
     /// <param name="onProgress">Progress callback for UI status updates.</param>
@@ -34,10 +34,24 @@ internal interface IMidiEngine
     Task RestartAsync(AppConfig config, Action<string>? onProgress = null);
 
     /// <summary>
-    /// Shuts down MIDI output and removes loopback endpoints.
+    /// Closes MIDI output for app shutdown without deleting loopback endpoints.
     /// </summary>
     /// <param name="config">Current runtime config.</param>
     void Shutdown(AppConfig config);
+
+    /// <summary>
+    /// Manually removes and recreates the configured loopback pair, then opens the app output endpoint.
+    /// </summary>
+    /// <param name="config">Current routing config.</param>
+    /// <param name="onProgress">Optional progress callback for UI status updates.</param>
+    Task RecreateLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null);
+
+    /// <summary>
+    /// Manually removes the configured loopback pair and closes the current MIDI output endpoint.
+    /// </summary>
+    /// <param name="config">Current routing config.</param>
+    /// <param name="onProgress">Optional progress callback for UI status updates.</param>
+    Task RemoveLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null);
 
     /// <summary>
     /// Sends a MIDI CC message when value changed since last send.

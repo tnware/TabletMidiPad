@@ -33,7 +33,8 @@ internal static class AppBootstrapper
         container.AddTransient(_ => new PreferencesViewModel());
         container.AddSingleton<IPreferencesDialogService>(c => new PreferencesDialogService(
             c.GetRequiredService<IConfigValueParser>(),
-            () => c.GetRequiredService<PreferencesViewModel>()));
+            () => c.GetRequiredService<PreferencesViewModel>(),
+            c.GetRequiredService<IMidiEngine>()));
         container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(c.GetRequiredService<IConfigValueParser>()));
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IZonePadControllerFactory>(c => new ZonePadControllerFactory(

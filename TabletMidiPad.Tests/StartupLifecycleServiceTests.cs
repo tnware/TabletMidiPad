@@ -311,6 +311,10 @@ public sealed class StartupLifecycleServiceTests
 
         public Task RestartAsync(AppConfig config, Action<string>? onProgress = null) => Task.CompletedTask;
 
+        public Task RecreateLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null) => Task.CompletedTask;
+
+        public Task RemoveLoopbackPairAsync(AppConfig config, Action<string>? onProgress = null) => Task.CompletedTask;
+
         public void SendCcIfChanged(int channel, int cc, int value, bool force = false)
         {
         }
