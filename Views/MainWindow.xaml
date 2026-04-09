@@ -144,7 +144,7 @@
                     <Setter Property="Margin" Value="6,2"/>
                 </Style>
             </Border.Resources>
-            <DockPanel>
+            <DockPanel LastChildFill="False">
             <StackPanel Orientation="Horizontal"
                         DockPanel.Dock="Left">
                 <Button Style="{StaticResource ToolbarButton}"
@@ -317,12 +317,25 @@
                         <TextBlock Text="Latch On Enter"/>
                     </StackPanel>
                 </ToggleButton>
+                <ToggleButton Name="ToolbarLockCanvasToggle"
+                              Margin="6,0,0,0"
+                              Style="{StaticResource ToolbarToggle}"
+                              IsChecked="{Binding ZoneEditor.IsCanvasLocked, Mode=TwoWay}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                   FontSize="12"
+                                   Margin="0,0,6,0"
+                                   Text="&#xE72E;"/>
+                        <TextBlock Text="Lock Canvas"/>
+                    </StackPanel>
+                </ToggleButton>
 
             </StackPanel>
 
             <!-- Right-aligned MIDI status -->
             <StackPanel Name="MidiStatusPanel"
                         DockPanel.Dock="Right"
+                        HorizontalAlignment="Right"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
                         Margin="0,0,8,0"
@@ -337,6 +350,7 @@
                              Background="{DynamicResource ControlFillColorDefaultBrush}"
                              Visibility="{Binding IsMidiProgressVisible, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Name="MidiStatusText"
+                           TextAlignment="Right"
                            FontSize="11"
                            VerticalAlignment="Center"
                            Text="{Binding MidiStatusText}">
@@ -554,8 +568,6 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="8"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <Button Name="AddZoneButton"
@@ -575,7 +587,7 @@
                                     FontFamily="{StaticResource SymbolThemeFontFamily}"/>
 
                             <Button Name="AutoLayoutButton"
-                                    Grid.Column="6"
+                                    Grid.Column="4"
                                     Style="{StaticResource SecondaryButtonStyle}"
                                     MinWidth="86"
                                     Command="{Binding ZoneList.AutoLayoutCommand}">
@@ -587,14 +599,6 @@
                                     <TextBlock Text="Auto Tile"/>
                                 </StackPanel>
                             </Button>
-
-                            <CheckBox Name="LockCanvasCheckBox"
-                                      Grid.Column="4"
-                                      Margin="0,0,4,0"
-                                      VerticalAlignment="Center"
-                                      Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                      IsChecked="{Binding ZoneEditor.IsCanvasLocked, Mode=TwoWay}"
-                                      Content="Lock Canvas"/>
                         </Grid>
 
                         <!-- Selected zone properties -->
@@ -611,16 +615,17 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="96"/>
+                                        <ColumnDefinition Width="72"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBox Name="ZoneNameTextBox"
                                              Grid.Column="0"
+                                             MinWidth="160"
                                              Text="{Binding ZoneEditor.ZoneName, UpdateSourceTrigger=PropertyChanged}"/>
                                     <ComboBox Name="ZoneChannelComboBox"
-                                              Grid.Column="2"
-                                              ItemsSource="{Binding ZoneEditor.MidiChannels}"
-                                              SelectedItem="{Binding ZoneEditor.ZoneMidiChannel, Mode=TwoWay}"/>
+                                               Grid.Column="2"
+                                               ItemsSource="{Binding ZoneEditor.MidiChannels}"
+                                               SelectedItem="{Binding ZoneEditor.ZoneMidiChannel, Mode=TwoWay}"/>
                                     <CheckBox Name="ZoneEnabledCheckBox"
                                               Grid.Column="3"
                                               Margin="10,0,0,0"
@@ -733,38 +738,6 @@
                                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                                 BorderThickness="1"
                                                 Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                                CornerRadius="8">
-                                            <StackPanel>
-                                                <TextBlock Text="MIDI Learn Assist"
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Margin="0,0,0,6"/>
-                                                <CheckBox IsChecked="{Binding ZoneEditor.MappingAssistEnabled}"
-                                                          Content="Solo one controller stream for MIDI learn"/>
-                                                <Grid Margin="0,8,0,0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="8"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0"
-                                                               VerticalAlignment="Center"
-                                                               Text="Target"
-                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                               FontSize="11"/>
-                                                    <ComboBox Grid.Column="2"
-                                                              ItemsSource="{Binding ZoneEditor.MappingAssistTargetOptions}"
-                                                              SelectedItem="{Binding ZoneEditor.MappingAssistTarget, Mode=TwoWay}"/>
-                                                </Grid>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Border Margin="0,12,0,0"
-                                                Padding="10,8"
-                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1"
-                                                Background="{DynamicResource LayerFillColorDefaultBrush}"
                                                 CornerRadius="8"
                                                 Visibility="{Binding ZoneEditor.IsScaleBreathMode, Converter={StaticResource BoolToVis}}">
                                             <StackPanel>
@@ -831,7 +804,7 @@
                                                 </Grid>
                                                 <CheckBox Margin="0,8,0,0"
                                                           IsChecked="{Binding ZoneEditor.ScaleBreathSendCc}"
-                                                          Content="Send CC modulation while in Scale Breath"/>
+                                                          Content="Send CC in Scale Breath"/>
                                             </StackPanel>
                                         </Border>
 
@@ -906,7 +879,7 @@
                                                 </Grid>
                                                 <CheckBox Margin="0,8,0,0"
                                                           IsChecked="{Binding ZoneEditor.ScaleGridSendCc}"
-                                                          Content="Send CC modulation while in Scale Grid"/>
+                                                          Content="Send CC in Scale Grid"/>
                                             </StackPanel>
                                         </Border>
 
