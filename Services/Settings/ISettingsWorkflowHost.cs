@@ -1,4 +1,5 @@
 using System.Windows;
+using TabletMidiPad.Services.Shell;
 using TabletMidiPad.ViewModels;
 
 namespace TabletMidiPad.Services.Settings;
@@ -7,14 +8,13 @@ namespace TabletMidiPad.Services.Settings;
 /// View-owned surface for <see cref="ISettingsWorkflow"/> (dialog owner and VM refresh hooks).
 /// </summary>
 internal interface ISettingsWorkflowHost
+    : ISettingsResultHost
 {
     Window OwnerWindow { get; }
 
     PadInputControllerState PadState { get; }
 
     void CommitCurrentZoneEdits();
-
-    void SetSettingsResult(string message, SettingsResultKind kind);
 
     void UpdateUiForCurrentConfig();
 

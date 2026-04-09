@@ -36,6 +36,8 @@ internal static class AppBootstrapper
             () => c.GetRequiredService<PreferencesViewModel>()));
         container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(c.GetRequiredService<IConfigValueParser>()));
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
+        container.AddSingleton<IZonePadControllerFactory>(c => new ZonePadControllerFactory(
+            c.GetRequiredService<IZoneResizeService>()));
         container.AddSingleton<IInputFallbackService>(_ => new InputFallbackService());
         container.AddSingleton<IInputInteractionOrchestrator>(c => new InputInteractionOrchestrator(
             c.GetRequiredService<IPadInteractionEngine>()));
@@ -45,6 +47,11 @@ internal static class AppBootstrapper
         container.AddSingleton<IUiStateProjectionService>(_ => new UiStateProjectionService());
         container.AddSingleton<IInputBackendCoordinator>(_ => new InputBackendCoordinator());
         container.AddSingleton<IWacomServiceWorkflowCoordinator>(_ => new WacomServiceWorkflowCoordinator());
+        container.AddSingleton<IMainWindowWorkflowFactory>(c => new MainWindowWorkflowFactory(
+            c.GetRequiredService<ISettingsWorkflowCoordinator>(),
+            c.GetRequiredService<IPreferencesDialogService>(),
+            c.GetRequiredService<IZoneConfigurationService>(),
+            c.GetRequiredService<IWacomServiceWorkflowCoordinator>()));
         container.AddSingleton<IPadInputControllerFactory>(c => new PadInputControllerFactory(
             c.GetRequiredService<ITabletDevicePickerSyncService>(),
             c.GetRequiredService<IInputBackendCoordinator>(),
@@ -99,13 +106,10 @@ internal static class AppBootstrapper
             c.GetRequiredService<IZoneOverlayRenderer>(),
             c.GetRequiredService<IInputBackendStatusFormatter>(),
             c.GetRequiredService<IUiStateProjectionService>(),
-            c.GetRequiredService<IWacomServiceWorkflowCoordinator>(),
             c.GetRequiredService<IStartupLifecycleService>(),
             c.GetRequiredService<IPadInputControllerFactory>(),
-            c.GetRequiredService<IZoneResizeService>(),
-            c.GetRequiredService<IPreferencesDialogService>(),
-            c.GetRequiredService<IZoneConfigurationService>(),
-            c.GetRequiredService<ISettingsWorkflowCoordinator>(),
+            c.GetRequiredService<IZonePadControllerFactory>(),
+            c.GetRequiredService<IMainWindowWorkflowFactory>(),
             c.GetRequiredService<IPadPresentationCoordinator>(),
             c.GetRequiredService<IMainViewModelFactory>(),
             c.GetRequiredService<IPadInteractionOutcomeApplier>());
