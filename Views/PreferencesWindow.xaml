@@ -444,21 +444,14 @@
                                             <ComboBox Name="LowerPenButtonActionComboBox" Margin="0,6,0,14"
                                                       SelectedItem="{Binding LowerPenButtonAction}"
                                                       Text="{Binding LowerPenButtonAction}"/>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
+                                            <WrapPanel Margin="0,0,0,-10">
+                                                <StackPanel MinWidth="160" Margin="0,0,12,10">
                                                     <TextBlock Text="MIDI Ch" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <ComboBox Name="LowerPenButtonMidiChannelComboBox" Margin="0,6,0,0"
                                                               SelectedItem="{Binding LowerPenButtonMidiChannelText}"
                                                               Text="{Binding LowerPenButtonMidiChannelText}"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2">
+                                                <StackPanel MinWidth="180" Margin="0,0,12,10">
                                                     <TextBlock Text="CC" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <Grid Margin="0,6,0,0">
                                                         <Grid.ColumnDefinitions>
@@ -484,7 +477,7 @@
                                                                       Tag="{x:Reference LowerPenButtonCcTextBox}"/>
                                                     </Grid>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="4">
+                                                <StackPanel MinWidth="180" Margin="0,0,0,10">
                                                     <TextBlock Text="Note" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <Grid Margin="0,6,0,0">
                                                         <Grid.ColumnDefinitions>
@@ -510,7 +503,7 @@
                                                                       Tag="{x:Reference LowerPenButtonNoteTextBox}"/>
                                                     </Grid>
                                                 </StackPanel>
-                                            </Grid>
+                                            </WrapPanel>
                                         </StackPanel>
                                     </Border>
 
@@ -526,21 +519,14 @@
                                             <ComboBox Name="UpperPenButtonActionComboBox" Margin="0,6,0,14"
                                                       SelectedItem="{Binding UpperPenButtonAction}"
                                                       Text="{Binding UpperPenButtonAction}"/>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="12"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
+                                            <WrapPanel Margin="0,0,0,-10">
+                                                <StackPanel MinWidth="160" Margin="0,0,12,10">
                                                     <TextBlock Text="MIDI Ch" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <ComboBox Name="UpperPenButtonMidiChannelComboBox" Margin="0,6,0,0"
                                                               SelectedItem="{Binding UpperPenButtonMidiChannelText}"
                                                               Text="{Binding UpperPenButtonMidiChannelText}"/>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="2">
+                                                <StackPanel MinWidth="180" Margin="0,0,12,10">
                                                     <TextBlock Text="CC" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <Grid Margin="0,6,0,0">
                                                         <Grid.ColumnDefinitions>
@@ -566,7 +552,7 @@
                                                                       Tag="{x:Reference UpperPenButtonCcTextBox}"/>
                                                     </Grid>
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="4">
+                                                <StackPanel MinWidth="180" Margin="0,0,0,10">
                                                     <TextBlock Text="Note" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <Grid Margin="0,6,0,0">
                                                         <Grid.ColumnDefinitions>
@@ -592,7 +578,7 @@
                                                                       Tag="{x:Reference UpperPenButtonNoteTextBox}"/>
                                                     </Grid>
                                                 </StackPanel>
-                                            </Grid>
+                                            </WrapPanel>
                                         </StackPanel>
                                     </Border>
                                 </Grid>

@@ -87,21 +87,21 @@
                         Grid.Column="1"
                         CornerRadius="4"
                         Padding="6,1"
-                        Background="{DynamicResource AccentFillColorTertiaryBrush}"
-                        BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                        Background="{DynamicResource SystemFillColorSuccessBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1">
                     <TextBlock x:Name="StatusBadgeText"
                                FontSize="10"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                Text="{Binding StatusText}"/>
                 </Border>
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsEnabled}" Value="False">
-                    <Setter TargetName="StatusBadge" Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+                    <Setter TargetName="StatusBadge" Property="Background" Value="{DynamicResource SystemFillColorSolidNeutralBrush}"/>
                     <Setter TargetName="StatusBadge" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
-                    <Setter TargetName="StatusBadgeText" Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+                    <Setter TargetName="StatusBadgeText" Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -1064,7 +1064,7 @@
                                        Text="{Binding SettingsResultMessage}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorNeutralBrush}"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Success}">
                                                 <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}"/>

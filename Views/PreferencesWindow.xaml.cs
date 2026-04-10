@@ -102,6 +102,28 @@ internal partial class PreferencesWindow : Window
     private Brush ResolveThemeBrush(string key, Brush fallback)
         => TryFindResource(key) as Brush ?? Application.Current?.TryFindResource(key) as Brush ?? fallback;
 
+    private Brush ResolveTextPrimaryBrush()
+        => ResolveThemeBrush(
+            "TextFillColorPrimaryBrush",
+            ResolveThemeBrush("SystemFillColorSolidNeutralBrush", Brushes.White));
+
+    private Brush ResolveTextSecondaryBrush()
+        => ResolveThemeBrush(
+            "TextFillColorSecondaryBrush",
+            ResolveThemeBrush("SystemFillColorNeutralBrush", Brushes.Gray));
+
+    private Brush ResolvePanelBackgroundBrush()
+        => ResolveThemeBrush(
+            "LayerFillColorAltBrush",
+            ResolveThemeBrush(
+                "ExpanderHeaderBackground",
+                ResolveThemeBrush("SystemFillColorNeutralBackgroundBrush", Brushes.Black)));
+
+    private Brush ResolvePanelBorderBrush()
+        => ResolveThemeBrush(
+            "ExpanderHeaderBorderBrush",
+            ResolveThemeBrush("SystemFillColorSolidNeutralBackgroundBrush", Brushes.DimGray));
+
     public void LoadFrom(AppConfig config)
     {
         _viewModel.DawPortName = config.DawPortName;
@@ -413,7 +435,7 @@ internal partial class PreferencesWindow : Window
         ExpressKeysPanel.Children.Add(new TextBlock
         {
             Text = $"Express Keys ({_expressKeyCount} detected)",
-            Foreground = ResolveThemeBrush("TextFillColorPrimaryBrush", Brushes.White),
+            Foreground = ResolveTextPrimaryBrush(),
             FontSize = 16,
             Margin = new Thickness(0, 22, 0, 8)
         });
@@ -424,7 +446,7 @@ internal partial class PreferencesWindow : Window
             var label = new TextBlock
             {
                 Text = $"ExpressKey {i + 1}",
-                Foreground = ResolveThemeBrush("TextFillColorPrimaryBrush", Brushes.White),
+                Foreground = ResolveTextPrimaryBrush(),
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold
             };
@@ -432,7 +454,7 @@ internal partial class PreferencesWindow : Window
             var hint = new TextBlock
             {
                 Text = "Action and MIDI mapping for this hardware key.",
-                Foreground = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray),
+                Foreground = ResolveTextSecondaryBrush(),
                 Margin = new Thickness(0, 4, 0, 0)
             };
 
@@ -486,7 +508,7 @@ internal partial class PreferencesWindow : Window
             chLabel.Children.Add(new TextBlock
             {
                 Text = "MIDI Ch",
-                Foreground = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray)
+                Foreground = ResolveTextSecondaryBrush(),
             });
             chLabel.Children.Add(channelCombo);
             Grid.SetColumn(chLabel, 0);
@@ -496,7 +518,7 @@ internal partial class PreferencesWindow : Window
             ccLabel.Children.Add(new TextBlock
             {
                 Text = "CC",
-                Foreground = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray)
+                Foreground = ResolveTextSecondaryBrush(),
             });
             ccLabel.Children.Add(CreateMidiCcNoteStepperRow(ccBox, stepperStyle));
             Grid.SetColumn(ccLabel, 2);
@@ -506,7 +528,7 @@ internal partial class PreferencesWindow : Window
             noteLabel.Children.Add(new TextBlock
             {
                 Text = "Note",
-                Foreground = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray)
+                Foreground = ResolveTextSecondaryBrush(),
             });
             noteLabel.Children.Add(CreateMidiCcNoteStepperRow(noteBox, stepperStyle));
             Grid.SetColumn(noteLabel, 4);
@@ -514,10 +536,10 @@ internal partial class PreferencesWindow : Window
 
             var card = new Border
             {
-                Background = ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black),
-                BorderBrush = ResolveThemeBrush("ExpanderHeaderBorderBrush", Brushes.DimGray),
+                Background = ResolvePanelBackgroundBrush(),
+                BorderBrush = ResolvePanelBorderBrush(),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(16),
+                CornerRadius = new CornerRadius(10),
                 Padding = new Thickness(16),
                 Margin = new Thickness(0, i == 0 ? 0 : 14, 0, 0)
             };
@@ -549,12 +571,10 @@ internal partial class PreferencesWindow : Window
         StyleCardPanel.Children.Clear();
         _styleCards.Clear();
 
-        Brush textPrimary = ResolveThemeBrush("TextFillColorPrimaryBrush", Brushes.White);
-        Brush textMuted = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray);
-        Brush panelBrush = ResolveThemeBrush(
-            "LayerFillColorAltBrush",
-            ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black));
-        Brush panelBorder = ResolveThemeBrush("ExpanderHeaderBorderBrush", Brushes.DimGray);
+        Brush textPrimary = ResolveTextPrimaryBrush();
+        Brush textMuted = ResolveTextSecondaryBrush();
+        Brush panelBrush = ResolvePanelBackgroundBrush();
+        Brush panelBorder = ResolvePanelBorderBrush();
         Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
         Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
 
@@ -626,10 +646,8 @@ internal partial class PreferencesWindow : Window
             return;
         }
 
-        Brush panelBrush = ResolveThemeBrush(
-            "LayerFillColorAltBrush",
-            ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black));
-        Brush panelBorder = ResolveThemeBrush("ExpanderHeaderBorderBrush", Brushes.DimGray);
+        Brush panelBrush = ResolvePanelBackgroundBrush();
+        Brush panelBorder = ResolvePanelBorderBrush();
         Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
         Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
         ApplyStyleCardHighlight(panelBrush, panelBorder, selectedSurface, selectedBorder);
