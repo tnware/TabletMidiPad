@@ -575,7 +575,12 @@ internal partial class PreferencesWindow : Window
         Brush textMuted = ResolveTextSecondaryBrush();
         Brush panelBrush = ResolvePanelBackgroundBrush();
         Brush panelBorder = ResolvePanelBorderBrush();
-        Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
+        Brush unselectedSurface = ResolveThemeBrush(
+            "SmokeFillColorDefaultBrush",
+            ResolveThemeBrush("LayerFillColorAltBrush", panelBrush));
+        Brush selectedSurface = ResolveThemeBrush(
+            "LayerFillColorDefaultBrush",
+            ResolveThemeBrush("LayerFillColorAltBrush", unselectedSurface));
         Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
 
         foreach ((ZoneOverlayStyle style, string name, string description) in OverlayStyleOptions)
@@ -616,7 +621,7 @@ internal partial class PreferencesWindow : Window
 
             var card = new Border
             {
-                Background = panelBrush,
+                Background = unselectedSurface,
                 BorderBrush = panelBorder,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
@@ -634,7 +639,7 @@ internal partial class PreferencesWindow : Window
             StyleCardPanel.Children.Add(card);
         }
 
-        ApplyStyleCardHighlight(panelBrush, panelBorder, selectedSurface, selectedBorder);
+        ApplyStyleCardHighlight(unselectedSurface, panelBorder, selectedSurface, selectedBorder);
     }
 
     private void SelectZoneOverlayStyle(ZoneOverlayStyle style)
@@ -648,17 +653,22 @@ internal partial class PreferencesWindow : Window
 
         Brush panelBrush = ResolvePanelBackgroundBrush();
         Brush panelBorder = ResolvePanelBorderBrush();
-        Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
+        Brush unselectedSurface = ResolveThemeBrush(
+            "SmokeFillColorDefaultBrush",
+            ResolveThemeBrush("LayerFillColorAltBrush", panelBrush));
+        Brush selectedSurface = ResolveThemeBrush(
+            "LayerFillColorDefaultBrush",
+            ResolveThemeBrush("LayerFillColorAltBrush", unselectedSurface));
         Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
-        ApplyStyleCardHighlight(panelBrush, panelBorder, selectedSurface, selectedBorder);
+        ApplyStyleCardHighlight(unselectedSurface, panelBorder, selectedSurface, selectedBorder);
     }
 
-    private void ApplyStyleCardHighlight(Brush panelBrush, Brush panelBorder, Brush selectedSurface, Brush selectedBorder)
+    private void ApplyStyleCardHighlight(Brush unselectedSurface, Brush panelBorder, Brush selectedSurface, Brush selectedBorder)
     {
         foreach ((ZoneOverlayStyle style, Border card) in _styleCards)
         {
             bool selected = style == ZoneOverlayStyle;
-            card.Background = selected ? selectedSurface : panelBrush;
+            card.Background = selected ? selectedSurface : unselectedSurface;
             card.BorderBrush = selected ? selectedBorder : panelBorder;
             card.BorderThickness = new Thickness(selected ? 2 : 1);
         }
