@@ -166,24 +166,21 @@
             <DockPanel LastChildFill="False">
             <StackPanel Orientation="Horizontal"
                         DockPanel.Dock="Left">
-                <Button Style="{StaticResource ToolbarButton}"
-                        Padding="8,6"
-                        Command="{Binding ShellCommands.OpenPreferencesCommand}"
-                        ToolTip="Preferences">
-                    <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                               FontSize="14"
-                               Text="&#xE713;"/>
-                </Button>
-                <Border Style="{StaticResource ToolbarSep}"/>
-                <Button Style="{StaticResource ToolbarButton}"
-                        Command="{Binding ShellCommands.SaveSettingsCommand}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                   FontSize="13"
-                                   Margin="0,0,6,0"
-                                   Text="&#xE74E;"/>
-                        <TextBlock Text="Save"/>
-                    </StackPanel>
+                <Button Name="ToolbarFileMenuButton"
+                        Style="{StaticResource ToolbarButton}"
+                        Padding="10,6"
+                        Margin="0,0,6,0"
+                        Click="ToolbarFileMenuButton_Click">
+                    <TextBlock Text="File"/>
+                    <Button.ContextMenu>
+                        <ContextMenu Name="ToolbarFileMenu">
+                            <MenuItem Header="Save" Command="{Binding ShellCommands.SaveSettingsCommand}"/>
+                            <Separator />
+                            <MenuItem Header="Preferences..." Command="{Binding ShellCommands.OpenPreferencesCommand}"/>
+                            <Separator />
+                            <MenuItem Header="Exit" Command="{Binding ShellCommands.ExitCommand}"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
                 </Button>
                 <Border Style="{StaticResource ToolbarSep}"/>
                 <Button Style="{StaticResource ToolbarButton}"

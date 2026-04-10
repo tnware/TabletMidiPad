@@ -551,10 +551,12 @@ internal partial class PreferencesWindow : Window
 
         Brush textPrimary = ResolveThemeBrush("TextFillColorPrimaryBrush", Brushes.White);
         Brush textMuted = ResolveThemeBrush("TextFillColorSecondaryBrush", Brushes.Gray);
-        Brush panelBrush = ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black);
+        Brush panelBrush = ResolveThemeBrush(
+            "LayerFillColorAltBrush",
+            ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black));
         Brush panelBorder = ResolveThemeBrush("ExpanderHeaderBorderBrush", Brushes.DimGray);
-        Brush accentSurface = ResolveThemeBrush("AccentFillColorTertiaryBrush", Brushes.DarkGreen);
-        Brush accentBorder = ResolveThemeBrush("AccentFillColorDefaultBrush", Brushes.LimeGreen);
+        Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
+        Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
 
         foreach ((ZoneOverlayStyle style, string name, string description) in OverlayStyleOptions)
         {
@@ -612,7 +614,7 @@ internal partial class PreferencesWindow : Window
             StyleCardPanel.Children.Add(card);
         }
 
-        ApplyStyleCardHighlight(panelBrush, panelBorder, accentSurface, accentBorder);
+        ApplyStyleCardHighlight(panelBrush, panelBorder, selectedSurface, selectedBorder);
     }
 
     private void SelectZoneOverlayStyle(ZoneOverlayStyle style)
@@ -624,20 +626,22 @@ internal partial class PreferencesWindow : Window
             return;
         }
 
-        Brush panelBrush = ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black);
+        Brush panelBrush = ResolveThemeBrush(
+            "LayerFillColorAltBrush",
+            ResolveThemeBrush("ExpanderHeaderBackground", Brushes.Black));
         Brush panelBorder = ResolveThemeBrush("ExpanderHeaderBorderBrush", Brushes.DimGray);
-        Brush accentSurface = ResolveThemeBrush("AccentFillColorTertiaryBrush", Brushes.DarkGreen);
-        Brush accentBorder = ResolveThemeBrush("AccentFillColorDefaultBrush", Brushes.LimeGreen);
-        ApplyStyleCardHighlight(panelBrush, panelBorder, accentSurface, accentBorder);
+        Brush selectedSurface = ResolveThemeBrush("LayerFillColorDefaultBrush", panelBrush);
+        Brush selectedBorder = ResolveThemeBrush("CardStrokeColorDefaultBrush", panelBorder);
+        ApplyStyleCardHighlight(panelBrush, panelBorder, selectedSurface, selectedBorder);
     }
 
-    private void ApplyStyleCardHighlight(Brush panelBrush, Brush panelBorder, Brush accentSurface, Brush accentBorder)
+    private void ApplyStyleCardHighlight(Brush panelBrush, Brush panelBorder, Brush selectedSurface, Brush selectedBorder)
     {
         foreach ((ZoneOverlayStyle style, Border card) in _styleCards)
         {
             bool selected = style == ZoneOverlayStyle;
-            card.Background = selected ? accentSurface : panelBrush;
-            card.BorderBrush = selected ? accentBorder : panelBorder;
+            card.Background = selected ? selectedSurface : panelBrush;
+            card.BorderBrush = selected ? selectedBorder : panelBorder;
             card.BorderThickness = new Thickness(selected ? 2 : 1);
         }
     }

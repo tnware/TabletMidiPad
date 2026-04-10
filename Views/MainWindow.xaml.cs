@@ -251,6 +251,16 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ToolbarFileMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu is not null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+        }
+    }
+
     private void ZoneListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_viewModel.ZoneEditor.OnZoneListSelectionChanged())
