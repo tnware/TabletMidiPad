@@ -10,6 +10,46 @@ namespace TabletMidiPad.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly HashSet<string> DirtyTrackedZoneEditorProperties =
+    [
+        nameof(ZoneEditorViewModel.PageName),
+        nameof(ZoneEditorViewModel.MaxZoneRowsText),
+        nameof(ZoneEditorViewModel.MaxZonesPerRowText),
+        nameof(ZoneEditorViewModel.ZoneName),
+        nameof(ZoneEditorViewModel.ZoneEnabled),
+        nameof(ZoneEditorViewModel.ZoneMidiChannel),
+        nameof(ZoneEditorViewModel.ZoneCcX),
+        nameof(ZoneEditorViewModel.ZoneCcY),
+        nameof(ZoneEditorViewModel.ZoneCcPressure),
+        nameof(ZoneEditorViewModel.ZoneLeft),
+        nameof(ZoneEditorViewModel.ZoneTop),
+        nameof(ZoneEditorViewModel.ZoneWidth),
+        nameof(ZoneEditorViewModel.ZoneHeight),
+        nameof(ZoneEditorViewModel.ZoneSendX),
+        nameof(ZoneEditorViewModel.ZoneSendY),
+        nameof(ZoneEditorViewModel.ZoneInvertX),
+        nameof(ZoneEditorViewModel.ZoneInvertY),
+        nameof(ZoneEditorViewModel.ZoneSendPressure),
+        nameof(ZoneEditorViewModel.ZoneReleaseBehavior),
+        nameof(ZoneEditorViewModel.ZoneOutputMode),
+        nameof(ZoneEditorViewModel.MappingAssistEnabled),
+        nameof(ZoneEditorViewModel.MappingAssistTarget),
+        nameof(ZoneEditorViewModel.ScaleBreathRootText),
+        nameof(ZoneEditorViewModel.ScaleBreathScale),
+        nameof(ZoneEditorViewModel.ScaleBreathOctaveText),
+        nameof(ZoneEditorViewModel.ScaleBreathHoleCountText),
+        nameof(ZoneEditorViewModel.ScaleBreathRowSplitText),
+        nameof(ZoneEditorViewModel.ScaleBreathSendCc),
+        nameof(ZoneEditorViewModel.ScaleGridRootText),
+        nameof(ZoneEditorViewModel.ScaleGridScale),
+        nameof(ZoneEditorViewModel.ScaleGridOctaveText),
+        nameof(ZoneEditorViewModel.ScaleGridRowsText),
+        nameof(ZoneEditorViewModel.ScaleGridColumnsText),
+        nameof(ZoneEditorViewModel.ScaleGridSendCc),
+        nameof(ZoneEditorViewModel.OneNoteNoteText),
+        nameof(ZoneEditorViewModel.OneNoteSendCc),
+    ];
+
     private readonly PadInputControllerState _padState = new();
     private readonly IPadInputController _padInputSession;
     private readonly IZonePadController _zonePadSession;
@@ -27,6 +67,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly InteractionState _interactionState = new();
     private bool _isPopulatingTabletDeviceList;
+    private bool _suppressUnsavedTracking;
 
     private Canvas Pad => PadSurface.PadInputElement;
 
@@ -100,6 +141,7 @@ public partial class MainWindow : Window
         _viewModel.ZoneList.SettingsResultRequested += SetSettingsResult;
         _viewModel.ZoneList.PadZoneOverlayRefreshRequested += RefreshPadZoneOverlay;
         _viewModel.ZoneEditor.PropertyChanged += ZoneEditor_PropertyChanged;
+        _viewModel.Toolbar.ConfigurationEdited += MarkUnsavedChanges;
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.Toolbar.InputBackendRebindRequested += () => _padInputSession.RebindInputBackend();
         _viewModel.Toolbar.PressureChromeRefreshRequested += SyncPressureSplitBorder;
@@ -336,9 +378,18 @@ public partial class MainWindow : Window
 
     private void LoadConfigIntoUi()
     {
-        _viewModel.ZoneEditor.LoadConfigIntoUi();
-        SyncToolbar();
-        RefreshPadZoneOverlay();
+        _suppressUnsavedTracking = true;
+        try
+        {
+            _viewModel.ZoneEditor.LoadConfigIntoUi();
+            SyncToolbar();
+            RefreshPadZoneOverlay();
+            _viewModel.HasUnsavedChanges = false;
+        }
+        finally
+        {
+            _suppressUnsavedTracking = false;
+        }
     }
 
     private void UpdateUiForCurrentConfig()
@@ -374,6 +425,20 @@ public partial class MainWindow : Window
     {
         _viewModel.SettingsResultMessage = message;
         _viewModel.SettingsResultKind = kind;
+
+        if (kind == SettingsResultKind.Success &&
+            (string.Equals(message, "Settings applied and saved.", StringComparison.Ordinal) ||
+             string.Equals(message, "Preferences applied and saved.", StringComparison.Ordinal) ||
+             message.StartsWith("Preferences saved. Reconnecting MIDI", StringComparison.Ordinal)))
+        {
+            _viewModel.HasUnsavedChanges = false;
+            return;
+        }
+
+        if (message.Contains("Click Apply Settings to save.", StringComparison.Ordinal))
+        {
+            MarkUnsavedChanges();
+        }
     }
 
     private void ZoneEditor_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -381,6 +446,16 @@ public partial class MainWindow : Window
         if (e.PropertyName == nameof(ZoneEditorViewModel.IsCanvasLocked))
         {
             RefreshPadZoneOverlay();
+        }
+
+        if (_viewModel.ZoneEditor.IsLoadingUi || string.IsNullOrWhiteSpace(e.PropertyName))
+        {
+            return;
+        }
+
+        if (DirtyTrackedZoneEditorProperties.Contains(e.PropertyName))
+        {
+            MarkUnsavedChanges();
         }
     }
 
@@ -431,5 +506,15 @@ public partial class MainWindow : Window
         int ccValue = Math.Clamp(value, 0, 127);
         _midiEngine.SendCcIfChanged(channel, cc, ccValue, force: true);
         SetSettingsResult($"Sent learn message: ch {channel}, CC {cc}, value {ccValue}.", SettingsResultKind.Success);
+    }
+
+    private void MarkUnsavedChanges()
+    {
+        if (_suppressUnsavedTracking)
+        {
+            return;
+        }
+
+        _viewModel.HasUnsavedChanges = true;
     }
 }

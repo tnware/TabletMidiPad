@@ -25,6 +25,7 @@ internal sealed class MainViewModel : ViewModelBase
     private bool _isWacomServiceStartEnabled = true;
     private TabletDeviceListItemViewModel? _selectedTabletDevice;
     private bool _isTabletDevicePickerEnabled = true;
+    private bool _hasUnsavedChanges;
 
     public MainViewModel()
         : this(
@@ -111,6 +112,12 @@ internal sealed class MainViewModel : ViewModelBase
     {
         get => _isTabletDevicePickerEnabled;
         set => SetProperty(ref _isTabletDevicePickerEnabled, value);
+    }
+
+    public bool HasUnsavedChanges
+    {
+        get => _hasUnsavedChanges;
+        set => SetProperty(ref _hasUnsavedChanges, value);
     }
 
     public MainShellCommandsViewModel ShellCommands { get; }

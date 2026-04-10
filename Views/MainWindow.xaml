@@ -33,6 +33,16 @@
 
         <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"/>
 
+        <Style x:Key="ApplySettingsButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasUnsavedChanges}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="ButtonGlyphTextStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextAlignment" Value="Center"/>
@@ -1036,7 +1046,9 @@
                             Background="{DynamicResource LayerFillColorDefaultBrush}"
                             Padding="16,8,16,10">
                         <StackPanel>
-                            <Button Padding="10,7"
+                            <Button Name="ApplySettingsButton"
+                                    Padding="10,7"
+                                    Style="{StaticResource ApplySettingsButtonStyle}"
                                     Command="{Binding ShellCommands.SaveSettingsCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontFamily="{StaticResource SymbolThemeFontFamily}"

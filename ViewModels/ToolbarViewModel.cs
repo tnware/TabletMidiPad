@@ -44,6 +44,8 @@ internal sealed class ToolbarViewModel : ViewModelBase
 
     public event Action? InputBackendRebindRequested;
 
+    public event Action? ConfigurationEdited;
+
     public ICommand SelectPressureCurveLinearCommand { get; }
 
     public ICommand SelectPressureCurveLogarithmicCommand { get; }
@@ -129,6 +131,7 @@ internal sealed class ToolbarViewModel : ViewModelBase
             }
 
             _runtimeConfig.Current.SendPressureGlobally = value;
+            ConfigurationEdited?.Invoke();
             PressureChromeRefreshRequested?.Invoke();
         }
     }
@@ -144,6 +147,7 @@ internal sealed class ToolbarViewModel : ViewModelBase
             }
 
             _runtimeConfig.Current.AllowZoneSwitchWhilePressed = value;
+            ConfigurationEdited?.Invoke();
             RoutingStatusRefreshRequested?.Invoke();
         }
     }
@@ -172,12 +176,18 @@ internal sealed class ToolbarViewModel : ViewModelBase
     private void SetPressureCurve(string curve)
     {
         _toolbarSession.ApplyPressureCurve(_runtimeConfig.Current, curve);
+        ConfigurationEdited?.Invoke();
         SyncFromConfig();
     }
 
     private void SetInputBackendMode(string mode)
     {
         ToolbarInputModeApplyResult result = _toolbarSession.TryApplyInputBackendMode(_runtimeConfig.Current, mode);
+        if (result.ModeChanged)
+        {
+            ConfigurationEdited?.Invoke();
+        }
+
         SyncFromConfig();
         if (result.RequiresInputRebind)
         {
