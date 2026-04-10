@@ -50,7 +50,37 @@ public sealed partial class AppConfig
 
     public static string GetConfigPath()
     {
-        return Path.Combine(AppContext.BaseDirectory, "config.json");
+        string appDataRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string configDirectory = Path.Combine(appDataRoot, "TabletMidiPad");
+        string configPath = Path.Combine(configDirectory, "config.json");
+
+        try
+        {
+            Directory.CreateDirectory(configDirectory);
+            TryMigrateLegacyConfig(configPath);
+        }
+        catch
+        {
+            // Keep app startup resilient; callers will still attempt to use configPath.
+        }
+
+        return configPath;
+    }
+
+    private static void TryMigrateLegacyConfig(string userConfigPath)
+    {
+        if (File.Exists(userConfigPath))
+        {
+            return;
+        }
+
+        string legacyPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        if (!File.Exists(legacyPath))
+        {
+            return;
+        }
+
+        File.Copy(legacyPath, userConfigPath, overwrite: false);
     }
 
     /// <summary>

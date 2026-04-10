@@ -50,7 +50,8 @@ If needed, override the executable path with environment variable `TABLETMIDIPAD
 
 ## Runtime configuration
 
-Settings are edited in the built-in sidebar and saved to `config.json` next to the executable.
+Settings are edited in the built-in sidebar and saved to `%AppData%\TabletMidiPad\config.json`.
+On first run after upgrading from older builds, a legacy `config.json` next to the executable is migrated automatically if present.
 
 Available settings include:
 
