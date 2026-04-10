@@ -65,6 +65,11 @@ internal sealed class ZoneListViewModel : ViewModelBase
         ZoneActionWorkflowResult result = _zoneActions.RemoveZone(_runtimeConfig.Current, _zoneEditor.SelectedZoneIndex);
         if (!result.Changed)
         {
+            if (!string.IsNullOrWhiteSpace(result.StatusMessage))
+            {
+                SettingsResultRequested?.Invoke(result.StatusMessage, SettingsResultKind.Error);
+            }
+
             return;
         }
 
@@ -106,6 +111,11 @@ internal sealed class ZoneListViewModel : ViewModelBase
         PageSelectionResult result = _pageNavigationService.RemovePage(_runtimeConfig.Current, _zoneEditor.SelectedPageIndex);
         if (!result.Changed)
         {
+            if (!string.IsNullOrWhiteSpace(result.StatusMessage))
+            {
+                SettingsResultRequested?.Invoke(result.StatusMessage, SettingsResultKind.Error);
+            }
+
             return;
         }
 
@@ -130,6 +140,11 @@ internal sealed class ZoneListViewModel : ViewModelBase
     {
         if (!result.Changed)
         {
+            if (!string.IsNullOrWhiteSpace(result.StatusMessage))
+            {
+                SettingsResultRequested?.Invoke(result.StatusMessage, SettingsResultKind.Error);
+            }
+
             return;
         }
 

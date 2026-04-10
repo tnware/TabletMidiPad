@@ -78,6 +78,36 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
+    public void AddZoneUsesFirstAvailableDefaultName()
+    {
+        var config = new AppConfig
+        {
+            Pages =
+            [
+                new PageConfig
+                {
+                    Name = "Page 1",
+                    Zones =
+                    [
+                        new ZoneConfig { Name = "Zone 1" },
+                        new ZoneConfig { Name = "Zone 3" },
+                    ],
+                },
+            ],
+        };
+        var service = new StubZoneConfigurationService { NextCcStart = 40 };
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
+
+        ZoneActionWorkflowResult result = coordinator.AddZone(config);
+
+        Assert.True(result.Changed);
+        Assert.Equal(3, config.Pages[0].Zones.Count);
+        Assert.Equal("Zone 2", config.Pages[0].Zones[2].Name);
+    }
+
+    [Fact]
     public void AutoLayoutWhenOverCapacityReturnsUnchangedWithMessage()
     {
         var config = new AppConfig
@@ -125,7 +155,7 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
-    public void RemoveZoneLastZoneReplacesWithDefault()
+    public void RemoveZoneLastZoneReturnsUnchangedWithMessage()
     {
         var config = new AppConfig
         {
@@ -145,11 +175,12 @@ public sealed class ZoneActionWorkflowCoordinatorTests
 
         ZoneActionWorkflowResult result = coordinator.RemoveZone(config, selectedZoneIndex: 0);
 
-        Assert.True(result.Changed);
+        Assert.False(result.Changed);
         Assert.Single(config.Pages[0].Zones);
-        Assert.Equal("Zone 1", config.Pages[0].Zones[0].Name);
-        Assert.True(service.AutoTileCalled);
+        Assert.Equal("Only", config.Pages[0].Zones[0].Name);
+        Assert.False(service.AutoTileCalled);
         Assert.Equal(0, result.SelectedZoneIndex);
+        Assert.Contains("last zone", result.StatusMessage);
     }
 
     private sealed class StubZoneConfigurationService : IZoneConfigurationService

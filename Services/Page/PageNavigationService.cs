@@ -1,3 +1,5 @@
+using TabletMidiPad.Services.Naming;
+
 namespace TabletMidiPad.Services.Page;
 
 /// <summary>
@@ -57,8 +59,10 @@ internal sealed class PageNavigationService : IPageNavigationService
     public PageSelectionResult AddPage(AppConfig config)
     {
         EnsurePages(config);
-        int pageNumber = config.Pages.Count + 1;
-        config.Pages.Add(PageConfig.CreateDefault(pageNumber));
+        string nextName = DefaultNameGenerator.GetNext(config.Pages.Select(p => p.Name), "Page");
+        PageConfig page = PageConfig.CreateDefault(1);
+        page.Name = nextName;
+        config.Pages.Add(page);
         return Select(config, config.Pages.Count - 1) with
         {
             StatusMessage = "Page added. Click Apply Settings to save."
@@ -68,9 +72,14 @@ internal sealed class PageNavigationService : IPageNavigationService
     public PageSelectionResult RemovePage(AppConfig config, int pageIndex)
     {
         EnsurePages(config);
-        if (config.Pages.Count <= 1 || pageIndex < 0 || pageIndex >= config.Pages.Count)
+        if (pageIndex < 0 || pageIndex >= config.Pages.Count)
         {
             return new PageSelectionResult(false, ActivePageIndex, string.Empty);
+        }
+
+        if (config.Pages.Count <= 1)
+        {
+            return new PageSelectionResult(false, ActivePageIndex, "Cannot remove the last page.");
         }
 
         config.Pages.RemoveAt(pageIndex);

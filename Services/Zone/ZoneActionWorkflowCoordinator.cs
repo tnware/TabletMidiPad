@@ -1,3 +1,5 @@
+using TabletMidiPad.Services.Naming;
+
 namespace TabletMidiPad.Services.Zone;
 
 /// <summary>
@@ -57,9 +59,10 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
         }
 
         int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(page);
+        string nextName = DefaultNameGenerator.GetNext(page.Zones.Select(z => z.Name), "Zone");
         var zone = new ZoneConfig
         {
-            Name = $"Zone {page.Zones.Count + 1}",
+            Name = nextName,
             Enabled = true,
             MidiChannel = 1,
             CcX = nextCcStart,
@@ -98,12 +101,15 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
                 StatusMessage: string.Empty);
         }
 
-        page.Zones.RemoveAt(selectedZoneIndex);
-        if (page.Zones.Count == 0)
+        if (page.Zones.Count <= 1)
         {
-            page.Zones.Add(ZoneConfig.CreateDefault());
+            return new ZoneActionWorkflowResult(
+                Changed: false,
+                SelectedZoneIndex: 0,
+                StatusMessage: "Cannot remove the last zone on a page.");
         }
 
+        page.Zones.RemoveAt(selectedZoneIndex);
         _zoneConfigurationService.AutoTileZones(page);
         int nextSelection = Math.Clamp(selectedZoneIndex, 0, page.Zones.Count - 1);
         return new ZoneActionWorkflowResult(
