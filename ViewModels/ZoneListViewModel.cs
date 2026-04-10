@@ -73,12 +73,22 @@ internal sealed class ZoneListViewModel : ViewModelBase
 
     private void ApplyZoneActionResult(ZoneActionWorkflowResult result)
     {
-        _zoneEditor.RefreshZoneList();
-        _zoneEditor.SelectedZoneIndex = result.SelectedZoneIndex;
-        _zoneEditor.NotifySelectedZoneIndexChanged();
-        _zoneEditor.LoadSelectedZoneIntoEditor();
-        PadZoneOverlayRefreshRequested?.Invoke();
-        SettingsResultRequested?.Invoke(result.StatusMessage, SettingsResultKind.Success);
+        if (result.Changed)
+        {
+            _zoneEditor.RefreshZoneList();
+            _zoneEditor.SelectedZoneIndex = result.SelectedZoneIndex;
+            _zoneEditor.NotifySelectedZoneIndexChanged();
+            _zoneEditor.LoadSelectedZoneIntoEditor();
+            PadZoneOverlayRefreshRequested?.Invoke();
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.StatusMessage))
+        {
+            SettingsResultKind kind = result.Changed
+                ? SettingsResultKind.Success
+                : SettingsResultKind.Error;
+            SettingsResultRequested?.Invoke(result.StatusMessage, kind);
+        }
     }
 
     private void AddPage()

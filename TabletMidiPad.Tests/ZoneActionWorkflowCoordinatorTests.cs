@@ -49,6 +49,64 @@ public sealed class ZoneActionWorkflowCoordinatorTests
     }
 
     [Fact]
+    public void AddZoneWhenAtCapacityReturnsUnchangedWithMessage()
+    {
+        var config = new AppConfig
+        {
+            Pages =
+            [
+                new PageConfig
+                {
+                    Name = "Page 1",
+                    MaxZoneRows = 1,
+                    MaxZonesPerRow = 1,
+                    Zones = [new()],
+                },
+            ],
+        };
+        var service = new StubZoneConfigurationService { NextCcStart = 40 };
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
+
+        ZoneActionWorkflowResult result = coordinator.AddZone(config);
+
+        Assert.False(result.Changed);
+        Assert.Single(config.Pages[0].Zones);
+        Assert.Contains("Zone limit reached", result.StatusMessage);
+        Assert.False(service.AutoTileCalled);
+    }
+
+    [Fact]
+    public void AutoLayoutWhenOverCapacityReturnsUnchangedWithMessage()
+    {
+        var config = new AppConfig
+        {
+            Pages =
+            [
+                new PageConfig
+                {
+                    Name = "Page 1",
+                    MaxZoneRows = 1,
+                    MaxZonesPerRow = 1,
+                    Zones = [new(), new()],
+                },
+            ],
+        };
+        var service = new StubZoneConfigurationService();
+        var pageNavigation = new PageNavigationService();
+        pageNavigation.Initialize(config);
+        var coordinator = new ZoneActionWorkflowCoordinator(service, pageNavigation);
+
+        ZoneActionWorkflowResult result = coordinator.AutoLayout(config, selectedZoneIndex: 1);
+
+        Assert.False(result.Changed);
+        Assert.Equal(1, result.SelectedZoneIndex);
+        Assert.Contains("exceeds layout capacity", result.StatusMessage);
+        Assert.False(service.AutoTileCalled);
+    }
+
+    [Fact]
     public void RemoveZoneInvalidSelectionReturnsUnchanged()
     {
         var config = new AppConfig
@@ -99,6 +157,9 @@ public sealed class ZoneActionWorkflowCoordinatorTests
         public bool AutoTileCalled { get; private set; }
 
         public int NextCcStart { get; init; } = 16;
+
+        public int GetZoneCapacity(PageConfig page)
+            => Math.Max(1, page.MaxZoneRows) * Math.Max(1, page.MaxZonesPerRow);
 
         public void ValidateConfig(AppConfig config)
         {

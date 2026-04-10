@@ -1021,26 +1021,6 @@
                             </StackPanel>
                         </Border>
 
-                            <TextBlock Name="SettingsResultText"
-                                       Margin="0,10,0,0"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Text="{Binding SettingsResultMessage}">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Success}">
-                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Error}">
-                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-
                             <TextBlock Name="ConfigSummaryText"
                                        Foreground="{DynamicResource TextFillColorDisabledBrush}"
                                        Margin="0,4,0,0"
@@ -1068,6 +1048,25 @@
                                                Text="Apply Settings"/>
                                 </StackPanel>
                             </Button>
+                            <TextBlock Name="SettingsResultText"
+                                       Margin="0,8,0,0"
+                                       FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SettingsResultMessage}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Success}">
+                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SettingsResultKind}" Value="{x:Static vm:SettingsResultKind.Error}">
+                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </Border>
                 </Grid>

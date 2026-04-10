@@ -11,7 +11,7 @@ public sealed class ZoneListViewModelTests
         var runtime = new RuntimeConfigService(new MemoryStore());
         runtime.Replace(AppConfig.Default);
         var pageNavigation = new PageNavigationService();
-        var editorService = new ZoneEditorService(new ConfigValueParser(), pageNavigation);
+        var editorService = new ZoneEditorService(new ConfigValueParser(), pageNavigation, new ZoneConfigurationService());
         var editor = new ZoneEditorViewModel(runtime, editorService, pageNavigation);
         editor.LoadConfigIntoUi();
         editor.ZoneName = "Edited";

@@ -41,7 +41,8 @@ internal static class AppBootstrapper
             c.GetRequiredService<IUiStateProjectionService>()));
         container.AddSingleton<IZoneEditorService>(c => new ZoneEditorService(
             c.GetRequiredService<IConfigValueParser>(),
-            c.GetRequiredService<IPageNavigationService>()));
+            c.GetRequiredService<IPageNavigationService>(),
+            c.GetRequiredService<IZoneConfigurationService>()));
         container.AddSingleton<IZoneResizeService>(_ => new ZoneResizeService());
         container.AddSingleton<IZonePadControllerFactory>(c => new ZonePadControllerFactory(
             c.GetRequiredService<IZoneResizeService>(),

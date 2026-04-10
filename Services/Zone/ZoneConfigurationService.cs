@@ -7,6 +7,15 @@ namespace TabletMidiPad.Services.Zone;
 internal sealed class ZoneConfigurationService : IZoneConfigurationService
 {
     /// <inheritdoc />
+    public int GetZoneCapacity(PageConfig page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        int maxRows = Math.Max(1, page.MaxZoneRows);
+        int maxPerRow = Math.Max(1, page.MaxZonesPerRow);
+        return maxRows * maxPerRow;
+    }
+
+    /// <inheritdoc />
     public int GetNextAvailableCcStart(PageConfig page)
     {
         ArgumentNullException.ThrowIfNull(page);
@@ -50,10 +59,14 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
         int count = zones.Count;
         int maxRows = Math.Max(1, page.MaxZoneRows);
         int maxPerRow = Math.Max(1, page.MaxZonesPerRow);
-        int capacity = maxRows * maxPerRow;
-        int rows = count <= capacity
-            ? Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)))
-            : Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow));
+        int capacity = GetZoneCapacity(page);
+        if (count > capacity)
+        {
+            throw new InvalidOperationException(
+                $"Page '{page.Name}' has {count} zones but only {capacity} allowed by max rows/per-row.");
+        }
+
+        int rows = Math.Min(maxRows, Math.Max(1, (int)Math.Ceiling((double)count / maxPerRow)));
 
         double cellHeight = 1.0 / rows;
 
@@ -95,6 +108,13 @@ internal sealed class ZoneConfigurationService : IZoneConfigurationService
             if (page.MaxZonesPerRow < 1)
             {
                 throw new InvalidOperationException($"Page '{page.Name}' max zones per row must be at least 1.");
+            }
+
+            int capacity = GetZoneCapacity(page);
+            if (page.Zones.Count > capacity)
+            {
+                throw new InvalidOperationException(
+                    $"Page '{page.Name}' has {page.Zones.Count} zones but only {capacity} allowed by max rows/per-row.");
             }
 
             foreach (ZoneConfig zone in page.Zones)

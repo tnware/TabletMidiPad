@@ -24,6 +24,15 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
     public ZoneActionWorkflowResult AutoLayout(AppConfig config, int selectedZoneIndex)
     {
         PageConfig page = _pageNavigationService.GetActivePage(config);
+        int capacity = _zoneConfigurationService.GetZoneCapacity(page);
+        if (page.Zones.Count > capacity)
+        {
+            return new ZoneActionWorkflowResult(
+                Changed: false,
+                SelectedZoneIndex: Math.Clamp(selectedZoneIndex, -1, page.Zones.Count - 1),
+                StatusMessage: $"Zone count exceeds layout capacity ({page.Zones.Count}/{capacity}). Increase limits or remove zones.");
+        }
+
         _zoneConfigurationService.AutoTileZones(page);
         int nextSelection = page.Zones.Count == 0
             ? -1
@@ -38,6 +47,15 @@ internal sealed class ZoneActionWorkflowCoordinator : IZoneActionWorkflowCoordin
     public ZoneActionWorkflowResult AddZone(AppConfig config)
     {
         PageConfig page = _pageNavigationService.GetActivePage(config);
+        int capacity = _zoneConfigurationService.GetZoneCapacity(page);
+        if (page.Zones.Count >= capacity)
+        {
+            return new ZoneActionWorkflowResult(
+                Changed: false,
+                SelectedZoneIndex: Math.Clamp(page.Zones.Count - 1, -1, page.Zones.Count - 1),
+                StatusMessage: $"Zone limit reached ({capacity}). Increase Max Rows or Max Per Row to add more zones.");
+        }
+
         int nextCcStart = _zoneConfigurationService.GetNextAvailableCcStart(page);
         var zone = new ZoneConfig
         {

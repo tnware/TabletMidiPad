@@ -184,6 +184,8 @@ public sealed class SettingsWorkflowTests
     {
         public int AutoTileZonesCount { get; private set; }
 
+        public int GetZoneCapacity(PageConfig page) => 1;
+
         public void ValidateConfig(AppConfig config)
         {
         }

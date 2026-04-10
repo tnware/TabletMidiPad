@@ -9,7 +9,7 @@ public sealed class ZoneEditorServiceTests
     public void CommitCurrentZoneEditsWritesValidatedValuesFromViewModel()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser, new PageNavigationService());
+        var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
         var config = new AppConfig();
         config.Pages[0].Zones.Clear();
         config.Pages[0].Zones.Add(ZoneConfig.CreateDefault());
@@ -88,7 +88,7 @@ public sealed class ZoneEditorServiceTests
     public void LoadSelectedZoneIntoEditorLoadsMidiChannelAndReleaseBehavior()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser, new PageNavigationService());
+        var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
         var config = new AppConfig();
         config.Pages[0].Zones.Clear();
         config.Pages[0].Zones.Add(new ZoneConfig
@@ -133,7 +133,7 @@ public sealed class ZoneEditorServiceTests
     public void LoadSelectedZoneIntoEditorNoSelectionClearsEditor()
     {
         var parser = new ConfigValueParser();
-        var sut = new ZoneEditorService(parser, new PageNavigationService());
+        var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
         AppConfig config = AppConfig.Default;
         var vm = new TestZoneEditorState { ZoneMidiChannel = 5, ZoneDetailsEnabled = true };
 
@@ -151,6 +151,79 @@ public sealed class ZoneEditorServiceTests
         Assert.False(vm.OneNoteSendCc);
         Assert.False(vm.MappingAssistEnabled);
         Assert.Equal(ZoneMappingAssistTargets.CcX, vm.MappingAssistTarget);
+    }
+
+    [Fact]
+    public void CommitCurrentZoneEditsWhenLimitsChangeRetilesZones()
+    {
+        var parser = new ConfigValueParser();
+        var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
+        var config = new AppConfig();
+        config.Pages[0].MaxZoneRows = 2;
+        config.Pages[0].MaxZonesPerRow = 1;
+        config.Pages[0].Zones.Clear();
+        config.Pages[0].Zones.Add(new ZoneConfig { Name = "A", Enabled = true, Width = 0.5, Height = 0.5 });
+        config.Pages[0].Zones.Add(new ZoneConfig { Name = "B", Enabled = true, Width = 0.5, Height = 0.5 });
+
+        var vm = new TestZoneEditorState
+        {
+            ZoneName = "A",
+            ZoneEnabled = true,
+            ZoneMidiChannel = 1,
+            ZoneCcX = "10",
+            ZoneCcY = "11",
+            ZoneCcPressure = "12",
+            ZoneLeft = "0",
+            ZoneTop = "0",
+            ZoneWidth = "0.5",
+            ZoneHeight = "0.5",
+            ZoneReleaseBehavior = ZoneReleaseBehaviors.NoSendOnRelease,
+            ZoneOutputMode = ZoneOutputModes.CcPad,
+            ScaleBreathRootText = "0",
+            ScaleBreathScale = ScaleBreathScaleNames.Major,
+            ScaleBreathOctaveText = "4",
+            ScaleBreathHoleCountText = "10",
+            ScaleBreathRowSplitText = "0.5",
+            ScaleGridRootText = "0",
+            ScaleGridScale = ScaleBreathScaleNames.Major,
+            ScaleGridOctaveText = "4",
+            ScaleGridRowsText = "4",
+            ScaleGridColumnsText = "4",
+            OneNoteNoteText = "60",
+            MappingAssistTarget = ZoneMappingAssistTargets.CcX,
+        };
+
+        sut.CommitCurrentZoneEdits(config, vm, selectedZoneIndex: 0, maxZoneRowsText: "1", maxZonesPerRowText: "2");
+
+        ZoneConfig first = config.Pages[0].Zones[0];
+        ZoneConfig second = config.Pages[0].Zones[1];
+        Assert.Equal(0.0, first.Left);
+        Assert.Equal(0.0, first.Top);
+        Assert.Equal(0.5, first.Width);
+        Assert.Equal(1.0, first.Height);
+        Assert.Equal(0.5, second.Left);
+        Assert.Equal(0.0, second.Top);
+        Assert.Equal(0.5, second.Width);
+        Assert.Equal(1.0, second.Height);
+    }
+
+    [Fact]
+    public void CommitCurrentZoneEditsWithoutSelectionStillValidatesPageLimits()
+    {
+        var parser = new ConfigValueParser();
+        var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
+        var config = AppConfig.Default;
+        var vm = new TestZoneEditorState();
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+            sut.CommitCurrentZoneEdits(
+                config,
+                vm,
+                selectedZoneIndex: -1,
+                maxZoneRowsText: "0",
+                maxZonesPerRowText: "2"));
+
+        Assert.Contains("Max Zone Rows", ex.Message);
     }
 
     private sealed class TestZoneEditorState : IZoneEditorState

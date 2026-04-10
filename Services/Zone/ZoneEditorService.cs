@@ -11,16 +11,19 @@ internal sealed class ZoneEditorService : IZoneEditorService
 {
     private readonly IConfigValueParser _configValueParser;
     private readonly IPageNavigationService _pageNavigationService;
+    private readonly IZoneConfigurationService _zoneConfigurationService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ZoneEditorService"/> class.
     /// </summary>
     public ZoneEditorService(
         IConfigValueParser configValueParser,
-        IPageNavigationService pageNavigationService)
+        IPageNavigationService pageNavigationService,
+        IZoneConfigurationService zoneConfigurationService)
     {
         _configValueParser = configValueParser ?? throw new ArgumentNullException(nameof(configValueParser));
         _pageNavigationService = pageNavigationService ?? throw new ArgumentNullException(nameof(pageNavigationService));
+        _zoneConfigurationService = zoneConfigurationService ?? throw new ArgumentNullException(nameof(zoneConfigurationService));
     }
 
     /// <inheritdoc />
@@ -134,14 +137,23 @@ internal sealed class ZoneEditorService : IZoneEditorService
         string? maxZonesPerRowText)
     {
         PageConfig page = _pageNavigationService.GetActivePage(config);
+        int previousMaxZoneRows = page.MaxZoneRows;
+        int previousMaxZonesPerRow = page.MaxZonesPerRow;
+        page.MaxZoneRows = _configValueParser.ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
+        page.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
+        bool limitsChanged = page.MaxZoneRows != previousMaxZoneRows || page.MaxZonesPerRow != previousMaxZonesPerRow;
+        int capacity = _zoneConfigurationService.GetZoneCapacity(page);
+        if (limitsChanged && page.Zones.Count <= capacity)
+        {
+            _zoneConfigurationService.AutoTileZones(page);
+        }
+
         if (selectedZoneIndex < 0 || selectedZoneIndex >= page.Zones.Count)
         {
             return;
         }
 
         ZoneConfig zone = page.Zones[selectedZoneIndex];
-        page.MaxZoneRows = _configValueParser.ReadInt(maxZoneRowsText, 1, 16, "Max Zone Rows");
-        page.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
         zone.Name = _configValueParser.RequireText(viewModel.ZoneName, "Zone Name");
         zone.Enabled = viewModel.ZoneEnabled;
         zone.MidiChannel = Math.Clamp(viewModel.ZoneMidiChannel, 1, 16);

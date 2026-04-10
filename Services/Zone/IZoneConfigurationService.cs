@@ -6,6 +6,11 @@ namespace TabletMidiPad.Services.Zone;
 internal interface IZoneConfigurationService
 {
     /// <summary>
+    /// Computes maximum zones allowed by current page row/column limits.
+    /// </summary>
+    int GetZoneCapacity(PageConfig page);
+
+    /// <summary>
     /// Validates the current application configuration.
     /// </summary>
     /// <param name="config">The configuration to validate.</param>
