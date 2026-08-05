@@ -143,13 +143,14 @@ internal sealed class ZoneEditorService : IZoneEditorService
         page.MaxZonesPerRow = _configValueParser.ReadInt(maxZonesPerRowText, 1, 32, "Max Zones Per Row");
         bool limitsChanged = page.MaxZoneRows != previousMaxZoneRows || page.MaxZonesPerRow != previousMaxZonesPerRow;
         int capacity = _zoneConfigurationService.GetZoneCapacity(page);
-        if (limitsChanged && page.Zones.Count <= capacity)
-        {
-            _zoneConfigurationService.AutoTileZones(page);
-        }
 
         if (selectedZoneIndex < 0 || selectedZoneIndex >= page.Zones.Count)
         {
+            if (limitsChanged && page.Zones.Count <= capacity)
+            {
+                _zoneConfigurationService.AutoTileZones(page);
+            }
+
             return;
         }
 
@@ -188,6 +189,11 @@ internal sealed class ZoneEditorService : IZoneEditorService
         zone.ScaleGridSendCc = viewModel.ScaleGridSendCc;
         zone.OneNoteNote = _configValueParser.ReadInt(viewModel.OneNoteNoteText, 0, 127, "One Note");
         zone.OneNoteSendCc = viewModel.OneNoteSendCc;
+        if (limitsChanged && page.Zones.Count <= capacity)
+        {
+            _zoneConfigurationService.AutoTileZones(page);
+        }
+
         SetZoneSelectionSummary(viewModel, zone);
     }
 

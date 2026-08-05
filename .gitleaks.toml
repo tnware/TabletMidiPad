@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "WPF resource dictionary x:Key attributes are identifiers, not API keys"
+condition = "AND"
+regexTarget = "match"
+paths = ['''(?i)\.xaml$''']
+regexes = ['''(?i)(?:x:)?key\s*=\s*"[^"]+"''']

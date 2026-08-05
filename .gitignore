@@ -60,8 +60,9 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
-# Generated for NSIS from TabletMidiPad.csproj <Version>
+# Generated for NSIS from the project version and publish file list
 installer/VersionDefines.generated.nsh
+installer/UninstallFiles.generated.nsh
 
 # .NET
 project.lock.json

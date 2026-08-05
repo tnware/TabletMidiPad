@@ -1,10 +1,17 @@
-This folder is for application assets (icons, images).
+TabletMidiPad application assets
+================================
 
-- Add an application icon named `app.ico` to enable the app to display a proper icon.
-  Recommended sizes inside the .ico: 16x16, 32x32, 48x48, 256x256.
-  Regenerate from icon.png with ImageMagick (from repo root):
+- `icon.png` was generated with OpenAI ChatGPT image tooling. Its embedded
+  C2PA metadata is intentionally retained as provenance.
+- `app.ico` is derived from `icon.png` for Windows application and installer
+  use. Regenerate it from the repository root with ImageMagick:
+
     magick Assets\icon.png -background none -define icon:auto-resize=256,128,96,64,48,32,16 Assets\app.ico
 
-- Add `icon.png` (e.g., 256x256) if you need to reference a raster image in XAML.
+- `main.png`, `settings1.png`, `settings2.png`, and `demo.gif` document the
+  application UI. The demo includes third-party DAW/plugin interfaces for
+  interoperability demonstration only.
 
-- After adding assets, commit them and the project will automatically pick up `Assets\app.ico` as the ApplicationIcon (see .csproj).
+The artwork is not derived from official Wacom assets. TabletMidiPad is not
+affiliated with or endorsed by Wacom, Microsoft, Ableton, or Tracktion. Product
+names and trademarks belong to their respective owners.

@@ -9,7 +9,6 @@ namespace TabletMidiPad.Services.Midi;
 /// </summary>
 internal sealed class WinMmMidiEngine : IMidiEngine
 {
-    private const string MidiConsoleEnvOverride = "TABLETMIDIPAD_MIDI_EXE_PATH";
     private readonly Dictionary<string, int> _lastSentValues = new();
     private readonly object _sync = new();
     private IntPtr _midiOutHandle;
@@ -194,16 +193,13 @@ internal sealed class WinMmMidiEngine : IMidiEngine
 
     private static void CreateLoopbackPair(AppConfig config)
     {
-        RunMidiConsole(
-            $"loopback create --name-a \"{config.AppPortName}\" --name-b \"{config.DawPortName}\" --association-id \"{config.LoopbackAssociationId}\"");
+        RunMidiConsole(MidiConsoleProcess.CreateLoopbackArguments(config));
         Thread.Sleep(300);
     }
 
     private static void RemoveLoopbackPair(AppConfig config)
     {
-        RunMidiConsole(
-            $"loopback remove --association-id \"{config.LoopbackAssociationId}\"",
-            allowFailure: true);
+        RunMidiConsole(MidiConsoleProcess.RemoveLoopbackArguments(config), allowFailure: true);
     }
 
     private void EnsureLoopbackAndOpen(AppConfig config, Action<string>? onProgress)
@@ -316,18 +312,10 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         return [.. names.Where(name => !string.IsNullOrWhiteSpace(name))];
     }
 
-    private static void RunMidiConsole(string arguments, bool allowFailure = false)
+    private static void RunMidiConsole(IReadOnlyList<string> arguments, bool allowFailure = false)
     {
-        string midiConsolePath = ResolveMidiConsolePath();
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = midiConsolePath,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        string midiConsolePath = MidiConsoleProcess.ResolveInstalledPath();
+        ProcessStartInfo startInfo = MidiConsoleProcess.BuildStartInfo(midiConsolePath, arguments);
 
         Process? process;
         try
@@ -337,7 +325,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         catch (Win32Exception ex)
         {
             throw new InvalidOperationException(
-                "Could not find 'midi.exe'. Ensure Windows MIDI Services is installed and 'midi.exe' is in PATH, or set TABLETMIDIPAD_MIDI_EXE_PATH.",
+                "Could not start the trusted Windows MIDI Services console. Repair Windows MIDI Services Tools, or verify TABLETMIDIPAD_MIDI_EXE_PATH.",
                 ex);
         }
 
@@ -358,14 +346,8 @@ internal sealed class WinMmMidiEngine : IMidiEngine
             }
 
             throw new InvalidOperationException(
-                $"midi.exe {arguments} failed with exit code {process.ExitCode}. {output} {error}".Trim());
+                $"midi.exe failed with exit code {process.ExitCode}. {output} {error}".Trim());
         }
-    }
-
-    private static string ResolveMidiConsolePath()
-    {
-        string? overridePath = Environment.GetEnvironmentVariable(MidiConsoleEnvOverride);
-        return string.IsNullOrWhiteSpace(overridePath) ? "midi.exe" : overridePath;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]

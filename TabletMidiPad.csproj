@@ -10,6 +10,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PlatformTarget>x64</PlatformTarget>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Authors>Tyler Woods</Authors>
+    <Description>Turn a Wacom tablet into a configurable Windows MIDI controller.</Description>
+    <RepositoryUrl>https://github.com/tnware/TabletMidiPad</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 Tyler Woods</Copyright>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/TabletMidiPad</PathMap>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
     <!-- Enable built-in .NET analyzers and enforce code style during build -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -40,6 +50,11 @@
 
   <ItemGroup>
     <ProjectReference Include="TabletMidiPad.Core\TabletMidiPad.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- If an application icon is added to Assets\app.ico, embed it as the application icon. This is conditional

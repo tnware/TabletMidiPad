@@ -11,6 +11,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
     private readonly IAppTrace _trace;
 
     private readonly Dictionary<uint, WintabContextInfo> _contexts = new();
+    private readonly WintabExpressKeyOverrideRegistry _expressKeyOverrides = new();
     private HwndSource? _messageSource;
     private int _packetMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
     private int _packetExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
@@ -107,13 +108,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
 
         foreach (uint contextHandle in _contexts.Keys.ToArray())
         {
-            try
-            {
-                WintabInterop.WTClose(contextHandle);
-            }
-            catch
-            {
-            }
+            CloseContext(contextHandle);
         }
 
         _ = OpenContexts();
@@ -121,6 +116,14 @@ internal sealed class WintabInputBackend : IWintabInputBackend
 
     public void Shutdown()
     {
+        foreach (uint contextHandle in _contexts.Keys.ToArray())
+        {
+            CloseContext(contextHandle);
+        }
+
+        _contexts.Clear();
+        _expressKeyOverrides.Clear();
+
         if (_messageSource is not null)
         {
             _messageSource.RemoveHook(WndProc);
@@ -128,18 +131,6 @@ internal sealed class WintabInputBackend : IWintabInputBackend
             _messageSource = null;
         }
 
-        foreach (uint contextHandle in _contexts.Keys.ToArray())
-        {
-            try
-            {
-                WintabInterop.WTClose(contextHandle);
-            }
-            catch
-            {
-            }
-        }
-
-        _contexts.Clear();
         _packetMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKET;
         _packetExtMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_PACKETEXT;
         _contextOverlapMessage = WintabInterop.WT_DEFBASE + WintabInterop.WT_CTXOVERLAP;
@@ -213,6 +204,7 @@ internal sealed class WintabInputBackend : IWintabInputBackend
         }
 
         string name = WintabInterop.GetDeviceName(deviceIndex);
+        bool isIntegrated = WintabInterop.IsIntegratedTablet(deviceIndex);
         context.Name = $"TabletMidiPad {name}";
         context.Options |= WintabInterop.CXO_MESSAGES;
         context.Options &= ~WintabInterop.CXO_SYSTEM;
@@ -249,7 +241,6 @@ internal sealed class WintabInputBackend : IWintabInputBackend
             return 0;
         }
 
-        _expressKeyCount = SetupExpressKeyOverrides(handle, (byte)deviceIndex);
         _contexts[handle] = new WintabContextInfo(
             DeviceIndex: deviceIndex,
             OutputMinX: 0,
@@ -257,7 +248,17 @@ internal sealed class WintabInputBackend : IWintabInputBackend
             OutputMinY: 0,
             OutputMaxY: Math.Max(1, Math.Abs(context.OutExtY) - 1),
             PressureMax: Math.Max(1, pressureAxis.Max),
-            IsIntegrated: WintabInterop.IsIntegratedTablet(deviceIndex));
+            IsIntegrated: isIntegrated);
+        try
+        {
+            _expressKeyCount = SetupExpressKeyOverrides(handle, (byte)deviceIndex);
+        }
+        catch
+        {
+            CloseContext(handle);
+            _contexts.Remove(handle);
+            throw;
+        }
 
         DiagnosticsChanged?.Invoke(this, $"{name} (device {deviceIndex}) opened");
         return _contexts.Count;
@@ -295,16 +296,71 @@ internal sealed class WintabInputBackend : IWintabInputBackend
                 }
 
                 bool overrideOk = WintabInterop.SetExtensionProperty(contextHandle, extTag, tabletIndex, controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE, 1);
-                WintabInterop.SetExtensionPropertyString(contextHandle, extTag, tabletIndex, controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE_NAME, $"MIDI EK{controlIndex}");
                 if (overrideOk)
                 {
+                    _expressKeyOverrides.Add(new WintabExpressKeyOverride(
+                        contextHandle,
+                        tabletIndex,
+                        controlIndex,
+                        funcIndex));
                     overrideCount++;
                 }
+
+                WintabInterop.SetExtensionPropertyString(contextHandle, extTag, tabletIndex, controlIndex, funcIndex, WintabInterop.TABLET_PROPERTY_OVERRIDE_NAME, $"MIDI EK{controlIndex}");
             }
         }
 
         DiagnosticsChanged?.Invoke(this, $"EK: {numControls} keys, {overrideCount} overridden");
         return (int)numControls;
+    }
+
+    private void CloseContext(uint contextHandle)
+    {
+        int released = _expressKeyOverrides.ReleaseContext(
+            contextHandle,
+            entry =>
+            {
+                try
+                {
+                    bool removed = WintabInterop.SetExtensionProperty(
+                        entry.ContextHandle,
+                        WintabInterop.WTX_EXPKEYS2,
+                        entry.TabletIndex,
+                        entry.ControlIndex,
+                        entry.FunctionIndex,
+                        WintabInterop.TABLET_PROPERTY_OVERRIDE,
+                        0);
+                    if (!removed)
+                    {
+                        _trace.Warn(
+                            "WintabInputBackend",
+                            $"Driver rejected ExpressKey cleanup for context 0x{contextHandle:X}, control {entry.ControlIndex}, function {entry.FunctionIndex}");
+                    }
+
+                    return removed;
+                }
+                catch (Exception ex)
+                {
+                    _trace.Warn(
+                        "WintabInputBackend",
+                        $"ExpressKey cleanup failed for context 0x{contextHandle:X}: {ex.Message}");
+                    return false;
+                }
+            });
+
+        if (released > 0)
+        {
+            _trace.Info("WintabInputBackend", $"Released {released} ExpressKey override(s) for context 0x{contextHandle:X}");
+        }
+
+        try
+        {
+            WintabInterop.WTClose(contextHandle);
+        }
+        catch (Exception ex)
+        {
+            _trace.Warn("WintabInputBackend", $"WTClose failed for context 0x{contextHandle:X}: {ex.Message}");
+        }
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
