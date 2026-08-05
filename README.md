@@ -2,7 +2,9 @@
 
 `TabletMidiPad` is a Windows WPF utility that turns tablet, pen, stylus, or mouse movement into MIDI CC data for a DAW.
 
+![Main Screen](main.png)
 ![TabletMidiPad demo](demo.gif)
+
 
 The app creates a configurable control surface with rectangular zones. Each zone can send its own MIDI channel and CC assignments for:
 
