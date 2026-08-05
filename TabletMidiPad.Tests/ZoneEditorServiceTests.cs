@@ -11,6 +11,8 @@ public sealed class ZoneEditorServiceTests
         var parser = new ConfigValueParser();
         var sut = new ZoneEditorService(parser, new PageNavigationService(), new ZoneConfigurationService());
         var config = new AppConfig();
+        config.Pages[0].MaxZoneRows = 1;
+        config.Pages[0].MaxZonesPerRow = 2;
         config.Pages[0].Zones.Clear();
         config.Pages[0].Zones.Add(ZoneConfig.CreateDefault());
 

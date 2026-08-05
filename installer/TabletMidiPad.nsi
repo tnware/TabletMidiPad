@@ -1,61 +1,113 @@
-; TabletMidiPad Windows installer (NSIS 3.x)
-; From repo root: make installer   or   make release
-; Or after dotnet publish: makensis installer\TabletMidiPad.nsi
-; Paths below are relative to this .nsi file's directory.
-!include "VersionDefines.generated.nsh"
-
 Unicode true
-RequestExecutionLevel admin
+
+!include "MUI2.nsh"
+!include "VersionDefines.generated.nsh"
+!include "UninstallFiles.generated.nsh"
 
 !define APP_NAME "TabletMidiPad"
-!define APP_PUBLISHER "TabletMidiPad"
-!define MAIN_EXE "TabletMidiPad.exe"
+!define APP_PUBLISHER "Tyler Woods"
+!define APP_URL "https://github.com/tnware/TabletMidiPad"
+!define APP_EXE "TabletMidiPad.exe"
+!define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+!define INSTALL_MARKER ".tabletmidipad-install"
 
-; Published output from: dotnet publish -c Release -r win-x64 -o artifacts\publish
-!define ARTIFACTS_DIR "..\artifacts\publish"
-
-!if /FileExists "${ARTIFACTS_DIR}\${MAIN_EXE}"
-!else
-  !error "Missing ${ARTIFACTS_DIR}\${MAIN_EXE}. Run make publish (or dotnet publish) first."
-!endif
-
-Name "${APP_NAME}"
-Caption "${APP_NAME} Setup"
+Name "${APP_NAME} ${APP_VERSION}"
 OutFile "..\artifacts\TabletMidiPad-Setup.exe"
-InstallDir "$PROGRAMFILES64\${APP_NAME}"
+InstallDir "$PROGRAMFILES64\TabletMidiPad"
+InstallDirRegKey HKLM "${UNINSTALL_KEY}" "InstallLocation"
+RequestExecutionLevel admin
+SetCompressor /SOLID lzma
+SetOverwrite on
 
-Page directory
-Page instfiles
+VIProductVersion "${APP_VERSION}.0"
+VIAddVersionKey /LANG=1033 "ProductName" "${APP_NAME}"
+VIAddVersionKey /LANG=1033 "ProductVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=1033 "FileDescription" "Wacom tablet to MIDI controller"
+VIAddVersionKey /LANG=1033 "FileVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=1033 "CompanyName" "${APP_PUBLISHER}"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright (c) 2026 ${APP_PUBLISHER}"
 
-UninstPage uninstConfirm
-UninstPage instfiles
+!define MUI_ABORTWARNING
+!define MUI_ICON "..\Assets\app.ico"
+!define MUI_UNICON "..\Assets\app.ico"
 
-Section "Application" SecApp
-  SetOutPath $INSTDIR
-  File /r "${ARTIFACTS_DIR}\*.*"
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE"
+; Keep a dedicated Program Files directory. /D overrides remain safe because
+; uninstall deletes only the generated list of application-owned files.
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
 
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+!insertmacro MUI_LANGUAGE "English"
+
+Function RemovePreviousOwnedFiles
+  ; Upgrade cleanup is allowed only for the HKLM-registered installation path
+  ; containing the application executable. /D cannot authorize deletion in an
+  ; arbitrary directory. The cumulative ledger never deletes unknown files.
+  ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "InstallLocation"
+  StrCmp $0 "$INSTDIR" 0 cleanup_done
+  IfFileExists "$INSTDIR\${APP_EXE}" 0 cleanup_done
+  !insertmacro DeleteTabletMidiPadStaleFiles
+cleanup_done:
+FunctionEnd
+
+Section "Install"
+  Call RemovePreviousOwnedFiles
+  SetOutPath "$INSTDIR"
+  File /r "..\artifacts\publish\*.*"
+
+  FileOpen $0 "$INSTDIR\${INSTALL_MARKER}" w
+  FileWrite $0 "${APP_NAME} ${APP_VERSION}$\r$\n"
+  FileClose $0
+
+  ; Remove the legacy shortcut to the previous uninstaller. Leaving it behind
+  ; could expose an older relocated uninstaller after this install takes ownership.
+  Delete "$SMPROGRAMS\TabletMidiPad\Uninstall TabletMidiPad.lnk"
+  CreateShortCut "$DESKTOP\TabletMidiPad.lnk" "$INSTDIR\${APP_EXE}"
+  CreateDirectory "$SMPROGRAMS\TabletMidiPad"
+  CreateShortCut "$SMPROGRAMS\TabletMidiPad\TabletMidiPad.lnk" "$INSTDIR\${APP_EXE}"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
-  CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${MAIN_EXE}" "" "" 0
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
-
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayIcon" "$INSTDIR\${MAIN_EXE}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "Publisher" "${APP_PUBLISHER}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoModify" 1
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoRepair" 1
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${APP_NAME}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher" "${APP_PUBLISHER}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "URLInfoAbout" "${APP_URL}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
+  WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoModify" 1
+  WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoRepair" 1
 SectionEnd
 
+Function un.onInit
+  IfFileExists "$INSTDIR\${INSTALL_MARKER}" marker_found
+  MessageBox MB_ICONSTOP|MB_OK "This folder is not a verified TabletMidiPad installation. Uninstall has been cancelled."
+  Abort
+marker_found:
+FunctionEnd
+
 Section "Uninstall"
-  RMDir /r "$INSTDIR"
+  ; Generated from the cumulative application-owned ledger. This deliberately
+  ; avoids RMDir /r so unknown files in the installation directory are preserved.
+  !insertmacro DeleteTabletMidiPadOwnedFiles
+  !insertmacro RemoveTabletMidiPadOwnedDirectories
 
-  Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
-  Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
-  RMDir "$SMPROGRAMS\${APP_NAME}"
+  Delete "$INSTDIR\${INSTALL_MARKER}"
+  Delete "$INSTDIR\Uninstall.exe"
+  RMDir "$INSTDIR"
 
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+  ; An older relocated installation must not remove shared metadata belonging
+  ; to a newer installation. Only the currently registered path owns it.
+  ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "InstallLocation"
+  StrCmp $0 "$INSTDIR" 0 shared_metadata_done
+  Delete "$SMPROGRAMS\TabletMidiPad\Uninstall TabletMidiPad.lnk"
+  Delete "$DESKTOP\TabletMidiPad.lnk"
+  Delete "$SMPROGRAMS\TabletMidiPad\TabletMidiPad.lnk"
+  RMDir "$SMPROGRAMS\TabletMidiPad"
+  DeleteRegKey HKLM "${UNINSTALL_KEY}"
+shared_metadata_done:
 SectionEnd

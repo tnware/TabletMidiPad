@@ -1,0 +1,13 @@
+# Cumulative ledger of application-owned publish files.
+# Keep removed/renamed entries forever so future uninstallers clean upgrades safely.
+# Add every new publish file here; Generate-UninstallManifest.ps1 fails closed otherwise.
+LICENSE
+System.ServiceProcess.ServiceController.dll
+TabletMidiPad.Core.dll
+TabletMidiPad.Core.pdb
+TabletMidiPad.deps.json
+TabletMidiPad.dll
+TabletMidiPad.exe
+TabletMidiPad.pdb
+TabletMidiPad.runtimeconfig.json
+THIRD-PARTY-NOTICES.txt
