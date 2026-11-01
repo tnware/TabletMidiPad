@@ -40,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.14" />
     <!-- Try adding a known available StyleCop.Analyzers prerelease version. If this package
          isn't available in your feed or you prefer a stable release, replace with a compatible version. -->
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
