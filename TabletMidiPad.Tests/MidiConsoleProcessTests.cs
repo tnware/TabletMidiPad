@@ -13,6 +13,7 @@ public sealed class MidiConsoleProcessTests
             AppPortName = "App Port\" --association-id injected",
             DawPortName = "DAW Port",
             LoopbackAssociationId = "{11111111-1111-1111-1111-111111111111}",
+            LoopbackUniqueIdentifier = "11111111111111111111111111111111",
         };
 
         IReadOnlyList<string> arguments = MidiConsoleProcess.CreateLoopbackArguments(config);
@@ -25,10 +26,33 @@ public sealed class MidiConsoleProcessTests
                 config.AppPortName,
                 "--name-b",
                 config.DawPortName,
-                "--association-id",
-                config.LoopbackAssociationId,
+                "--unique-identifier",
+                config.LoopbackUniqueIdentifier,
             ],
             arguments);
+    }
+
+    [Fact]
+    public void ParseCreatedLoopbackAssociationIdReadsTheFirstGuidFromConsoleOutput()
+    {
+        const string output = """
+            Loopback created
+            Association Id: {11111111-1111-1111-1111-111111111111}
+            Endpoint A: \\?\swd#midisrv#midiu_loop_a_1111#{22222222-2222-2222-2222-222222222222}
+            """;
+
+        string associationId = MidiConsoleProcess.ParseCreatedLoopbackAssociationId(output);
+
+        Assert.Equal("{11111111-1111-1111-1111-111111111111}", associationId);
+    }
+
+    [Fact]
+    public void ParseCreatedLoopbackAssociationIdRejectsOutputWithoutGuid()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            MidiConsoleProcess.ParseCreatedLoopbackAssociationId("Loopback created"));
+
+        Assert.Contains("did not report", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -72,5 +96,18 @@ public sealed class MidiConsoleProcessTests
             fileExists: path => string.Equals(path, registered, StringComparison.OrdinalIgnoreCase));
 
         Assert.Equal(registered, result);
+    }
+
+    [Fact]
+    public void NormalizeLoadedMigratesLegacyAssociationIdToMidiUniqueIdentifier()
+    {
+        AppConfig config = AppConfig.NormalizeLoaded(new AppConfig
+        {
+            LoopbackAssociationId = "{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}",
+            LoopbackUniqueIdentifier = string.Empty,
+        });
+
+        Assert.Equal("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config.LoopbackUniqueIdentifier);
+        Assert.Equal("{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}", config.LoopbackAssociationId);
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace TabletMidiPad.Services.Midi;
@@ -7,16 +8,26 @@ namespace TabletMidiPad.Services.Midi;
 /// <summary>
 /// Builds and launches Windows MIDI Services console commands without command-line string parsing.
 /// </summary>
-internal static class MidiConsoleProcess
+internal static partial class MidiConsoleProcess
 {
     private const string MidiConsoleEnvOverride = "TABLETMIDIPAD_MIDI_EXE_PATH";
     private const string MidiServicesRegistryKey = @"SOFTWARE\Microsoft\Windows MIDI Services";
     private const string MidiConsoleRegistryValue = "MidiConsole";
     private const string MidiConsoleRelativePath = @"Windows MIDI Services\Tools\Console\midi.exe";
+    [GeneratedRegex(@"\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}?", RegexOptions.CultureInvariant)]
+    private static partial Regex GuidPattern();
 
     public static IReadOnlyList<string> CreateLoopbackArguments(AppConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
+        if (string.IsNullOrWhiteSpace(config.LoopbackUniqueIdentifier) ||
+            config.LoopbackUniqueIdentifier.Length > 32 ||
+            config.LoopbackUniqueIdentifier.Any(character => !char.IsAsciiLetterOrDigit(character)))
+        {
+            throw new InvalidOperationException(
+                "The Windows MIDI Services loopback unique identifier must contain only letters and digits and be no more than 32 characters.");
+        }
+
         return
         [
             "loopback",
@@ -25,8 +36,8 @@ internal static class MidiConsoleProcess
             config.AppPortName,
             "--name-b",
             config.DawPortName,
-            "--association-id",
-            config.LoopbackAssociationId,
+            "--unique-identifier",
+            config.LoopbackUniqueIdentifier,
         ];
     }
 
@@ -34,6 +45,19 @@ internal static class MidiConsoleProcess
     {
         ArgumentNullException.ThrowIfNull(config);
         return ["loopback", "remove", "--association-id", config.LoopbackAssociationId];
+    }
+
+    public static string ParseCreatedLoopbackAssociationId(string output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        Match match = GuidPattern().Match(output);
+        if (match.Success && Guid.TryParse(match.Value, out Guid associationId))
+        {
+            return associationId.ToString("B");
+        }
+
+        throw new InvalidOperationException("midi.exe did not report the created loopback association id.");
     }
 
     public static ProcessStartInfo BuildStartInfo(string executablePath, IReadOnlyList<string> arguments)

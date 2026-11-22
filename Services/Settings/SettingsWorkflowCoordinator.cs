@@ -42,12 +42,12 @@ internal sealed class SettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
     {
         string previousAppPortName = config.AppPortName;
         string previousDawPortName = config.DawPortName;
-        string previousAssociationId = config.LoopbackAssociationId;
+        string previousLoopbackUniqueIdentifier = config.LoopbackUniqueIdentifier;
         string previousInputBackendMode = config.InputBackendMode;
 
         config.DawPortName = result.DawPortName;
         config.AppPortName = result.AppPortName;
-        config.LoopbackAssociationId = result.AssociationId;
+        config.LoopbackUniqueIdentifier = result.LoopbackUniqueIdentifier;
         config.MousePressureValue = result.MousePressureValue;
         config.PositionDeadZone = result.PositionDeadZone;
         config.PositionSmoothing = result.PositionSmoothing;
@@ -78,7 +78,7 @@ internal sealed class SettingsWorkflowCoordinator : ISettingsWorkflowCoordinator
         bool routingChanged =
             !string.Equals(previousAppPortName, config.AppPortName, StringComparison.Ordinal) ||
             !string.Equals(previousDawPortName, config.DawPortName, StringComparison.Ordinal) ||
-            !string.Equals(previousAssociationId, config.LoopbackAssociationId, StringComparison.Ordinal);
+            !string.Equals(previousLoopbackUniqueIdentifier, config.LoopbackUniqueIdentifier, StringComparison.Ordinal);
         bool inputBackendChanged =
             !string.Equals(previousInputBackendMode, config.InputBackendMode, StringComparison.Ordinal);
 

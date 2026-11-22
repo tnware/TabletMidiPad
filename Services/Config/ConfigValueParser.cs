@@ -68,6 +68,18 @@ internal sealed class ConfigValueParser : IConfigValueParser
     }
 
     /// <inheritdoc />
+    public string RequireMidiUniqueIdentifier(string? text, string fieldName)
+    {
+        string value = RequireText(text, fieldName);
+        if (value.Length > 32 || value.Any(character => !char.IsAsciiLetterOrDigit(character)))
+        {
+            throw new InvalidOperationException($"{fieldName} must contain only letters and digits and be no more than 32 characters.");
+        }
+
+        return value;
+    }
+
+    /// <inheritdoc />
     public string RequirePressureCurve(string? text)
     {
         string value = (text ?? string.Empty).Trim();

@@ -7,7 +7,7 @@ internal sealed class PreferencesDialogResult
 {
     public required string DawPortName { get; init; }
     public required string AppPortName { get; init; }
-    public required string AssociationId { get; init; }
+    public required string LoopbackUniqueIdentifier { get; init; }
     public required int MousePressureValue { get; init; }
     public required double PositionDeadZone { get; init; }
     public required double PositionSmoothing { get; init; }

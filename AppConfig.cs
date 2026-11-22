@@ -14,6 +14,7 @@ public sealed partial class AppConfig
     public string AppPortName { get; set; } = "Tablet XY (App)";
     public string DawPortName { get; set; } = "Tablet XY (DAW)";
     public string LoopbackAssociationId { get; set; } = "{7d6e1f6b-6b0d-4d6c-a1f3-44ddefb7df4d}";
+    public string LoopbackUniqueIdentifier { get; set; } = string.Empty;
     public int MousePressureValue { get; set; } = 127;
     public double PositionDeadZone { get; set; } = 0.003;
     public double PositionSmoothing { get; set; } = 0.35;
@@ -46,7 +47,7 @@ public sealed partial class AppConfig
         SyncLegacyFromFirstPage();
     }
 
-    public static AppConfig Default => new();
+    public static AppConfig Default => NormalizeLoaded(new AppConfig());
 
     public static string GetConfigPath()
     {
@@ -93,6 +94,14 @@ public sealed partial class AppConfig
         if (config is null)
         {
             return Default;
+        }
+
+        if (string.IsNullOrWhiteSpace(config.LoopbackUniqueIdentifier))
+        {
+            config.LoopbackUniqueIdentifier =
+                Guid.TryParse(config.LoopbackAssociationId, out Guid legacyAssociationId) && legacyAssociationId != Guid.Empty
+                    ? legacyAssociationId.ToString("N")
+                    : "7d6e1f6b6b0d4d6ca1f344ddefb7df4d";
         }
 
         config.Zones ??= new();

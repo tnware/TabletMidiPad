@@ -22,7 +22,7 @@ internal static class AppBootstrapper
         // Core services.
         container.AddSingleton<IConfigStore>(_ => new JsonConfigStore(AppConfig.GetConfigPath()));
         container.AddSingleton<IRuntimeConfigService>(c => new RuntimeConfigService(c.GetRequiredService<IConfigStore>()));
-        container.AddSingleton<IMidiEngine>(_ => new WinMmMidiEngine());
+        container.AddSingleton<IMidiEngine>(c => new WinMmMidiEngine(c.GetRequiredService<IRuntimeConfigService>()));
         container.AddSingleton<IWacomServiceController>(_ => new WacomServiceController());
         container.AddSingleton<IAppTrace>(_ => new TraceAppTrace());
         container.AddSingleton<IWintabInputBackend>(c => new WintabInputBackend(c.GetRequiredService<IAppTrace>()));
