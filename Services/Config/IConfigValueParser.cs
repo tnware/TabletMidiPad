@@ -26,6 +26,11 @@ internal interface IConfigValueParser
     string RequireGuidText(string? text, string fieldName);
 
     /// <summary>
+    /// Ensures a MIDI endpoint unique identifier contains only letters and digits and is at most 32 characters.
+    /// </summary>
+    string RequireMidiUniqueIdentifier(string? text, string fieldName);
+
+    /// <summary>
     /// Ensures pressure curve is one of the supported names.
     /// </summary>
     string RequirePressureCurve(string? text);

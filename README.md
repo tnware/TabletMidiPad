@@ -43,7 +43,6 @@ For direct Wacom/Wintab input:
 
 TabletMidiPad has been tested with:
 
-- Windows MIDI Services Console `1.0.15-rc.2.18`
 - Wacom Tablet Driver `6.4.13-4`
 
 Other compatible releases may work but have not been verified. Obtain the current supported Wacom driver for your hardware from [Wacom Driver Support](https://www.wacom.com/en-us/support/product-support/drivers). The tested 6.4.13-4 installer is also available from [Wacom's CDN](https://cdn.wacom.com/u/productsupport/drivers/win/professional/WacomTablet_6.4.13-4.exe).
@@ -61,6 +60,8 @@ TabletMidiPad does not execute a bare `midi.exe` from `PATH`. It resolves a trus
 Install the Windows MIDI Services **Tools** component if the console is missing.
 
 ## MIDI routing and endpoint lifetime
+
+Loopback creation uses the `--unique-identifier` syntax documented for Windows MIDI Services `inbox-preview-14`. The generated association id is saved for subsequent removal.
 
 At startup, TabletMidiPad asks Windows MIDI Services to create a loopback pair:
 

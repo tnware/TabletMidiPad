@@ -10,7 +10,7 @@ internal sealed class PreferencesViewModel : ViewModelBase
 {
     private string _dawPortName = string.Empty;
     private string _appPortName = string.Empty;
-    private string _associationId = string.Empty;
+    private string _loopbackUniqueIdentifier = string.Empty;
     private string _mousePressureText = "127";
     private string _positionDeadZoneText = "0.003";
     private string _positionSmoothingText = "0.35";
@@ -44,10 +44,10 @@ internal sealed class PreferencesViewModel : ViewModelBase
         set => SetProperty(ref _appPortName, value);
     }
 
-    public string AssociationId
+    public string LoopbackUniqueIdentifier
     {
-        get => _associationId;
-        set => SetProperty(ref _associationId, value);
+        get => _loopbackUniqueIdentifier;
+        set => SetProperty(ref _loopbackUniqueIdentifier, value);
     }
 
     public string MousePressureText

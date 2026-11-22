@@ -98,7 +98,7 @@ internal sealed class PreferencesDialogService : IPreferencesDialogService
         {
             DawPortName = preferencesWindow.DawPortName,
             AppPortName = preferencesWindow.AppPortName,
-            AssociationId = preferencesWindow.AssociationId,
+            LoopbackUniqueIdentifier = preferencesWindow.LoopbackUniqueIdentifier,
             MousePressureValue = preferencesWindow.MousePressureValue,
             PositionDeadZone = preferencesWindow.PositionDeadZone,
             PositionSmoothing = preferencesWindow.PositionSmoothing,

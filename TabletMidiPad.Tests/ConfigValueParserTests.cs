@@ -21,6 +21,24 @@ public sealed class ConfigValueParserTests
     }
 
     [Fact]
+    public void RequireMidiUniqueIdentifierAcceptsAlphanumericValuesUpTo32Characters()
+    {
+        const string identifier = "0123456789abcdef0123456789abcdef";
+
+        Assert.Equal(identifier, _sut.RequireMidiUniqueIdentifier(identifier, "Loopback Unique Identifier"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("has spaces")]
+    [InlineData("0123456789abcdef0123456789abcdefg")]
+    public void RequireMidiUniqueIdentifierRejectsInvalidValues(string identifier)
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            _sut.RequireMidiUniqueIdentifier(identifier, "Loopback Unique Identifier"));
+    }
+
+    [Fact]
     public void NormalizeZoneOutputModeFallsBackToCcPad()
     {
         Assert.Equal(ZoneOutputModes.OneNote, _sut.NormalizeZoneOutputMode("One Note"));

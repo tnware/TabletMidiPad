@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using TabletMidiPad.Services.Config;
 
 namespace TabletMidiPad.Services.Midi;
 
@@ -11,7 +12,13 @@ internal sealed class WinMmMidiEngine : IMidiEngine
 {
     private readonly Dictionary<string, int> _lastSentValues = new();
     private readonly object _sync = new();
+    private readonly IRuntimeConfigService _runtimeConfig;
     private IntPtr _midiOutHandle;
+
+    public WinMmMidiEngine(IRuntimeConfigService runtimeConfig)
+    {
+        _runtimeConfig = runtimeConfig ?? throw new ArgumentNullException(nameof(runtimeConfig));
+    }
 
     public bool IsReady
     {
@@ -191,9 +198,17 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         }
     }
 
-    private static void CreateLoopbackPair(AppConfig config)
+    private void CreateLoopbackPair(AppConfig config)
     {
-        RunMidiConsole(MidiConsoleProcess.CreateLoopbackArguments(config));
+        string output = RunMidiConsole(MidiConsoleProcess.CreateLoopbackArguments(config));
+        config.LoopbackAssociationId = MidiConsoleProcess.ParseCreatedLoopbackAssociationId(output);
+
+        AppConfig currentConfig = _runtimeConfig.Current;
+        currentConfig.AppPortName = config.AppPortName;
+        currentConfig.DawPortName = config.DawPortName;
+        currentConfig.LoopbackAssociationId = config.LoopbackAssociationId;
+        currentConfig.LoopbackUniqueIdentifier = config.LoopbackUniqueIdentifier;
+        _runtimeConfig.SaveCurrent();
         Thread.Sleep(300);
     }
 
@@ -312,7 +327,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
         return [.. names.Where(name => !string.IsNullOrWhiteSpace(name))];
     }
 
-    private static void RunMidiConsole(IReadOnlyList<string> arguments, bool allowFailure = false)
+    private static string RunMidiConsole(IReadOnlyList<string> arguments, bool allowFailure = false)
     {
         string midiConsolePath = MidiConsoleProcess.ResolveInstalledPath();
         ProcessStartInfo startInfo = MidiConsoleProcess.BuildStartInfo(midiConsolePath, arguments);
@@ -342,7 +357,7 @@ internal sealed class WinMmMidiEngine : IMidiEngine
 
             if (allowFailure || process.ExitCode == 0)
             {
-                return;
+                return output;
             }
 
             throw new InvalidOperationException(

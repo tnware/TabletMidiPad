@@ -44,14 +44,14 @@ public sealed class SettingsWorkflowCoordinatorTests
         AppConfig config = AppConfig.Default;
         config.AppPortName = "Old App";
         config.DawPortName = "Old Daw";
-        config.LoopbackAssociationId = "{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}";
+        config.LoopbackUniqueIdentifier = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         config.InputBackendMode = "Auto";
 
         var result = new PreferencesDialogResult
         {
             AppPortName = "New App",
             DawPortName = "New Daw",
-            AssociationId = "{bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb}",
+            LoopbackUniqueIdentifier = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             MousePressureValue = 100,
             PositionDeadZone = 0.02,
             PositionSmoothing = 0.1,
@@ -119,7 +119,7 @@ public sealed class SettingsWorkflowCoordinatorTests
         {
             DawPortName = config.DawPortName,
             AppPortName = config.AppPortName,
-            AssociationId = config.LoopbackAssociationId,
+            LoopbackUniqueIdentifier = config.LoopbackUniqueIdentifier,
             MousePressureValue = config.MousePressureValue,
             PositionDeadZone = config.PositionDeadZone,
             PositionSmoothing = config.PositionSmoothing,

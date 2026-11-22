@@ -17,10 +17,11 @@ internal partial class PreferencesWindow : Window
     private readonly Func<AppConfig, Action<string>?, Task> _recreateLoopbackAsync;
     private readonly Func<AppConfig, Action<string>?, Task> _removeLoopbackAsync;
     private bool _isSyncingInputDeviceControls;
+    private string _loopbackAssociationId = string.Empty;
 
     public string DawPortName => _viewModel.DawPortName.Trim();
     public string AppPortName => _viewModel.AppPortName.Trim();
-    public string AssociationId => _viewModel.AssociationId.Trim();
+    public string LoopbackUniqueIdentifier => _viewModel.LoopbackUniqueIdentifier.Trim();
     public int MousePressureValue { get; private set; }
     public double PositionDeadZone { get; private set; }
     public double PositionSmoothing { get; private set; }
@@ -128,7 +129,8 @@ internal partial class PreferencesWindow : Window
     {
         _viewModel.DawPortName = config.DawPortName;
         _viewModel.AppPortName = config.AppPortName;
-        _viewModel.AssociationId = config.LoopbackAssociationId;
+        _loopbackAssociationId = config.LoopbackAssociationId;
+        _viewModel.LoopbackUniqueIdentifier = config.LoopbackUniqueIdentifier;
         _viewModel.MousePressureText = config.MousePressureValue.ToString(CultureInfo.InvariantCulture);
         _viewModel.PositionDeadZoneText = config.PositionDeadZone.ToString("0.###", CultureInfo.InvariantCulture);
         _viewModel.PositionSmoothingText = config.PositionSmoothing.ToString("0.##", CultureInfo.InvariantCulture);
@@ -338,7 +340,7 @@ internal partial class PreferencesWindow : Window
     {
         _ = _configValueParser.RequireText(_viewModel.DawPortName, "DAW Input Port");
         _ = _configValueParser.RequireText(_viewModel.AppPortName, "Internal App Port");
-        _ = _configValueParser.RequireGuidText(_viewModel.AssociationId, "Association Id");
+        _ = _configValueParser.RequireMidiUniqueIdentifier(_viewModel.LoopbackUniqueIdentifier, "Loopback Unique Identifier");
         MousePressureValue = _configValueParser.ReadInt(_viewModel.MousePressureText, 0, 127, "Mouse Pressure Fallback");
         PositionDeadZone = _configValueParser.ReadDouble(_viewModel.PositionDeadZoneText, 0.0, 0.1, "Position Dead Zone");
         PositionSmoothing = _configValueParser.ReadDouble(_viewModel.PositionSmoothingText, 0.0, 0.95, "XY Smoothing");
@@ -769,6 +771,7 @@ internal partial class PreferencesWindow : Window
             await action(
                 routingConfig,
                 text => Dispatcher.Invoke(() => _viewModel.MidiLifecycleStatusText = text));
+            _loopbackAssociationId = routingConfig.LoopbackAssociationId;
             _viewModel.MidiLifecycleStatusText = successText;
         }
         catch (Exception ex)
@@ -786,13 +789,16 @@ internal partial class PreferencesWindow : Window
     {
         string dawPortName = _configValueParser.RequireText(_viewModel.DawPortName, "DAW Input Port").Trim();
         string appPortName = _configValueParser.RequireText(_viewModel.AppPortName, "Internal App Port").Trim();
-        string associationId = _configValueParser.RequireGuidText(_viewModel.AssociationId, "Association Id").Trim();
+        string uniqueIdentifier = _configValueParser.RequireMidiUniqueIdentifier(
+            _viewModel.LoopbackUniqueIdentifier,
+            "Loopback Unique Identifier");
 
         return new AppConfig
         {
             DawPortName = dawPortName,
             AppPortName = appPortName,
-            LoopbackAssociationId = associationId
+            LoopbackAssociationId = _loopbackAssociationId,
+            LoopbackUniqueIdentifier = uniqueIdentifier
         };
     }
 }

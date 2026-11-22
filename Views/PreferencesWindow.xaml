@@ -171,9 +171,9 @@
                                 </Border>
                                 <Border Style="{StaticResource SettingsGroupStyle}" Margin="0,4,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="Association Id" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <TextBox Name="AssociationIdTextBox" Margin="0,6,0,0"
-                                                 Text="{Binding AssociationId, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="Loopback Unique Identifier" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <TextBox Name="LoopbackUniqueIdentifierTextBox" Margin="0,6,0,0"
+                                                 Text="{Binding LoopbackUniqueIdentifier, UpdateSourceTrigger=PropertyChanged}"/>
                                     </StackPanel>
                                 </Border>
 
